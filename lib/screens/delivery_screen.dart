@@ -1,0 +1,13 @@
+import 'package:flutter/material.dart';
+import '../app_state.dart';
+import '../domain/models.dart';
+import '../services/navigation_service.dart';
+import '../services/location_service.dart';
+
+class DeliveryScreen extends StatelessWidget {
+  final AppState state;
+  const DeliveryScreen({super.key,required this.state});
+
+  DeliveryPackage? _next(){for(final p in state.packages){if(p.status==DeliveryStatus.pending||p.status==DeliveryStatus.current)return p;}return null;}
+  @override Widget build(BuildContext context)=>AnimatedBuilder(animation:state,builder:(context,_){final p=_next();if(p==null)return Scaffold(appBar:AppBar(title:const Text('Rota')),body:const Center(child:Text('🎉 Rota concluída!')));final i=state.packages.indexWhere((e)=>e.id==p.id);final remaining=state.packages.where((e)=>e.status==DeliveryStatus.pending||e.status==DeliveryStatus.current).length;return Scaffold(appBar:AppBar(title:Text('Próxima entrega • $remaining restantes')),body:SafeArea(child:Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text(p.label,style:Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight:FontWeight.bold)),if(p.physicalZone!=null)Text('Local físico: ${p.physicalZone}',style:Theme.of(context).textTheme.titleLarge),const SizedBox(height:24),Card(child:Padding(padding:const EdgeInsets.all(18),child:Text(p.address.formatted.isEmpty?p.address.raw:p.address.formatted,style:Theme.of(context).textTheme.titleLarge))),const Spacer(),FilledButton.icon(onPressed:()=>NavigationService().openWaze(p),icon:const Icon(Icons.navigation),label:const Padding(padding:EdgeInsets.all(14),child:Text('ABRIR NO WAZE'))),const SizedBox(height:10),Row(children:[Expanded(child:OutlinedButton(onPressed:()=>state.update(i,p.copyWith(status:DeliveryStatus.absent)),child:const Text('Ausente'))),const SizedBox(width:10),Expanded(child:OutlinedButton(onPressed:()=>state.update(i,p.copyWith(status:DeliveryStatus.skipped)),child:const Text('Pular')))]),const SizedBox(height:10),FilledButton.tonalIcon(onPressed:()=>state.update(i,p.copyWith(status:DeliveryStatus.delivered)),icon:const Icon(Icons.check_circle),label:const Padding(padding:EdgeInsets.all(12),child:Text('ENTREGUE'))),TextButton.icon(onPressed:()async{try{final pos=await LocationService().current();await state.optimizeFrom(pos.latitude,pos.longitude);if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Entregas restantes reotimizadas.')));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}},icon:const Icon(Icons.auto_fix_high),label:const Text('Reotimizar entregas restantes'))])));});
+}
