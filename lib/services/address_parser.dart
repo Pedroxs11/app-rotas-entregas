@@ -12,8 +12,15 @@ class AddressParser {
     final cepMatch=_cep.firstMatch(text);
     final streetMatch=_street.firstMatch(text);
     final numberMatch=_number.firstMatch(streetMatch?.group(0) ?? text);
-    final ufMatch=_uf.firstMatch(text);
     final compMatch=_complement.firstMatch(text);
+
+    // Complementos como "AP 12" não podem ser confundidos com a UF Amapá (AP).
+    final textForUf = compMatch == null
+        ? text
+        : text.replaceRange(compMatch.start, compMatch.end, ' ');
+    final ufMatches=_uf.allMatches(textForUf).toList();
+    final ufMatch=ufMatches.isEmpty?null:ufMatches.last;
+
     final cep=cepMatch==null?null:'${cepMatch.group(1)}-${cepMatch.group(2)}';
     double score=0;
     if(streetMatch!=null) score+=.35;
