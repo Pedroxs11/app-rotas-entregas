@@ -1,0 +1,12 @@
+import 'package:flutter/material.dart';
+import '../app_state.dart';
+import '../services/location_service.dart';
+import 'map_screen.dart';
+import 'delivery_screen.dart';
+
+class PrepareRouteScreen extends StatelessWidget{
+ final AppState state; const PrepareRouteScreen({super.key,required this.state});
+ Future<void> _locate(BuildContext c)async{await state.locateConfirmed();if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('${state.locatedCount} endereços localizados. ${state.packages.length-state.locatedCount} pendentes.')));}
+ Future<void> _optimize(BuildContext c)async{try{final p=await LocationService().current();await state.optimizeFrom(p.latitude,p.longitude);if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content:Text('Rota organizada a partir da sua posição.')));}catch(e){if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e')));}}
+ @override Widget build(BuildContext context)=>AnimatedBuilder(animation:state,builder:(context,_){return Scaffold(appBar:AppBar(title:const Text('Preparar rota')),body:ListView(padding:const EdgeInsets.all(16),children:[Card(child:Padding(padding:const EdgeInsets.all(18),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('${state.packages.length} pacotes',style:Theme.of(context).textTheme.headlineSmall),Text('${state.reviewCount} precisam de revisão • ${state.locatedCount} localizados')]))),const SizedBox(height:12),FilledButton.icon(onPressed:state.locating?null:()=>_locate(context),icon:const Icon(Icons.location_searching),label:Padding(padding:const EdgeInsets.all(14),child:Text(state.locating?'Localizando...':'1. Localizar endereços'))),const SizedBox(height:10),FilledButton.tonalIcon(onPressed:state.locatedCount<2?null:()=>_optimize(context),icon:const Icon(Icons.route),label:const Padding(padding:EdgeInsets.all(14),child:Text('2. Otimizar minha rota'))),const SizedBox(height:10),OutlinedButton.icon(onPressed:state.locatedCount==0?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>RouteMapScreen(packages:state.packages))),icon:const Icon(Icons.map),label:const Padding(padding:EdgeInsets.all(14),child:Text('3. Ver mapa completo'))),const SizedBox(height:24),FilledButton.icon(onPressed:state.packages.isEmpty?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>DeliveryScreen(state:state))),icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(16),child:Text('INICIAR ENTREGAS')))]));});
+}
