@@ -2,64 +2,72 @@ name: Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-      - name: Generate missing Flutter platform files
+
+      - name: Generate Flutter platform files
         run: flutter create --platforms=android,ios .
+
       - name: Configure Android permissions
+        shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('android/app/src/main/AndroidManifest.xml')
+          p = Path("android/app/src/main/AndroidManifest.xml")
           s = p.read_text()
           marker = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
-          permissions = '''<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.CAMERA" />
-              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />'''
-          if 'android.permission.CAMERA' not in s:
-              s = s.replace(marker, permissions)
+          additions = (
+              marker + '\n'
+              '    <uses-permission android:name="android.permission.CAMERA" />\n'
+              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
+              '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />'
+          )
+          if "android.permission.CAMERA" not in s:
+              s = s.replace(marker, additions, 1)
           p.write_text(s)
           PY
-      - name: Configure iOS permission descriptions
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('ios/Runner/Info.plist')
-          s = p.read_text()
-          if 'NSCameraUsageDescription' not in s:
-              s = s.replace('</dict>', '''\t<key>NSCameraUsageDescription</key>
-\t<string>Usamos a câmera para ler etiquetas e endereços das entregas.</string>
-\t<key>NSLocationWhenInUseUsageDescription</key>
-\t<string>Usamos sua localização para organizar e iniciar a rota de entregas.</string>
-</dict>''')
-          p.write_text(s)
-          PY
+
       - name: Get dependencies
         run: flutter pub get
+
       - name: Analyze
         run: flutter analyze
+
       - name: Test
         run: flutter test
-      - name: Build universal debug APK
-        run: flutter build apk --debug --target-platform android-arm,android-arm64,android-x64
-      - name: Verify APK
+
+      - name: Build universal APK
+        run: flutter build apk --debug
+
+      - name: Build smaller APKs by CPU
+        run: flutter build apk --debug --split-per-abi
+
+      - name: Verify generated APKs
+        shell: bash
         run: |
-          ls -lh build/app/outputs/flutter-apk/app-debug.apk
-          unzip -t build/app/outputs/flutter-apk/app-debug.apk >/dev/null
-      - name: Upload APK
+          set -e
+          ls -lh build/app/outputs/flutter-apk/*.apk
+          for apk in build/app/outputs/flutter-apk/*.apk; do
+            unzip -t "$apk" >/dev/null
+          done
+
+      - name: Upload Android APKs
         uses: actions/upload-artifact@v4
         with:
-          name: rotas-entregas-universal-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: rotas-entregas-android-debug
+          path: build/app/outputs/flutter-apk/*.apk
           retention-days: 14
