@@ -3,8 +3,9 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - build/**
+  errors:
+    deprecated_member_use: ignore
 
 linter:
   rules:
     avoid_print: true
-    deprecated_member_use: false
