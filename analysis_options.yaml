@@ -7,3 +7,4 @@ analyzer:
 linter:
   rules:
     avoid_print: true
+    deprecated_member_use: false
