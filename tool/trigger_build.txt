@@ -1,0 +1,1 @@
+Trigger inicial do pipeline Android. Este arquivo pode ser removido depois que a primeira compilação estiver validada.
