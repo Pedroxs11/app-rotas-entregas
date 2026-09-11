@@ -6,10 +6,11 @@ import 'screens/scanner_screen.dart';
 import 'screens/prepare_route_screen.dart';
 import 'screens/address_editor_dialog.dart';
 import 'services/location_service.dart';
+import 'services/package_store.dart';
 
 void main()=>runApp(const DeliveryApp());
-class DeliveryApp extends StatefulWidget{const DeliveryApp({super.key});@override State<DeliveryApp> createState()=>_DeliveryAppState();}
-class _DeliveryAppState extends State<DeliveryApp>{final state=AppState();@override void initState(){super.initState();state.init();}@override Widget build(BuildContext context)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Rotas Entregas',theme:ThemeData(useMaterial3:true,colorSchemeSeed:Colors.indigo),home:HomePage(state:state));}
+class DeliveryApp extends StatefulWidget{final PackageStore? store;const DeliveryApp({super.key,this.store});@override State<DeliveryApp> createState()=>_DeliveryAppState();}
+class _DeliveryAppState extends State<DeliveryApp>{late final AppState state;@override void initState(){super.initState();state=AppState(store:widget.store);state.init();}@override Widget build(BuildContext context)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Rotas Entregas',theme:ThemeData(useMaterial3:true,colorSchemeSeed:Colors.indigo),home:HomePage(state:state));}
 class HomePage extends StatefulWidget{final AppState state;const HomePage({super.key,required this.state});@override State<HomePage> createState()=>_HomePageState();}
 enum _ActiveFilter{all,pending,absent,problem,skipped}
 class _HomePageState extends State<HomePage>{
