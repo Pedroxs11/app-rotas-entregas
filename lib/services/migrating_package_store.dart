@@ -16,14 +16,36 @@ class MigratingPackageStore implements PackageStore {
 
   Future<void> _ensureMigrated() async {
     if(_migrationChecked)return;
+
     final current=await primary.load();
-    if(current.isEmpty){
-      final old=await legacy.load();
-      if(old.isNotEmpty){
-        final optimized=await legacy.loadRouteOptimized();
-        await primary.save(old,routeOptimized:optimized);
-      }
+    if(current.isNotEmpty){
+      _migrationChecked=true;
+      return;
     }
+
+    final old=await legacy.load();
+    final optimized=await legacy.loadRouteOptimized();
+
+    // Metadata also matters. A route can legitimately have no packages while
+    // still carrying state that must survive an application upgrade.
+    if(old.isEmpty&&!optimized){
+      _migrationChecked=true;
+      return;
+    }
+
+    await primary.save(old,routeOptimized:optimized);
+
+    // Do not silently abandon the rollback copy if the primary store did not
+    // persist exactly what was requested. A failed verification can be retried
+    // on the next call because _migrationChecked remains false.
+    final migrated=await primary.load();
+    final migratedOptimized=await primary.loadRouteOptimized();
+    final samePackages=migrated.length==old.length&&
+        List.generate(old.length,(i)=>migrated[i].id==old[i].id).every((v)=>v);
+    if(!samePackages||migratedOptimized!=optimized){
+      throw StateError('Legacy package migration could not be verified.');
+    }
+
     _migrationChecked=true;
   }
 
