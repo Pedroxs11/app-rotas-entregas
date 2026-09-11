@@ -29,7 +29,13 @@ class DeliveryPackage {
 
   const DeliveryPackage({required this.id, required this.scanNumber, this.trackingCode, this.recipient, this.physicalZone, required this.address, required this.scannedAt, this.pinned=false, this.status=DeliveryStatus.pending});
   String get label=>'Pacote ${scanNumber.toString().padLeft(2,'0')}';
-  DeliveryPackage copyWith({AddressData? address,bool? pinned,DeliveryStatus? status,String? physicalZone})=>DeliveryPackage(id:id,scanNumber:scanNumber,trackingCode:trackingCode,recipient:recipient,physicalZone:physicalZone??this.physicalZone,address:address??this.address,scannedAt:scannedAt,pinned:pinned??this.pinned,status:status??this.status);
+  String get physicalLabel=>physicalZone?.trim().isNotEmpty==true?physicalZone!.trim():label;
+  String? get shortTracking {
+    final value=trackingCode?.trim();
+    if(value==null||value.isEmpty)return null;
+    return value.length<=12?value:'…${value.substring(value.length-12)}';
+  }
+  DeliveryPackage copyWith({AddressData? address,bool? pinned,DeliveryStatus? status,String? physicalZone,String? trackingCode,String? recipient})=>DeliveryPackage(id:id,scanNumber:scanNumber,trackingCode:trackingCode??this.trackingCode,recipient:recipient??this.recipient,physicalZone:physicalZone??this.physicalZone,address:address??this.address,scannedAt:scannedAt,pinned:pinned??this.pinned,status:status??this.status);
   Map<String,dynamic> toJson()=>{'id':id,'scanNumber':scanNumber,'trackingCode':trackingCode,'recipient':recipient,'physicalZone':physicalZone,'address':address.toJson(),'scannedAt':scannedAt.toIso8601String(),'pinned':pinned,'status':status.name};
   factory DeliveryPackage.fromJson(Map<String,dynamic> j)=>DeliveryPackage(id:j['id'],scanNumber:j['scanNumber'],trackingCode:j['trackingCode'],recipient:j['recipient'],physicalZone:j['physicalZone'],address:AddressData.fromJson(Map<String,dynamic>.from(j['address'])),scannedAt:DateTime.parse(j['scannedAt']),pinned:j['pinned']??false,status:DeliveryStatus.values.byName(j['status']??'pending'));
 }
