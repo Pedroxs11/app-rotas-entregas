@@ -32,10 +32,37 @@ class AppState extends ChangeNotifier {
     for(var i=0;i<active.length;i++){if(active[i].pinned){pinned[i]=active[i];}else{free.add(active[i]);}}
     var optimized=routeEngine.optimize(free,startLat:lat,startLng:lng);
     for(final e in pinned.entries){final at=e.key.clamp(0,optimized.length);optimized.insert(at,e.value);}
-    // Entregas já processadas ficam intactas; apenas o restante da rota muda de ordem.
     packages=[...finished,...optimized];
     await _persist();
   }
+
+  /// Sugere zonas físicas com base na ordem já otimizada. Não existe limite de
+  /// pacotes: o tamanho do grupo é configurável e a quantidade de zonas cresce.
+  Future<void> organizePhysicalLoad({int groupSize=20,bool overwrite=false})async{
+    if(groupSize<1)throw ArgumentError.value(groupSize,'groupSize');
+    var activeIndex=0;
+    final out=<DeliveryPackage>[];
+    for(final p in packages){
+      final active=p.status==DeliveryStatus.pending||p.status==DeliveryStatus.current;
+      if(!active){out.add(p);continue;}
+      final zoneIndex=activeIndex~/groupSize;
+      final position=activeIndex%groupSize+1;
+      final zone='${_zoneName(zoneIndex)}-${position.toString().padLeft(2,'0')}';
+      out.add((overwrite||p.physicalZone?.trim().isNotEmpty!=true)?p.copyWith(physicalZone:zone):p);
+      activeIndex++;
+    }
+    packages=out;
+    await _persist();
+  }
+
+  String _zoneName(int index){
+    // A..Z, AA..AZ, BA... para suportar qualquer quantidade sem teto artificial.
+    var n=index+1;
+    var name='';
+    while(n>0){n--;name=String.fromCharCode(65+(n%26))+name;n~/=26;}
+    return name;
+  }
+
   Future<void> clear()async{packages=[];await store.clear();notifyListeners();}
   Future<void> _persist()async{await store.save(packages);notifyListeners();}
 }
