@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app_rotas_entregas/services/bounded_async.dart';
 
