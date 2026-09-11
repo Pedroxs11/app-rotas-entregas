@@ -69,7 +69,8 @@ void main(){
 
     expect(state.loading,isFalse);
     expect(state.routeOptimized,isTrue);
-    expect(state.packages,singleton(original));
+    expect(state.packages,hasLength(1));
+    expect(state.packages.single,same(original));
     expect(state.packages.single.id,'saved-1');
     expect(state.packages.single.status,DeliveryStatus.absent);
     expect(state.packages.single.physicalZone,'B-03');
