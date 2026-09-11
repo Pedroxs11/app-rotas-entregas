@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rotas_entregas/services/address_parser.dart';
-import 'package:rotas_entregas/services/package_service.dart';
+import 'package:app_rotas_entregas/services/address_parser.dart';
+import 'package:app_rotas_entregas/services/package_service.dart';
 
 void main(){
   final service=PackageService(AddressParser());
