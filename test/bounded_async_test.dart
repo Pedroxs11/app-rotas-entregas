@@ -11,14 +11,12 @@ void main() {
       },
       concurrency: 3,
     );
-
     expect(result, [10, 20, 30, 40, 50]);
   });
 
   test('never exceeds configured concurrency', () async {
     var active = 0;
     var peak = 0;
-
     await mapBounded<int, int>(
       List.generate(24, (i) => i),
       (item) async {
@@ -30,19 +28,14 @@ void main() {
       },
       concurrency: 4,
     );
-
     expect(peak, lessThanOrEqualTo(4));
     expect(peak, greaterThan(1));
   });
 
   test('supports empty lists and rejects invalid concurrency', () async {
-    expect(
-      await mapBounded<int, int>(<int>[], (item) async => item),
-      isEmpty,
-    );
-
-    expect(
-      () => mapBounded<int, int>([1], (item) async => item, concurrency: 0),
+    expect(await mapBounded<int, int>(<int>[], (item) async => item), isEmpty);
+    await expectLater(
+      mapBounded<int, int>([1], (item) async => item, concurrency: 0),
       throwsArgumentError,
     );
   });
