@@ -24,7 +24,18 @@ class AppState extends ChangeNotifier {
   Future<void> update(int index,DeliveryPackage value)async{packages=[...packages]..[index]=value;await _persist();}
   Future<void> reorder(int oldIndex,int newIndex)async{final x=[...packages];if(newIndex>oldIndex)newIndex--;final p=x.removeAt(oldIndex);x.insert(newIndex,p);packages=x;await _persist();}
   Future<void> locateConfirmed()async{locating=true;notifyListeners();final out=[...packages];for(var i=0;i<out.length;i++){final p=out[i];if(p.address.validation!=ValidationStatus.confirmed||p.address.latitude!=null)continue;try{final a=await geocoder.locate(p.address);out[i]=p.copyWith(address:a);}catch(_){}}packages=out;locating=false;await _persist();}
-  Future<void> optimizeFrom(double lat,double lng)async{final pinned=<int,DeliveryPackage>{};for(var i=0;i<packages.length;i++){if(packages[i].pinned)pinned[i]=packages[i];}var result=routeEngine.optimize(packages.where((p)=>!p.pinned).toList(),startLat:lat,startLng:lng);for(final e in pinned.entries){final at=e.key.clamp(0,result.length);result.insert(at,e.value);}packages=result;await _persist();}
+  Future<void> optimizeFrom(double lat,double lng)async{
+    final finished=packages.where((p)=>p.status!=DeliveryStatus.pending&&p.status!=DeliveryStatus.current).toList();
+    final active=packages.where((p)=>p.status==DeliveryStatus.pending||p.status==DeliveryStatus.current).toList();
+    final pinned=<int,DeliveryPackage>{};
+    final free=<DeliveryPackage>[];
+    for(var i=0;i<active.length;i++){if(active[i].pinned){pinned[i]=active[i];}else{free.add(active[i]);}}
+    var optimized=routeEngine.optimize(free,startLat:lat,startLng:lng);
+    for(final e in pinned.entries){final at=e.key.clamp(0,optimized.length);optimized.insert(at,e.value);}
+    // Entregas já processadas ficam intactas; apenas o restante da rota muda de ordem.
+    packages=[...finished,...optimized];
+    await _persist();
+  }
   Future<void> clear()async{packages=[];await store.clear();notifyListeners();}
   Future<void> _persist()async{await store.save(packages);notifyListeners();}
 }
