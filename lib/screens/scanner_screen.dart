@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import '../app_state.dart';
 import '../domain/models.dart';
@@ -25,6 +26,21 @@ class _ScannerScreenState extends State<ScannerScreen>{
   Future<void> _init() async {try{final cams=await availableCameras();if(cams.isEmpty)throw Exception('Nenhuma câmera encontrada');final back=cams.where((c)=>c.lensDirection==CameraLensDirection.back).firstOrNull??cams.first;final controller=CameraController(back,ResolutionPreset.high,enableAudio:false);await controller.initialize();if(!mounted){await controller.dispose();return;}setState(()=>_camera=controller);}catch(e){if(mounted)setState(()=>_message='Não foi possível abrir a câmera: $e');}}
   Future<void> _toggleTorch()async{final c=_camera;if(c==null)return;try{_torch=!_torch;await c.setFlashMode(_torch?FlashMode.torch:FlashMode.off);if(mounted)setState((){});}catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Flash não disponível nesta câmera.')));}}
 
+  Future<void> _feedback({required bool success,required bool review}) async {
+    try{
+      await SystemSound.play(success?SystemSoundType.click:SystemSoundType.alert);
+    }catch(_){/* vibration remains the fallback */}
+    try{
+      if((await Vibration.hasVibrator())==true){
+        if(!success){
+          Vibration.vibrate(pattern:[0,80,70,80]);
+        }else{
+          Vibration.vibrate(duration:review?160:70);
+        }
+      }
+    }catch(_){/* feedback must never block the next package */}
+  }
+
   Future<void> _capture() async {
     if(_busy||_camera?.value.isInitialized!=true)return;
     final now=DateTime.now();
@@ -42,13 +58,14 @@ class _ScannerScreenState extends State<ScannerScreen>{
       if(widget.state.packages.length<=before)throw Exception('Este pacote parece já ter sido registrado');
       final p=widget.state.packages.last;
       _captured++;
-      if(p.address.validation!=ValidationStatus.confirmed)_review++;
-      if((await Vibration.hasVibrator())==true)Vibration.vibrate(duration:p.address.validation==ValidationStatus.confirmed?70:160);
+      final needsReview=p.address.validation!=ValidationStatus.confirmed;
+      if(needsReview)_review++;
+      await _feedback(success:true,review:needsReview);
       final linked=tracking!=null?' • código vinculado':'';
-      if(mounted)setState(()=>_message=p.address.validation==ValidationStatus.confirmed?'✓ ${p.label} pronto$linked — próximo':'⚠ ${p.label} salvo para revisar$linked — próximo');
+      if(mounted)setState(()=>_message=!needsReview?'✓ ${p.label} pronto$linked — próximo':'⚠ ${p.label} salvo para revisar$linked — próximo');
     }catch(e){
       _failed++;
-      if((await Vibration.hasVibrator())==true)Vibration.vibrate(pattern:[0,80,70,80]);
+      await _feedback(success:false,review:false);
       if(mounted)setState(()=>_message='Não registrei: $e • tente novamente');
     }finally{if(mounted)setState(()=>_busy=false);}
   }
