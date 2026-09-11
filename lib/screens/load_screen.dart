@@ -14,7 +14,7 @@ class LoadScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final route = packages.where(_active).toList();
-    final loading = route.reversed.toList();
+    final loading = route.asMap().entries.toList().reversed.toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Carregar veículo')),
@@ -49,9 +49,9 @@ class LoadScreen extends StatelessWidget {
                     itemCount: loading.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, i) {
-                      final p = loading[i];
-                      final routePosition =
-                          route.indexWhere((x) => x.id == p.id) + 1;
+                      final entry = loading[i];
+                      final p = entry.value;
+                      final routePosition = entry.key + 1;
                       final firstDelivery = routePosition == 1;
                       final address = p.address.formatted.isEmpty
                           ? p.address.raw
