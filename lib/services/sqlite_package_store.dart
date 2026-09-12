@@ -23,7 +23,6 @@ class SqlitePackageStore implements PackageStore {
     return _database=await openDatabase(
       path,
       version:_databaseVersion,
-      onConfigure:(db)=>db.execute('PRAGMA journal_mode=WAL'),
       onCreate:(db,_) async {
         await db.execute('CREATE TABLE $_packagesTable (id TEXT PRIMARY KEY, sort_order INTEGER NOT NULL, payload TEXT NOT NULL)');
         await db.execute('CREATE INDEX idx_packages_sort_order ON $_packagesTable(sort_order)');
@@ -50,18 +49,12 @@ class SqlitePackageStore implements PackageStore {
   Future<void> save(List<DeliveryPackage> packages,{bool? routeOptimized}) async {
     final db=await _db();
     await db.transaction((txn) async {
-      // AppState currently saves route snapshots. A transaction keeps the
-      // ordered snapshot atomic while rows remain independently queryable.
       final ids=packages.map((e)=>e.id).toSet();
       final existing=await txn.query(_packagesTable,columns:['id']);
       final batch=txn.batch();
       for(var i=0;i<packages.length;i++){
         final package=packages[i];
-        batch.insert(_packagesTable,{
-          'id':package.id,
-          'sort_order':i,
-          'payload':jsonEncode(package.toJson()),
-        },conflictAlgorithm:ConflictAlgorithm.replace);
+        batch.insert(_packagesTable,{'id':package.id,'sort_order':i,'payload':jsonEncode(package.toJson())},conflictAlgorithm:ConflictAlgorithm.replace);
       }
       for(final row in existing){
         final id=row['id']! as String;
