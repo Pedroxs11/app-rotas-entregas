@@ -111,4 +111,27 @@ void main(){
     expect(state.packages[2].physicalZone,'A-02');
     expect(store.saves,1);
   });
+
+  test('physical load assigns positions to every active delivery status only',() async {
+    final store=GuardStore([
+      _package('pending',1,status:DeliveryStatus.pending),
+      _package('current',2,status:DeliveryStatus.current),
+      _package('absent',3,status:DeliveryStatus.absent),
+      _package('problem',4,status:DeliveryStatus.addressProblem),
+      _package('skipped',5,zone:'SKIP-HIST',status:DeliveryStatus.skipped),
+      _package('delivered',6,zone:'DONE-HIST',status:DeliveryStatus.delivered),
+    ],optimized:true);
+    final state=AppState(store:store);
+    await state.init();
+
+    await state.organizePhysicalLoad(groupSize:2,overwrite:true);
+
+    expect(state.packages[0].physicalZone,'A-01');
+    expect(state.packages[1].physicalZone,'A-02');
+    expect(state.packages[2].physicalZone,'B-01');
+    expect(state.packages[3].physicalZone,'B-02');
+    expect(state.packages[4].physicalZone,'SKIP-HIST');
+    expect(state.packages[5].physicalZone,'DONE-HIST');
+    expect(store.saves,1);
+  });
 }
