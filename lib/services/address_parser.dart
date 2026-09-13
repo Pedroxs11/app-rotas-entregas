@@ -11,6 +11,11 @@ class AddressParser {
   static final _noise=RegExp(r'\b(DANFE|SIMPLIFICADA|AG[ÊE]NCIA|GAIOLA|PARADA|PACOTES?|ORDEM|CORREDOR|DESCRI[CÇ][AÃ]O|QUANTIDADE|TOTAL|CHAVE|NOTA FISCAL)\b',caseSensitive:false);
   static final _suspiciousToken=RegExp(r'\b[A-Z]+\d+\b|\b\d+[A-Z]+\b',caseSensitive:false);
 
+  bool isSenderOnlyLabel(String raw){
+    final normalized=raw.replaceAll('\r','').trim();
+    return _sender.hasMatch(normalized)&&!_recipient.hasMatch(normalized);
+  }
+
   AddressData parse(String raw){
     final normalized=raw.replaceAll('\r','').replaceAll(RegExp(r'[ \t]+'),' ').trim();
     final clean=_parseCleanLine(normalized);if(clean!=null)return clean;
