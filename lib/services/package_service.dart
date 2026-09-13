@@ -8,12 +8,19 @@ class DuplicatePackageException implements Exception {
   @override String toString()=>message;
 }
 
+class SenderOnlyLabelException implements Exception {
+  final String message;
+  SenderOnlyLabelException([this.message='A foto parece mostrar apenas o REMETENTE. Enquadre o DESTINATÁRIO.']);
+  @override String toString()=>message;
+}
+
 class PackageService {
   final AddressParser parser;
   final _uuid=const Uuid();
   PackageService(this.parser);
 
   DeliveryPackage fromOcr(String text,List<DeliveryPackage> existing,{String? trackingCode}) {
+    if(parser.isSenderOnlyLabel(text))throw SenderOnlyLabelException();
     final address=parser.parse(text);
     final tracking=_normalizeCode(trackingCode);
 
