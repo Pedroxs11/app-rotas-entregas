@@ -127,6 +127,15 @@ void main(){
     final store=MemoryPackageStore(packages:[package('west',1,lat:-23.55,lng:-46.70),package('east',2,lat:-23.55,lng:-46.60),package('middle',3,lat:-23.55,lng:-46.65)]);final state=AppState(store:store);await state.init();await state.optimizeFrom(-23.55,-46.705);expect(state.packages.first.id,'west');await state.optimizeFrom(-23.55,-46.595);expect(state.packages.first.id,'east');expect(state.packages.map((p)=>p.id).toSet(),{'west','east','middle'});expect(store.optimized,isTrue);
   });
 
+  test('second attempt with no eligible packages leaves route untouched',() async {
+    final completed=DateTime.utc(2026,9,13,12,30);
+    final store=MemoryPackageStore(packages:[package('done-only',1,status:DeliveryStatus.delivered,zone:'HIST',lat:-23.54,lng:-46.62,completedAt:completed),package('pending-only',2,zone:'A-01',lat:-23.55,lng:-46.63)],optimized:true);
+    final state=AppState(store:store);await state.init();
+    final beforeIds=state.packages.map((p)=>p.id).toList();final beforeZones=state.packages.map((p)=>p.physicalZone).toList();final beforeSaves=store.saves;
+    final count=await state.prepareRetryRoute(-23.55,-46.63,includeAddressProblems:true,includeSkipped:true);
+    expect(count,0);expect(state.packages.map((p)=>p.id).toList(),beforeIds);expect(state.packages.map((p)=>p.physicalZone).toList(),beforeZones);expect(state.routeOptimized,isTrue);expect(store.saves,beforeSaves);expect(state.packages.first.completedAt,completed);
+  });
+
   test('second attempt clears stale load positions and resets retry statuses',() async {
     final completed=DateTime.utc(2026,9,12,18,30);
     final store=MemoryPackageStore(packages:[package('done',1,status:DeliveryStatus.delivered,zone:'HIST',lat:-23.54,lng:-46.62,completedAt:completed),package('absent',2,status:DeliveryStatus.absent,zone:'A-02',lat:-23.56,lng:-46.64),package('problem',3,status:DeliveryStatus.addressProblem,zone:'A-03',lat:-23.57,lng:-46.65),package('skipped',4,status:DeliveryStatus.skipped,zone:'A-04',lat:-23.58,lng:-46.66)],optimized:true);
