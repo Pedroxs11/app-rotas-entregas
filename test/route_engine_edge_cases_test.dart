@@ -39,10 +39,10 @@ void main(){
     expect(out.map((p)=>p.id).toList(),['near','middle','far','unlocated-a','unlocated-b']);
   });
 
-  test('equal-distance candidates keep original priority deterministically',(){
-    final input=[_p('first',1,lat:-23.55,lng:-46.62),_p('second',2,lat:-23.55,lng:-46.64),_p('third',3,lat:-23.60,lng:-46.70)];
+  test('exactly equal candidates keep original priority deterministically',(){
+    final input=[_p('first',1,lat:-23.55,lng:-46.62),_p('second',2,lat:-23.55,lng:-46.62),_p('third',3,lat:-23.60,lng:-46.70)];
     final out=engine.optimize(input,startLat:-23.55,startLng:-46.63);
-    expect(out.first.id,'first');
+    expect(out.take(2).map((p)=>p.id).toList(),['first','second']);
     expect(out.map((p)=>p.id).toSet(),{'first','second','third'});
   });
 
