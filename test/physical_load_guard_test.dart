@@ -30,10 +30,11 @@ class GuardStore implements PackageStore {
   }
 }
 
-DeliveryPackage _package(String id,int scan,{String? zone})=>DeliveryPackage(
+DeliveryPackage _package(String id,int scan,{String? zone,DeliveryStatus status=DeliveryStatus.pending})=>DeliveryPackage(
   id:id,
   scanNumber:scan,
   physicalZone:zone,
+  status:status,
   address:AddressData(
     raw:'Rua Teste, $scan',
     street:'Rua Teste',
@@ -75,5 +76,39 @@ void main(){
     expect(state.routeOptimized,isTrue);
     expect(state.packages.single.physicalZone,'A-01');
     expect(store.saves,0);
+  });
+
+  test('physical load preserves existing active positions unless overwrite is requested',() async {
+    final store=GuardStore([
+      _package('a',1,zone:'CUSTOM-09'),
+      _package('b',2),
+    ],optimized:true);
+    final state=AppState(store:store);
+    await state.init();
+
+    await state.organizePhysicalLoad(groupSize:20);
+    expect(state.packages[0].physicalZone,'CUSTOM-09');
+    expect(state.packages[1].physicalZone,'A-02');
+
+    await state.organizePhysicalLoad(groupSize:20,overwrite:true);
+    expect(state.packages[0].physicalZone,'A-01');
+    expect(state.packages[1].physicalZone,'A-02');
+    expect(store.saves,2);
+  });
+
+  test('physical load skips delivered packages without consuming active positions',() async {
+    final store=GuardStore([
+      _package('done',1,zone:'HIST',status:DeliveryStatus.delivered),
+      _package('active-a',2),
+      _package('active-b',3),
+    ],optimized:true);
+    final state=AppState(store:store);
+    await state.init();
+
+    await state.organizePhysicalLoad(groupSize:20,overwrite:true);
+    expect(state.packages[0].physicalZone,'HIST');
+    expect(state.packages[1].physicalZone,'A-01');
+    expect(state.packages[2].physicalZone,'A-02');
+    expect(store.saves,1);
   });
 }
