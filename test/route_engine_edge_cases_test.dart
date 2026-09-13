@@ -63,8 +63,10 @@ void main(){
   });
 
   test('large route returns complete unique set without artificial cap',(){
-    final input=List.generate(1000,(i)=>_p('p$i',i+1,lat:-23.50-(i*.00001),lng:-46.60-(i*.00001)));
+    // Large enough to catch accidental UI-style caps (80/100/150), while
+    // keeping the O(n²) nearest-neighbor regression fast in shared CI.
+    final input=List.generate(300,(i)=>_p('p$i',i+1,lat:-23.50-(i*.00001),lng:-46.60-(i*.00001)));
     final out=engine.optimize(input,startLat:-23.50,startLng:-46.60);
-    expect(out,hasLength(1000));expect(out.map((p)=>p.id).toSet(),hasLength(1000));expect(out.map((p)=>p.id).toSet(),input.map((p)=>p.id).toSet());
+    expect(out,hasLength(300));expect(out.map((p)=>p.id).toSet(),hasLength(300));expect(out.map((p)=>p.id).toSet(),input.map((p)=>p.id).toSet());
   });
 }
