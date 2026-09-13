@@ -109,6 +109,24 @@ void main(){
     expect(store.optimized,isTrue);
   });
 
+  test('reoptimization changes first stop when driver position changes',() async {
+    final store=MemoryPackageStore(packages:[
+      package('west',1,lat:-23.55,lng:-46.70),
+      package('east',2,lat:-23.55,lng:-46.60),
+      package('middle',3,lat:-23.55,lng:-46.65),
+    ]);
+    final state=AppState(store:store);
+    await state.init();
+
+    await state.optimizeFrom(-23.55,-46.705);
+    expect(state.packages.first.id,'west');
+
+    await state.optimizeFrom(-23.55,-46.595);
+    expect(state.packages.first.id,'east');
+    expect(state.packages.map((p)=>p.id).toSet(),{'west','east','middle'});
+    expect(store.optimized,isTrue);
+  });
+
   test('second attempt clears stale load positions and resets retry statuses',() async {
     final store=MemoryPackageStore(packages:[
       package('done',1,status:DeliveryStatus.delivered,zone:'HIST',lat:-23.54,lng:-46.62),
