@@ -18,6 +18,13 @@ class MemoryPackageStore implements PackageStore {
   @override Future<void> clear() async {packages=[];optimized=false;clears++;}
 }
 
+class FailingLoadPackageStore implements PackageStore {
+  @override Future<List<DeliveryPackage>> load() async=>throw StateError('storage unavailable');
+  @override Future<bool> loadRouteOptimized() async=>false;
+  @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized}) async {}
+  @override Future<void> clear() async {}
+}
+
 DeliveryPackage package(String id,int scan,{DeliveryStatus status=DeliveryStatus.pending,String? zone,double? lat,double? lng,DateTime? completedAt})=>DeliveryPackage(
   id:id,scanNumber:scan,physicalZone:zone,
   address:AddressData(raw:'Rua Teste, $scan',street:'Rua Teste',number:'$scan',city:'São Paulo',state:'SP',latitude:lat,longitude:lng,confidence:1,validation:ValidationStatus.confirmed),
@@ -30,6 +37,12 @@ void main(){
     final store=MemoryPackageStore(packages:[original],optimized:true);
     final state=AppState(store:store);await state.init();
     expect(state.loading,isFalse);expect(state.routeOptimized,isTrue);expect(state.packages,hasLength(1));expect(state.packages.single,same(original));expect(state.packages.single.id,'saved-1');expect(state.packages.single.status,DeliveryStatus.absent);expect(state.packages.single.physicalZone,'B-03');
+  });
+
+  test('storage startup failure leaves app usable and exposes error',() async {
+    final state=AppState(store:FailingLoadPackageStore());
+    await state.init();
+    expect(state.loading,isFalse);expect(state.packages,isEmpty);expect(state.routeOptimized,isFalse);expect(state.startupError,isNotNull);expect(state.startupError,contains('storage unavailable'));
   });
 
   test('optimized route order and delivery states survive app restart',() async {
