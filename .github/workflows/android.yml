@@ -50,24 +50,20 @@ jobs:
       - name: Test
         run: flutter test
 
-      - name: Build universal APK
-        run: flutter build apk --debug
+      - name: Build phone APK
+        run: flutter build apk --debug --target-platform android-arm64
 
-      - name: Build smaller APKs by CPU
-        run: flutter build apk --debug --split-per-abi
-
-      - name: Verify generated APKs
+      - name: Verify generated APK
         shell: bash
         run: |
           set -e
-          ls -lh build/app/outputs/flutter-apk/*.apk
-          for apk in build/app/outputs/flutter-apk/*.apk; do
-            unzip -t "$apk" >/dev/null
-          done
+          ls -lh build/app/outputs/flutter-apk/app-debug.apk
+          unzip -t build/app/outputs/flutter-apk/app-debug.apk >/dev/null
 
-      - name: Upload Android APKs
+      - name: Upload phone APK
         uses: actions/upload-artifact@v4
         with:
-          name: rotas-entregas-android-debug
-          path: build/app/outputs/flutter-apk/*.apk
-          retention-days: 14
+          name: rotas-entregas-android-arm64-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 3
+          compression-level: 0
