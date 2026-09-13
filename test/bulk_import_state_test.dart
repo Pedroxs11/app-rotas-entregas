@@ -39,9 +39,9 @@ void main(){
     expect(count,1);expect(state.packages.firstWhere((p)=>p.id=='done').physicalZone,'HIST');expect(state.packages.firstWhere((p)=>p.id=='done').status,DeliveryStatus.delivered);expect(state.packages.firstWhere((p)=>p.id=='active').physicalZone,isNull);expect(state.packages.last.physicalZone,isNull);expect(state.routeOptimized,isFalse);
   });
 
-  test('empty bulk import does not invent packages but still leaves route unoptimized',() async {
+  test('empty bulk import is a true no-op and preserves optimized route and load labels',() async {
     final store=BulkStore([_existing('old',1,zone:'A-01')],optimized:true);final state=AppState(store:store);await state.init();
     final count=await state.addManyFromText('  \n\n   ');
-    expect(count,0);expect(state.packages,hasLength(1));expect(state.packages.single.id,'old');expect(state.routeOptimized,isFalse);expect(store.optimized,isFalse);expect(store.saves,1);
+    expect(count,0);expect(state.packages,hasLength(1));expect(state.packages.single.id,'old');expect(state.packages.single.physicalZone,'A-01');expect(state.routeOptimized,isTrue);expect(store.optimized,isTrue);expect(store.saves,0);
   });
 }
