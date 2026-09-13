@@ -63,6 +63,17 @@ void main(){
     expect(store.optimized,isTrue);
   });
 
+  test('second attempt state survives app restart',() async {
+    final completed=DateTime.utc(2026,9,12,18,30);
+    final store=MemoryPackageStore(packages:[package('done',1,status:DeliveryStatus.delivered,zone:'HIST',lat:-23.54,lng:-46.62,completedAt:completed),package('absent',2,status:DeliveryStatus.absent,zone:'A-02',lat:-23.56,lng:-46.64),package('problem',3,status:DeliveryStatus.addressProblem,zone:'A-03',lat:-23.57,lng:-46.65),package('skipped',4,status:DeliveryStatus.skipped,zone:'A-04',lat:-23.58,lng:-46.66)],optimized:true);
+    final first=AppState(store:store);await first.init();expect(await first.prepareRetryRoute(-23.55,-46.63,includeAddressProblems:true,includeSkipped:true),3);
+    final beforeIds=first.packages.map((p)=>p.id).toList();
+    final reopened=AppState(store:store);await reopened.init();
+    expect(reopened.routeOptimized,isTrue);expect(reopened.packages.map((p)=>p.id).toList(),beforeIds);
+    final done=reopened.packages.firstWhere((p)=>p.id=='done');expect(done.status,DeliveryStatus.delivered);expect(done.completedAt,completed);expect(done.physicalZone,'HIST');
+    for(final id in ['absent','problem','skipped']){final retry=reopened.packages.firstWhere((p)=>p.id==id);expect(retry.status,DeliveryStatus.pending);expect(retry.completedAt,isNull);expect(retry.physicalZone,isNull);}
+  });
+
   test('clear uses injected store instead of concrete local storage',() async {
     final store=MemoryPackageStore(packages:[package('x',1)],optimized:true);final state=AppState(store:store);await state.init();await state.clear();expect(store.clears,1);expect(store.optimized,isFalse);expect(state.routeOptimized,isFalse);expect(state.packages,isEmpty);
   });
