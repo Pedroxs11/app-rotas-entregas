@@ -21,4 +21,17 @@ void main(){
     final first=service.fromOcr(address,[]);
     expect(()=>service.fromOcr(address,[first]),returnsNormally);
   });
+
+  test('sender-only label never becomes a delivery package',(){
+    const senderOnly='REMETENTE\nRUA ORIGEM 99\nCURITIBA PR\n80000-000';
+    expect(
+      ()=>service.fromOcr(senderOnly,[],trackingCode:'PKG-SENDER'),
+      throwsA(isA<SenderOnlyLabelException>()),
+    );
+  });
+
+  test('label containing sender and recipient is not rejected as sender-only',(){
+    const fullLabel='REMETENTE\nRUA ORIGEM 99\nDESTINATARIO\nRUA VERGUEIRO 1000\nSAO PAULO SP\n01504-001';
+    expect(()=>service.fromOcr(fullLabel,[],trackingCode:'PKG-DEST'),returnsNormally);
+  });
 }
