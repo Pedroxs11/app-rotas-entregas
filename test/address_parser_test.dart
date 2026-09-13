@@ -17,6 +17,11 @@ void main(){
     expect(a.number,'303');expect(a.cep,'05887-300');expect(a.state,'SP');expect(a.validation,ValidationStatus.confirmed);
   });
 
+  test('identifica captura que mostra somente remetente',(){
+    expect(parser.isSenderOnlyLabel('REMETENTE\nRUA ORIGEM 99\nCURITIBA PR\n80000-000'),isTrue);
+    expect(parser.isSenderOnlyLabel('REMETENTE\nRUA ORIGEM 99\nDESTINATARIO\nRUA DESTINO 120'),isFalse);
+  });
+
   test('ignora ruído de operação logística',(){final a=parser.parse('SAO-32\nLSH\nJ\nCORREDOR A\nGAIOLA 15\nPACOTES NESTA PARADA 1\nPARADA 25\nORDEM 003');expect(a.validation,isNot(ValidationStatus.confirmed));});
 
   test('não confirma propaganda ou texto aleatório como endereço',(){final a=parser.parse('R PARA SUJEIRAS MAIS DIFICEIS DEIXAR O PRODUTO\nRR\n18225-000');expect(a.validation,isNot(ValidationStatus.confirmed));});
