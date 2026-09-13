@@ -40,6 +40,18 @@ void main(){
     expect(reopened.routeOptimized,isTrue);expect(reopened.packages.map((p)=>p.id).toList(),beforeIds);expect(reopened.packages.map((p)=>p.status).toList(),beforeStatuses);expect(reopened.packages.map((p)=>p.physicalZone).toList(),beforeZones);expect(reopened.packages.firstWhere((p)=>p.id=='near').physicalZone,isNotNull);expect(reopened.packages.firstWhere((p)=>p.id=='done').status,DeliveryStatus.delivered);
   });
 
+  test('delivery completion and retry status updates survive restart',() async {
+    final completed=DateTime.utc(2026,9,13,3,0);
+    final store=MemoryPackageStore(packages:[package('delivery',1,zone:'A-01',lat:-23.55,lng:-46.63)],optimized:true);
+    final first=AppState(store:store);await first.init();
+    await first.update(0,first.packages[0].copyWith(status:DeliveryStatus.delivered,completedAt:completed));
+    final deliveredRestart=AppState(store:store);await deliveredRestart.init();
+    expect(deliveredRestart.packages.single.status,DeliveryStatus.delivered);expect(deliveredRestart.packages.single.completedAt,completed);expect(deliveredRestart.packages.single.physicalZone,'A-01');
+    await deliveredRestart.update(0,deliveredRestart.packages[0].copyWith(status:DeliveryStatus.absent,clearCompletedAt:true));
+    final retryRestart=AppState(store:store);await retryRestart.init();
+    expect(retryRestart.packages.single.status,DeliveryStatus.absent);expect(retryRestart.packages.single.completedAt,isNull);expect(retryRestart.packages.single.physicalZone,'A-01');
+  });
+
   test('organizePhysicalLoad persists positions without imposing route cap',() async {
     final items=List.generate(75,(i)=>package('p$i',i+1,lat:-23.5-(i*.0001),lng:-46.6-(i*.0001)));final store=MemoryPackageStore(packages:items,optimized:true);final state=AppState(store:store);await state.init();await state.organizePhysicalLoad(groupSize:20);
     expect(state.packages.length,75);expect(state.packages[0].physicalZone,'A-01');expect(state.packages[19].physicalZone,'A-20');expect(state.packages[20].physicalZone,'B-01');expect(state.packages[74].physicalZone,'D-15');expect(store.saves,1);expect(store.packages[74].physicalZone,'D-15');
