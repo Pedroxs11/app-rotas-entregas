@@ -76,6 +76,18 @@ void main(){
     expect(saved.address.raw,editedAddress.raw);expect(saved.address.street,'Rua das Flores');expect(saved.address.number,'321');expect(saved.address.complement,'Bloco B');expect(saved.address.neighborhood,'Centro');expect(saved.address.city,'São Paulo');expect(saved.address.state,'SP');expect(saved.address.cep,'01001-000');expect(saved.address.latitude,-23.5505);expect(saved.address.longitude,-46.6333);expect(saved.address.confidence,.93);expect(saved.address.validation,ValidationStatus.confirmed);
   });
 
+  test('editing an active address invalidates route and stale load positions across restart',() async {
+    final delivered=package('done',1,status:DeliveryStatus.delivered,zone:'HIST',lat:-23.54,lng:-46.62,completedAt:DateTime.utc(2026,9,13,10));
+    final active=package('active',2,zone:'A-02',lat:-23.55,lng:-46.63);
+    final store=MemoryPackageStore(packages:[delivered,active],optimized:true);
+    final state=AppState(store:store);await state.init();
+    const edited=AddressData(raw:'Rua Nova, 500',street:'Rua Nova',number:'500',city:'São Paulo',state:'SP',confidence:.60,validation:ValidationStatus.needsReview);
+    await state.updateAddress(1,edited);
+    expect(state.routeOptimized,isFalse);expect(state.packages[0].physicalZone,'HIST');expect(state.packages[1].physicalZone,isNull);expect(state.packages[1].address.raw,'Rua Nova, 500');
+    final reopened=AppState(store:store);await reopened.init();
+    expect(reopened.routeOptimized,isFalse);expect(reopened.packages[0].physicalZone,'HIST');expect(reopened.packages[1].physicalZone,isNull);expect(reopened.packages[1].address.street,'Rua Nova');expect(reopened.packages[1].address.number,'500');expect(reopened.packages[1].address.validation,ValidationStatus.needsReview);
+  });
+
   test('organizePhysicalLoad persists positions without imposing route cap',() async {
     final items=List.generate(75,(i)=>package('p$i',i+1,lat:-23.5-(i*.0001),lng:-46.6-(i*.0001)));final store=MemoryPackageStore(packages:items,optimized:true);final state=AppState(store:store);await state.init();await state.organizePhysicalLoad(groupSize:20);
     expect(state.packages.length,75);expect(state.packages[0].physicalZone,'A-01');expect(state.packages[19].physicalZone,'A-20');expect(state.packages[20].physicalZone,'B-01');expect(state.packages[74].physicalZone,'D-15');expect(store.saves,1);expect(store.packages[74].physicalZone,'D-15');
