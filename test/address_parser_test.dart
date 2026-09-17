@@ -36,6 +36,20 @@ void main(){
     final a=parser.parse('DANFE SIMPLIFICADA\nTOTAL 303\nAGENCIA SAO-32\nDESTINATARIO\nAVENIDA CENTRAL 120\nSAO PAULO SP\n01310-000\nREMETENTE\nRUA ORIGEM 99\nCURITIBA PR\n80000-000');expect(a.number,'120');expect(a.cep,'01310-000');expect(a.state,'SP');expect(a.validation,ValidationStatus.confirmed);
   });
 
+  test('lista numerada preserva número do imóvel após vírgula',(){
+    final a=parser.parse('7. Rua Barão de Comorogi, 500, Jardim Ângela (Zona Sul), São Paulo, SP, 04900-000');
+    expect(a.number,'500');
+    expect(a.cep,'04900-000');
+    expect(a.state,'SP');
+    expect(a.validation,ValidationStatus.confirmed);
+  });
+
+  test('OCR preserva número separado da rua por vírgula',(){
+    final a=parser.parse('DESTINATARIO\nRUA PADRE MATEUS DE AGUIAR, 16\nJARDIM ANGELA SAO PAULO SP\n04900-000');
+    expect(a.number,'16');
+    expect(a.validation,ValidationStatus.confirmed);
+  });
+
   test('importação limpa preserva todos os campos dos 8 endereços de regressão',(){
     const cases=<List<String>>[
       ['Avenida Paulista, 1578, Bela Vista, São Paulo - SP, 01310-200','Avenida Paulista','1578','Bela Vista','01310-200'],
