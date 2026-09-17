@@ -14,12 +14,11 @@ class LoadScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final route = packages.where(_active).toList();
-    final loading = route.asMap().entries.toList().reversed.toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Carregar veículo')),
-      body: loading.isEmpty
-          ? const Center(child: Text('Nenhum pacote ativo para carregar.'))
+      appBar: AppBar(title: const Text('Ordem dos pacotes')),
+      body: route.isEmpty
+          ? const Center(child: Text('Nenhum pacote ativo na rota.'))
           : Column(
               children: [
                 Padding(
@@ -31,12 +30,12 @@ class LoadScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${loading.length} pacotes',
+                            '${route.length} pacotes',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                           const SizedBox(height: 6),
                           const Text(
-                            'Carregue nesta ordem: as últimas entregas entram primeiro. Assim, as primeiras paradas ficam mais acessíveis na hora de entregar.',
+                            'Esta é a ordem da rota. Organize os pacotes no veículo usando esta sequência como referência.',
                           ),
                         ],
                       ),
@@ -46,13 +45,10 @@ class LoadScreen extends StatelessWidget {
                 Expanded(
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-                    itemCount: loading.length,
+                    itemCount: route.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, i) {
-                      final entry = loading[i];
-                      final p = entry.value;
-                      final routePosition = entry.key + 1;
-                      final firstDelivery = routePosition == 1;
+                      final p = route[i];
                       final address = p.address.formatted.isEmpty
                           ? p.address.raw
                           : p.address.formatted;
@@ -67,13 +63,10 @@ class LoadScreen extends StatelessWidget {
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
-                          '${local}Entrega #$routePosition\n$address',
+                          '${local}Entrega #${i + 1}\n$address',
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        trailing: firstDelivery
-                            ? const Chip(label: Text('POR ÚLTIMO'))
-                            : null,
                       );
                     },
                   ),
