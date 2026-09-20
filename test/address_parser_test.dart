@@ -63,4 +63,15 @@ void main(){
     ];
     for(final c in cases){final a=parser.parse(c[0]);expect(a.street,c[1],reason:c[0]);expect(a.number,c[2],reason:c[0]);expect(a.neighborhood,c[3],reason:c[0]);expect(a.city,'São Paulo',reason:c[0]);expect(a.state,'SP',reason:c[0]);expect(a.cep,c[4],reason:c[0]);expect(a.validation,ValidationStatus.confirmed,reason:c[0]);}
   });
+
+  test('importação com cidade e UF em campos separados preserva cidade, bairro e número',(){
+    final a=parser.parse('1. Rua Anum-Branco, 303, Jardim Dom José, São Paulo, SP, 05887-300');
+    expect(a.street,'Rua Anum-Branco');
+    expect(a.number,'303');
+    expect(a.neighborhood,'Jardim Dom José');
+    expect(a.city,'São Paulo');
+    expect(a.state,'SP');
+    expect(a.cep,'05887-300');
+    expect(a.formatted,contains('Rua Anum-Branco, 303'));
+  });
 }
