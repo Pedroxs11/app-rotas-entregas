@@ -1,4 +1,5 @@
 enum ValidationStatus { confirmed, needsReview, invalid }
+enum GeocodePrecision { exact, approximate }
 enum DeliveryStatus { pending, current, delivered, absent, skipped, addressProblem }
 
 class AddressData {
@@ -7,10 +8,13 @@ class AddressData {
   final double? latitude, longitude;
   final double confidence;
   final ValidationStatus validation;
-  const AddressData({required this.raw,this.street,this.number,this.complement,this.neighborhood,this.city,this.state,this.cep,this.latitude,this.longitude,required this.confidence,required this.validation});
+  final GeocodePrecision geocodePrecision;
+  final bool approximateAccepted;
+  const AddressData({required this.raw,this.street,this.number,this.complement,this.neighborhood,this.city,this.state,this.cep,this.latitude,this.longitude,required this.confidence,required this.validation,this.geocodePrecision=GeocodePrecision.exact,this.approximateAccepted=false});
+  bool get isApproximate=>geocodePrecision==GeocodePrecision.approximate;
   String get formatted=>[if(street?.isNotEmpty==true)street,if(number?.isNotEmpty==true)number,if(complement?.isNotEmpty==true)complement,if(neighborhood?.isNotEmpty==true)neighborhood,if(city?.isNotEmpty==true)city,if(state?.isNotEmpty==true)state,if(cep?.isNotEmpty==true)cep].whereType<String>().join(', ');
-  Map<String,dynamic> toJson()=>{'raw':raw,'street':street,'number':number,'complement':complement,'neighborhood':neighborhood,'city':city,'state':state,'cep':cep,'latitude':latitude,'longitude':longitude,'confidence':confidence,'validation':validation.name};
-  factory AddressData.fromJson(Map<String,dynamic> j)=>AddressData(raw:j['raw']??'',street:j['street'],number:j['number'],complement:j['complement'],neighborhood:j['neighborhood'],city:j['city'],state:j['state'],cep:j['cep'],latitude:(j['latitude'] as num?)?.toDouble(),longitude:(j['longitude'] as num?)?.toDouble(),confidence:(j['confidence'] as num? ??0).toDouble(),validation:ValidationStatus.values.byName(j['validation']??'needsReview'));
+  Map<String,dynamic> toJson()=>{'raw':raw,'street':street,'number':number,'complement':complement,'neighborhood':neighborhood,'city':city,'state':state,'cep':cep,'latitude':latitude,'longitude':longitude,'confidence':confidence,'validation':validation.name,'geocodePrecision':geocodePrecision.name,'approximateAccepted':approximateAccepted};
+  factory AddressData.fromJson(Map<String,dynamic> j)=>AddressData(raw:j['raw']??'',street:j['street'],number:j['number'],complement:j['complement'],neighborhood:j['neighborhood'],city:j['city'],state:j['state'],cep:j['cep'],latitude:(j['latitude'] as num?)?.toDouble(),longitude:(j['longitude'] as num?)?.toDouble(),confidence:(j['confidence'] as num? ??0).toDouble(),validation:ValidationStatus.values.byName(j['validation']??'needsReview'),geocodePrecision:GeocodePrecision.values.byName(j['geocodePrecision']??'exact'),approximateAccepted:j['approximateAccepted']??false);
 }
 
 class DeliveryPackage {
