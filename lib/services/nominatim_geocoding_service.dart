@@ -9,13 +9,14 @@ class NominatimGeocodingService implements GeocodingService {
 
   @override Future<AddressData> locate(AddressData address) async {
     final queries=_queries(address);
-    for(final query in queries){
+    for(final candidate in queries){
+      final query=candidate.query;
       final hit=await _search(query);
       if(hit!=null){
         final lat=double.tryParse('${hit['lat']}');
         final lon=double.tryParse('${hit['lon']}');
         if(lat!=null&&lon!=null){
-          return AddressData(raw:address.raw,street:address.street,number:address.number,complement:address.complement,neighborhood:address.neighborhood,city:address.city,state:address.state,cep:address.cep,latitude:lat,longitude:lon,confidence:address.confidence,validation:address.validation);
+          return AddressData(raw:address.raw,street:address.street,number:address.number,complement:address.complement,neighborhood:address.neighborhood,city:address.city,state:address.state,cep:address.cep,latitude:lat,longitude:lon,confidence:address.confidence,validation:address.validation,geocodePrecision:candidate.approximate?GeocodePrecision.approximate:GeocodePrecision.exact,approximateAccepted:false);
         }
       }
     }
@@ -31,11 +32,11 @@ class NominatimGeocodingService implements GeocodingService {
     return Map<String,dynamic>.from(data.first);
   }
 
-  List<String> _queries(AddressData a){
-    final out=<String>[];
-    void add(Iterable<String?> parts){
+  List<_GeocodeQuery> _queries(AddressData a){
+    final out=<_GeocodeQuery>[];
+    void add(Iterable<String?> parts,{bool approximate=false}){
       final q=parts.whereType<String>().map((e)=>e.trim()).where((e)=>e.isNotEmpty).join(', ');
-      if(q.isNotEmpty&&!out.contains(q))out.add(q);
+      if(q.isNotEmpty&&!out.any((e)=>e.query==q))out.add(_GeocodeQuery(q,approximate));
     }
     // Do not send apartment/house complements as part of the location query.
     // Start precise, then relax only fields that commonly make Nominatim miss
@@ -44,14 +45,16 @@ class NominatimGeocodingService implements GeocodingService {
     add([a.street,a.number,a.city,a.state,a.cep]);
     add([a.street,a.number,a.neighborhood,a.city,a.state]);
     add([a.street,a.number,a.city,a.state]);
-    add([a.street,a.neighborhood,a.city,a.state,a.cep]);
-    add([a.street,a.city,a.state,a.cep]);
-    add([a.street,a.neighborhood,a.city,a.state]);
-    add([a.street,a.city,a.state]);
+    add([a.street,a.neighborhood,a.city,a.state,a.cep],approximate:true);
+    add([a.street,a.city,a.state,a.cep],approximate:true);
+    add([a.street,a.neighborhood,a.city,a.state],approximate:true);
+    add([a.street,a.city,a.state],approximate:true);
     if(out.isEmpty){
       final raw=a.raw.trim();
-      if(raw.isNotEmpty)out.add(raw);
+      if(raw.isNotEmpty)out.add(_GeocodeQuery(raw,false));
     }
     return out;
   }
 }
+
+class _GeocodeQuery { final String query; final bool approximate; const _GeocodeQuery(this.query,this.approximate); }
