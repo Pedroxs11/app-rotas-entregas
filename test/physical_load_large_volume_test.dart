@@ -21,14 +21,14 @@ void main(){
  test('physical organization handles hundreds of packages with no product cap',()async{
   final store=VolumeStore(List.generate(600,(i)=>_p(i+1)));final state=AppState(store:store);await state.init();
   await state.organizePhysicalLoad(overwrite:true);
-  expect(state.packages,hasLength(600));expect(state.packages.first.physicalZone,'A-01');expect(state.packages[19].physicalZone,'A-20');expect(state.packages[20].physicalZone,'B-01');expect(state.packages[519].physicalZone,'Z-20');expect(state.packages[520].physicalZone,'AA-01');expect(state.packages[599].physicalZone,'AD-20');expect(state.packages.map((p)=>p.id).toSet().length,600);expect(store.saves,1);
+  expect(state.packages,hasLength(600));expect(state.packages.first.physicalZone,'Chão do passageiro');expect(state.packages.last.physicalZone,'Porta-malas direito');expect(state.packages.every((p)=>p.physicalZone?.isNotEmpty==true),isTrue);expect(state.packages.map((p)=>p.id).toSet().length,600);expect(store.saves,1);
  });
 
- test('large load labels remain unique across alphabet rollover',()async{
+ test('default physical organization uses only the 11 car zones at large volume',()async{
   final store=VolumeStore(List.generate(560,(i)=>_p(i+1)));final state=AppState(store:store);await state.init();
   await state.organizePhysicalLoad(overwrite:true);
-  final labels=state.packages.map((p)=>p.physicalZone).toList();
-  expect(labels.whereType<String>().toSet().length,560);expect(labels[499],'Y-20');expect(labels[500],'Z-01');expect(labels[519],'Z-20');expect(labels[520],'AA-01');expect(labels[539],'AA-20');expect(labels[540],'AB-01');
+  final labels=state.packages.map((p)=>p.physicalZone).whereType<String>().toSet();
+  expect(labels.length,11);expect(labels,containsAll(<String>['Chão do passageiro','Banco do passageiro','Chão traseiro esquerdo','Chão traseiro centro','Chão traseiro direito','Banco traseiro esquerdo','Banco traseiro centro','Banco traseiro direito','Porta-malas esquerdo','Porta-malas centro','Porta-malas direito']));
  });
 
  test('custom group size scales beyond Z without dropping packages',()async{
