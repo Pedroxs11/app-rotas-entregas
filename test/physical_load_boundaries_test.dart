@@ -18,10 +18,10 @@ DeliveryPackage _p(int n,{DeliveryStatus status=DeliveryStatus.pending,String? z
 );
 
 void main(){
- test('default group of 20 changes zone exactly at package 21',()async{
-  final store=LoadStore(List.generate(21,(i)=>_p(i+1)));final state=AppState(store:store);await state.init();
+ test('default organization distributes active packages across the 11 car zones',()async{
+  final store=LoadStore(List.generate(22,(i)=>_p(i+1)));final state=AppState(store:store);await state.init();
   await state.organizePhysicalLoad(overwrite:true);
-  expect(state.packages[0].physicalZone,'A-01');expect(state.packages[18].physicalZone,'A-19');expect(state.packages[19].physicalZone,'A-20');expect(state.packages[20].physicalZone,'B-01');expect(store.saves,1);
+  expect(state.packages[0].physicalZone,'Chão do passageiro');expect(state.packages[1].physicalZone,'Chão do passageiro');expect(state.packages[2].physicalZone,'Banco do passageiro');expect(state.packages[20].physicalZone,'Porta-malas direito');expect(state.packages[21].physicalZone,'Porta-malas direito');expect(store.saves,1);
  });
 
  test('custom group size respects every group boundary',()async{
