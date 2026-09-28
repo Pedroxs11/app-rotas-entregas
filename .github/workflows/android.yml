@@ -61,8 +61,50 @@ jobs:
       - name: Build phone APK
         run: flutter build apk --debug --target-platform android-arm64
 
-      - name: Build Play test AAB
+      - name: Build validation AAB
         run: flutter build appbundle --debug
+
+      # A Play-ready release is built only when all four signing secrets exist.
+      # The keystore itself is decoded only inside the ephemeral GitHub runner.
+      - name: Configure Play release signing
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/build.gradle.kts")
+          s = p.read_text()
+          needle = "    buildTypes {"
+          signing = """    signingConfigs {
+              create("release") {
+                  keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                  keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                  storeFile = file("upload-keystore.jks")
+                  storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+              }
+          }
+
+          """
+          if 'create("release")' not in s:
+              s = s.replace(needle, signing + needle, 1)
+          s = s.replace(
+              'signingConfig = signingConfigs.getByName("debug")',
+              'signingConfig = signingConfigs.getByName("release")',
+              1,
+          )
+          p.write_text(s)
+          PY
+
+      - name: Build signed Play release AAB
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: flutter build appbundle --release
 
       - name: Verify generated Android packages
         shell: bash
@@ -72,6 +114,10 @@ jobs:
           unzip -t build/app/outputs/flutter-apk/app-debug.apk >/dev/null
           ls -lh build/app/outputs/bundle/debug/app-debug.aab
           unzip -t build/app/outputs/bundle/debug/app-debug.aab >/dev/null
+          if [ -f build/app/outputs/bundle/release/app-release.aab ]; then
+            ls -lh build/app/outputs/bundle/release/app-release.aab
+            unzip -t build/app/outputs/bundle/release/app-release.aab >/dev/null
+          fi
 
       # Upload is delivery-only. GitHub can reject it when the account artifact
       # storage quota is full even though analyze, tests and the APK build passed.
