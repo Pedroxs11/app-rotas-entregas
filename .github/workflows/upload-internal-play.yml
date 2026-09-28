@@ -1,0 +1,156 @@
+name: Upload Rotas to Internal Testing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload-internal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android project
+        run: |
+          flutter create --platforms=android --org com.pedroxs11 .
+
+      - name: Configure Android app
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          text = manifest.read_text()
+          marker = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
+          additions = (
+              marker + '\n'
+              '    <uses-permission android:name="android.permission.CAMERA" />\n'
+              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
+              '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />'
+          )
+          if "android.permission.CAMERA" not in text:
+              text = text.replace(marker, additions, 1)
+          manifest.write_text(text)
+
+          candidates = [
+              Path("android/app/build.gradle.kts"),
+              Path("android/app/build.gradle"),
+          ]
+          build_file = next((p for p in candidates if p.exists()), None)
+          if build_file is None:
+              raise SystemExit("Android app Gradle file not found")
+
+          gradle = build_file.read_text()
+
+          # Stable Google Play package ID for this app.
+          import re
+          gradle = re.sub(
+              r'applicationId\s*(?:=\s*)?["\'][^"\']+["\']',
+              'applicationId = "com.pedroxs11.rotasentregas"' if build_file.suffix == ".kts"
+              else 'applicationId "com.pedroxs11.rotasentregas"',
+              gradle,
+              count=1,
+          )
+
+          # Flutter templates often sign release with the debug key. Remove that
+          # so the bundle can be signed explicitly with our Play upload key below.
+          gradle = re.sub(
+              r'^\s*signingConfig\s*=\s*signingConfigs\.getByName\(["\']debug["\']\)\s*$',
+              '',
+              gradle,
+              flags=re.MULTILINE,
+          )
+          gradle = re.sub(
+              r'^\s*signingConfig\s+signingConfigs\.debug\s*$',
+              '',
+              gradle,
+              flags=re.MULTILINE,
+          )
+          build_file.write_text(gradle)
+          print(f"Configured {build_file}")
+          PY
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Restore upload keystore
+        env:
+          ROTAS_KEYSTORE_BASE64: ${{ secrets.ROTAS_KEYSTORE_BASE64 }}
+          ROTAS_STORE_PASSWORD: ${{ secrets.ROTAS_STORE_PASSWORD }}
+          ROTAS_KEY_PASSWORD: ${{ secrets.ROTAS_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+          [ -n "$ROTAS_KEYSTORE_BASE64" ] || fail "ROTAS_KEYSTORE_BASE64 is empty."
+          [ -n "$ROTAS_STORE_PASSWORD" ] || fail "ROTAS_STORE_PASSWORD is empty."
+          [ -n "$ROTAS_KEY_PASSWORD" ] || fail "ROTAS_KEY_PASSWORD is empty."
+
+          KEYSTORE="${RUNNER_TEMP}/rotas-upload.jks"
+          printf '%s' "$ROTAS_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 --decode > "$KEYSTORE"
+          [ -s "$KEYSTORE" ] || fail "Decoded keystore is empty."
+
+          RESOLVED_ALIAS="$(keytool -J-Duser.language=en -list -keystore "$KEYSTORE" -storepass "$ROTAS_STORE_PASSWORD" 2>/dev/null | awk -F',' '/PrivateKeyEntry/{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}')"
+          ALIAS_COUNT="$(printf '%s\n' "$RESOLVED_ALIAS" | sed '/^$/d' | wc -l | tr -d ' ')"
+          [ "$ALIAS_COUNT" -eq 1 ] || fail "Expected exactly one PrivateKeyEntry in the keystore, found $ALIAS_COUNT."
+          echo "ROTAS_RESOLVED_ALIAS=$RESOLVED_ALIAS" >> "$GITHUB_ENV"
+
+      - name: Build release AAB
+        run: |
+          flutter build appbundle --release
+          test -s build/app/outputs/bundle/release/app-release.aab
+
+      - name: Sign final AAB explicitly
+        env:
+          ROTAS_STORE_PASSWORD: ${{ secrets.ROTAS_STORE_PASSWORD }}
+          ROTAS_KEY_PASSWORD: ${{ secrets.ROTAS_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          AAB="build/app/outputs/bundle/release/app-release.aab"
+          KEYSTORE="${RUNNER_TEMP}/rotas-upload.jks"
+          jarsigner -keystore "$KEYSTORE" -storepass "$ROTAS_STORE_PASSWORD" -keypass "$ROTAS_KEY_PASSWORD" -sigalg SHA256withRSA -digestalg SHA-256 "$AAB" "$ROTAS_RESOLVED_ALIAS"
+          jarsigner -verify -verbose -certs "$AAB" >/dev/null
+          echo "AAB signed and verified."
+
+      - name: Write Google Play service account
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          [ -n "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ] || { echo "::error::GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is empty."; exit 1; }
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > "${RUNNER_TEMP}/google-play-service-account.json"
+          python3 -m json.tool "${RUNNER_TEMP}/google-play-service-account.json" >/dev/null
+
+      - name: Upload to Google Play Internal Testing only
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ runner.temp }}/google-play-service-account.json
+          packageName: com.pedroxs11.rotasentregas
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: draft
+
+      - name: Confirm safety boundary
+        run: |
+          echo "Upload target: Google Play internal testing"
+          echo "Release status: draft"
+          echo "No production track is configured."
