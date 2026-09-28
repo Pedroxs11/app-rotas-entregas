@@ -15,6 +15,7 @@ void main() {
         scanNumber: 1,
         trackingCode: 'TRACK123',
         recipient: 'Cliente',
+        receivedBy: 'Maria',
         physicalZone: 'A-01',
         address: address,
         scannedAt: DateTime(2026, 9, 11, 10),
@@ -42,6 +43,7 @@ void main() {
 
     expect(restored.id, original.id);
     expect(restored.physicalZone, 'A-01');
+    expect(restored.receivedBy, 'Maria');
     expect(restored.completedAt, original.completedAt);
     expect(restored.status, DeliveryStatus.delivered);
   });
@@ -53,6 +55,7 @@ void main() {
       scanNumber: 42,
       trackingCode: 'BR123456789SP',
       recipient: 'Destinatário Teste',
+      receivedBy: 'Porteiro João',
       physicalZone: 'C-07',
       address: const AddressData(
         raw: 'Rua das Flores, 321, Bloco B, Centro, São Paulo - SP, 01001-000',
@@ -78,6 +81,7 @@ void main() {
     expect(restored.scanNumber, 42);
     expect(restored.trackingCode, 'BR123456789SP');
     expect(restored.recipient, 'Destinatário Teste');
+    expect(restored.receivedBy, 'Porteiro João');
     expect(restored.physicalZone, 'C-07');
     expect(restored.scannedAt, scannedAt);
     expect(restored.pinned, isTrue);
@@ -97,10 +101,11 @@ void main() {
   });
 
   test('older saved package without completedAt remains compatible', () {
-    final json = package().toJson()..remove('completedAt');
+    final json = package().toJson()..remove('completedAt')..remove('receivedBy');
     final restored = DeliveryPackage.fromJson(json);
 
     expect(restored.completedAt, isNull);
+    expect(restored.receivedBy, isNull);
     expect(restored.physicalZone, 'A-01');
   });
 }
