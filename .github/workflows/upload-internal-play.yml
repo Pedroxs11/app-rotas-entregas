@@ -66,6 +66,14 @@ jobs:
               count=1,
           )
 
+          # Google Play requires Android 16 / API 36 for new submissions.
+          if build_file.suffix == ".kts":
+              gradle = re.sub(r'compileSdk\s*=\s*[^\n]+', 'compileSdk = 36', gradle, count=1)
+              gradle = re.sub(r'targetSdk\s*=\s*[^\n]+', 'targetSdk = 36', gradle, count=1)
+          else:
+              gradle = re.sub(r'compileSdkVersion\s+[^\n]+', 'compileSdkVersion 36', gradle, count=1)
+              gradle = re.sub(r'targetSdkVersion\s+[^\n]+', 'targetSdkVersion 36', gradle, count=1)
+
           # Flutter templates often sign release with the debug key. Remove that
           # so the bundle can be signed explicitly with our Play upload key below.
           gradle = re.sub(
