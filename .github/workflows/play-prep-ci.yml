@@ -1,0 +1,96 @@
+name: Validate Play Prep
+
+on:
+  push:
+    branches:
+      - play-internal-prep
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android project
+        run: flutter create --platforms=android --org com.pedroxs11 .
+
+      - name: Configure Android app
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          text = manifest.read_text()
+          marker = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
+          additions = (
+              marker + '\n'
+              '    <uses-permission android:name="android.permission.CAMERA" />\n'
+              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
+              '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />'
+          )
+          if "android.permission.CAMERA" not in text:
+              text = text.replace(marker, additions, 1)
+          manifest.write_text(text)
+
+          candidates = [Path("android/app/build.gradle.kts"), Path("android/app/build.gradle")]
+          build_file = next((p for p in candidates if p.exists()), None)
+          if build_file is None:
+              raise SystemExit("Android app Gradle file not found")
+
+          gradle = build_file.read_text()
+          gradle = re.sub(
+              r'applicationId\s*(?:=\s*)?["\'][^"\']+["\']',
+              'applicationId = "com.pedroxs11.rotasentregas"' if build_file.suffix == ".kts"
+              else 'applicationId "com.pedroxs11.rotasentregas"',
+              gradle,
+              count=1,
+          )
+          gradle = re.sub(
+              r'^\s*signingConfig\s*=\s*signingConfigs\.getByName\(["\']debug["\']\)\s*$',
+              '',
+              gradle,
+              flags=re.MULTILINE,
+          )
+          gradle = re.sub(
+              r'^\s*signingConfig\s+signingConfigs\.debug\s*$',
+              '',
+              gradle,
+              flags=re.MULTILINE,
+          )
+          build_file.write_text(gradle)
+          PY
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build release AAB
+        run: |
+          flutter build appbundle --release
+          test -s build/app/outputs/bundle/release/app-release.aab
+
+      - name: Verify application id
+        run: |
+          grep -R "com.pedroxs11.rotasentregas" android/app/build.gradle* >/dev/null
+          echo "Package ID validated."
