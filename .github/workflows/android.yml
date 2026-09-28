@@ -22,6 +22,13 @@ jobs:
       - name: Generate Flutter platform files
         run: flutter create --platforms=android,ios --org com.pedro .
 
+      - name: Configure permanent Android application id
+        shell: bash
+        run: |
+          sed -i 's/com\.pedro\.app_rotas_entregas/com.pedro.rotasentregas/g' android/app/build.gradle.kts
+          grep -q 'namespace = "com.pedro.rotasentregas"' android/app/build.gradle.kts
+          grep -q 'applicationId = "com.pedro.rotasentregas"' android/app/build.gradle.kts
+
       - name: Configure Android permissions
         shell: bash
         run: |
