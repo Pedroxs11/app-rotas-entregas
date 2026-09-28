@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - play-internal-test
   workflow_dispatch:
 
 jobs:
