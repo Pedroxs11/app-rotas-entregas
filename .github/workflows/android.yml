@@ -1,4 +1,4 @@
-name: Android APK
+name: Android Build
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
           cache: true
 
       - name: Generate Flutter platform files
-        run: flutter create --platforms=android,ios .
+        run: flutter create --platforms=android,ios --org com.pedro .
 
       - name: Configure Android permissions
         shell: bash
@@ -53,12 +53,17 @@ jobs:
       - name: Build phone APK
         run: flutter build apk --debug --target-platform android-arm64
 
-      - name: Verify generated APK
+      - name: Build Play test AAB
+        run: flutter build appbundle --debug
+
+      - name: Verify generated Android packages
         shell: bash
         run: |
           set -e
           ls -lh build/app/outputs/flutter-apk/app-debug.apk
           unzip -t build/app/outputs/flutter-apk/app-debug.apk >/dev/null
+          ls -lh build/app/outputs/bundle/debug/app-debug.aab
+          unzip -t build/app/outputs/bundle/debug/app-debug.aab >/dev/null
 
       # Upload is delivery-only. GitHub can reject it when the account artifact
       # storage quota is full even though analyze, tests and the APK build passed.
