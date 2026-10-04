@@ -74,7 +74,23 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          python3 - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+          raw = os.environ["ANDROID_KEYSTORE_BASE64"]
+          normalized = "".join(raw.split())
+          if not normalized or len(normalized) % 4 != 0:
+              raise SystemExit(f"ANDROID_KEYSTORE_BASE64 has invalid length: {len(normalized)}")
+          try:
+              data = base64.b64decode(normalized, validate=True)
+          except Exception as exc:
+              raise SystemExit(f"ANDROID_KEYSTORE_BASE64 is not valid Base64: {exc}")
+          if len(data) < 1000:
+              raise SystemExit("Decoded keystore is unexpectedly small")
+          Path("android/app/upload-keystore.jks").write_bytes(data)
+          print(f"Decoded keystore: {len(data)} bytes")
+          PY
           python3 - <<'PY'
           from pathlib import Path
           p = Path("android/app/build.gradle.kts")
