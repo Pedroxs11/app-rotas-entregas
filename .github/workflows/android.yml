@@ -149,3 +149,11 @@ jobs:
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 1
           compression-level: 0
+
+      - name: Upload Play release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: rotas-entregas-play-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 1
+          compression-level: 0
