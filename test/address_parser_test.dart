@@ -75,3 +75,10 @@ void main(){
     expect(a.formatted,contains('Rua Anum-Branco, 303'));
   });
 }
+  test('CEP seguido de número preserva o número para enriquecimento posterior',(){
+    final a=parser.parse('05887-300, 303');
+    expect(a.cep,'05887-300');
+    expect(a.number,'303');
+    expect(a.validation,ValidationStatus.needsReview);
+  });
+
