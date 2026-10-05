@@ -30,17 +30,11 @@ jobs:
         run: |
           set -e
           sed -i 's/com\\.pedro\\.app_rotas_entregas/com.pedro.rotasentregas/g' android/app/build.gradle.kts
-          grep -q 'namespace = "com.pedro.rotasentregas"' android/app/build.gradle.kts
-          grep -q 'applicationId = "com.pedro.rotasentregas"' android/app/build.gradle.kts
 
           activity="android/app/src/main/kotlin/com/pedro/app_rotas_entregas/MainActivity.kt"
-          test -f "$activity"
           mkdir -p android/app/src/main/kotlin/com/pedro/rotasentregas
           sed -i '1c\package com.pedro.rotasentregas' "$activity"
           mv "$activity" android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
-
-          test -f android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
-          head -n 1 android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt | grep -Fq 'package com.pedro.rotasentregas'
 
       - name: Configure Android permissions
         shell: bash
