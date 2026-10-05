@@ -33,29 +33,14 @@ jobs:
           grep -q 'namespace = "com.pedro.rotasentregas"' android/app/build.gradle.kts
           grep -q 'applicationId = "com.pedro.rotasentregas"' android/app/build.gradle.kts
 
-          activity="$(find android/app/src/main -type f \( -name MainActivity.kt -o -name MainActivity.java \) | head -n 1)"
-          test -n "$activity"
-          echo "Generated MainActivity: $activity"
-
+          activity="android/app/src/main/kotlin/com/pedro/app_rotas_entregas/MainActivity.kt"
+          test -f "$activity"
           mkdir -p android/app/src/main/kotlin/com/pedro/rotasentregas
-          case "$activity" in
-            *.kt)
-              sed -i 's/^package com\\.pedro\\.app_rotasentregas$/package com.pedro.rotasentregas/' "$activity"
-              mv "$activity" android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
-              ;;
-            *.java)
-              mkdir -p android/app/src/main/java/com/pedro/rotasentregas
-              sed -i 's/^package com\\.pedro\\.app_rotasentregas;$/package com.pedro.rotasentregas;/' "$activity"
-              mv "$activity" android/app/src/main/java/com/pedro/rotasentregas/MainActivity.java
-              ;;
-            *)
-              echo "Unsupported MainActivity source: $activity"
-              exit 1
-              ;;
-          esac
+          sed -i 's/^package com\\.pedro\\.app_rotas_entregas$/package com.pedro.rotasentregas/' "$activity"
+          mv "$activity" android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
 
-          grep -q '^package com.pedro.rotasentregas$' android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt 2>/dev/null ||           grep -q '^package com.pedro.rotasentregas;$' android/app/src/main/java/com/pedro/rotasentregas/MainActivity.java
-          test -f android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt ||           test -f android/app/src/main/java/com/pedro/rotasentregas/MainActivity.java
+          test -f android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
+          grep -q '^package com.pedro.rotasentregas$' android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
 
       - name: Configure Android permissions
         shell: bash
