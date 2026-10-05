@@ -25,12 +25,44 @@ jobs:
       - name: Generate Flutter platform files
         run: flutter create --platforms=android,ios --org com.pedro .
 
-      - name: Configure permanent Android application id
+      - name: Configure permanent Android application id and MainActivity package
         shell: bash
         run: |
-          sed -i 's/com\.pedro\.app_rotas_entregas/com.pedro.rotasentregas/g' android/app/build.gradle.kts
+          set -e
+          sed -i 's/com\\.pedro\\.app_rotas_entregas/com.pedro.rotasentregas/g' android/app/build.gradle.kts
           grep -q 'namespace = "com.pedro.rotasentregas"' android/app/build.gradle.kts
           grep -q 'applicationId = "com.pedro.rotasentregas"' android/app/build.gradle.kts
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path("android/app/src/main")
+          target_dir = root / "kotlin/com/pedro/rotasentregas"
+          target_dir.mkdir(parents=True, exist_ok=True)
+
+          activities = list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java"))
+          if len(activities) != 1:
+              raise SystemExit(f"Expected exactly one generated MainActivity, found {len(activities)}")
+
+          source = activities[0]
+          content = source.read_text()
+          content = content.replace(
+              "package com.pedro.app_rotas_entregas",
+              "package com.pedro.rotasentregas",
+          )
+          if "package com.pedro.rotasentregas" not in content:
+              raise SystemExit(f"MainActivity package was not updated: {source}")
+
+          destination = target_dir / source.name
+          destination.write_text(content)
+          if source.resolve() != destination.resolve():
+              source.unlink()
+
+          print(f"Configured {destination}")
+          PY
+
+          test -f android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
+          grep -q '^package com.pedro.rotasentregas$' android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
 
       - name: Configure Android permissions
         shell: bash
