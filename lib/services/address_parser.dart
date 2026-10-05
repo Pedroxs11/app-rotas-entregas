@@ -2,7 +2,7 @@ import '../domain/models.dart';
 
 class AddressParser {
   static final _cep=RegExp(r'\b(\d{5})[-\s]?(\d{3})\b');
-  static final _cepAndNumber=RegExp(r'^\s*\d{5}[-\s]?\d{3}\s*[,;:]\s*(?:N[º°o]?|NÚMERO|NUMERO)?\s*(\d{1,6}[A-Za-z]?)\s*
+  static final _cepAndNumber=RegExp(r'^\s*\d{5}[-\s]?\d{3}\s*[,;:]\s*(?:N[º°o]?|NÚMERO|NUMERO)?\s*(\d{1,6}[A-Za-z]?)\s*$',caseSensitive:false);
   static final _street=RegExp(r'\b(RUA|R\.?|AVENIDA|AV\.?|ALAMEDA|AL\.?|ESTRADA|RODOVIA|TRAVESSA|TRAV\.?|PRAÇA|PRACA|ROD\.?)\s+([^\n,;]{3,60})',caseSensitive:false);
   static final _number=RegExp(r'(?:,|\s)\s*(?:(?:N[º°o]?|NÚMERO|NUMERO)\.?\s*)?(\d{1,6}[A-Za-z]?)\b',caseSensitive:false);
   static final _numberAfterStreet=RegExp(r'^\s*[,;:\-]?\s*(?:(?:N[º°o]?|NÚMERO|NUMERO)\.?\s*)?(\d{1,6}[A-Za-z]?)\b',caseSensitive:false);
