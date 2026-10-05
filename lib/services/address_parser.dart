@@ -82,7 +82,30 @@ class AddressParser {
     if(tail.isNotEmpty&&state!=null&&tail.last.toUpperCase()==state)tail=tail.sublist(0,tail.length-1);
     if(tail.isNotEmpty){
       var last=tail.last;
-      if(state!=null&&state.isNotEmpty)last=last.replaceFirst(RegExp('\\s*[-/]?\\s*${RegExp.escape(state)}\\s*$',caseSensitive:false),'').trim();
+      if(state!=null&&state.isNotEmpty)last=last.replaceFirst(RegExp('\\s*[-/]?\\s*${RegExp.escape(state)}\\s*\\,'').trim();
+      if(last.isNotEmpty){city=last;tail=tail.sublist(0,tail.length-1);}
+    }
+    if(tail.isNotEmpty){neighborhood=tail.last;tail=tail.sublist(0,tail.length-1);}
+    if(tail.isNotEmpty)complement=tail.join(', ');
+    final valid=cep!=null||(city?.isNotEmpty==true&&state!=null);
+    return AddressData(raw:raw,street:street,number:number,complement:complement,neighborhood:neighborhood,city:city,state:state,cep:cep,confidence:valid?1:.65,validation:valid?ValidationStatus.confirmed:ValidationStatus.needsReview);
+  }
+
+  String _addressBlock(String raw){
+    final lines=raw.split('\n').map((e)=>e.trim()).where((e)=>e.isNotEmpty).toList();
+    if(lines.isEmpty)return raw;
+    var start=lines.indexWhere((l)=>_recipient.hasMatch(l));
+    final sender=lines.indexWhere((l)=>_sender.hasMatch(l));
+    if(start>=0){
+      start++;
+      final end=sender>start?sender:(start+8).clamp(0,lines.length);
+      return lines.sublist(start,end).where((l)=>!_noise.hasMatch(l)).join('\n');
+    }
+    final useful=lines.where((l)=>!_noise.hasMatch(l)&&(_street.hasMatch(l)||_cep.hasMatch(l)||_complement.hasMatch(l)||_uf.hasMatch(l)||_standaloneNumberLine.hasMatch(l))).toList();
+    return useful.isEmpty?raw:useful.join('\n');
+  }
+}
+,caseSensitive:false),'').trim();
       if(last.isNotEmpty){city=last;tail=tail.sublist(0,tail.length-1);}
     }
     if(tail.isNotEmpty){neighborhood=tail.last;tail=tail.sublist(0,tail.length-1);}
