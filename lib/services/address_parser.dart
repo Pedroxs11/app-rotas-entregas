@@ -82,7 +82,7 @@ class AddressParser {
     if(tail.isNotEmpty&&state!=null&&tail.last.toUpperCase()==state)tail=tail.sublist(0,tail.length-1);
     if(tail.isNotEmpty){
       var last=tail.last;
-      if(state!=null&&state.isNotEmpty)last=last.replaceFirst(RegExp('\\s*[-/]?\\s*${RegExp.escape(state)}\\s*\\$',caseSensitive:false),'').trim();
+      if(state!=null&&state.isNotEmpty)last=last.replaceFirst(RegExp(r'\s*[-/]?\s*'+RegExp.escape(state)+r'\s*$',caseSensitive:false),'').trim();
       if(last.isNotEmpty){city=last;tail=tail.sublist(0,tail.length-1);}
     }
     if(tail.isNotEmpty){neighborhood=tail.last;tail=tail.sublist(0,tail.length-1);}
