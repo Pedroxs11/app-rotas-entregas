@@ -157,7 +157,7 @@ class _LoadScreenState extends State<LoadScreen>{
           ]),
           const SizedBox(height:6),
           if(packages.isEmpty)
-            const Expanded(child:Center(child:Text('Vazio',style:TextStyle(fontSize:12))))
+            const SizedBox(height:72,child:Center(child:Text('Vazio',style:TextStyle(fontSize:12))))
           else
             Wrap(spacing:3,runSpacing:3,children:[
               for(final p in packages)
