@@ -35,7 +35,7 @@ void main(){
 
  test('manual organization allows multiple packages in the same vehicle area',()async{
   final store=LoadStore(List.generate(8,(i)=>_p(i+1)));final state=AppState(store:store);await state.init();
-  for(final p in state.packages.take(4))await state.setPhysicalZone(p.id,'Porta-malas');
+  for(final p in state.packages.take(4)){await state.setPhysicalZone(p.id,'Porta-malas');}
   expect(state.packages.take(4).every((p)=>p.physicalZone=='Porta-malas'),isTrue);
  });
 }
