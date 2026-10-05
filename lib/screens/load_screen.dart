@@ -70,45 +70,106 @@ class _LoadScreenState extends State<LoadScreen>{
   Widget _carDiagram(BuildContext context,List<DeliveryPackage> route){
     final selected=_selected();
     return Container(
-      constraints:const BoxConstraints(maxWidth:380),
-      padding:const EdgeInsets.all(12),
-      decoration:BoxDecoration(border:Border.all(color:Theme.of(context).colorScheme.outline,width:2),borderRadius:BorderRadius.circular(28)),
+      constraints:const BoxConstraints(maxWidth:390),
+      padding:const EdgeInsets.fromLTRB(14,12,14,14),
+      decoration:BoxDecoration(
+        color:Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius:BorderRadius.circular(42),
+        border:Border.all(color:Theme.of(context).colorScheme.outline,width:2),
+        boxShadow:[BoxShadow(color:Theme.of(context).colorScheme.shadow.withValues(alpha:.10),blurRadius:10,offset:const Offset(0,4))],
+      ),
       child:Column(children:[
-        Padding(padding:const EdgeInsets.only(bottom:8),child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.arrow_upward,size:18),const SizedBox(width:4),const Text('FRENTE',style:TextStyle(fontWeight:FontWeight.bold))])),
+        const Text('FRENTE',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1.2)),
+        const SizedBox(height:6),
+        Container(
+          height:20,
+          margin:const EdgeInsets.symmetric(horizontal:24),
+          decoration:BoxDecoration(
+            borderRadius:BorderRadius.circular(12),
+            border:Border.all(color:Theme.of(context).colorScheme.outlineVariant),
+          ),
+          child:Center(child:Text('PARA-BRISA',style:Theme.of(context).textTheme.labelSmall)),
+        ),
+        const SizedBox(height:10),
         Row(children:[
-          Expanded(child:_zone(context,'Frente esquerda',route,selected)),
+          Expanded(child:_zone(context,'Frente esquerda','FRENTE E',route,selected)),
           const SizedBox(width:8),
-          Expanded(child:_zone(context,'Frente direita',route,selected)),
+          Expanded(child:_zone(context,'Frente direita','FRENTE D',route,selected)),
         ]),
         const SizedBox(height:8),
+        Container(
+          height:10,
+          margin:const EdgeInsets.symmetric(horizontal:8),
+          decoration:BoxDecoration(
+            color:Theme.of(context).colorScheme.outlineVariant.withValues(alpha:.35),
+            borderRadius:BorderRadius.circular(8),
+          ),
+        ),
+        const SizedBox(height:8),
         Row(children:[
-          Expanded(child:_zone(context,'Traseira esquerda',route,selected)),
+          Expanded(child:_zone(context,'Traseira esquerda','TRASEIRA E',route,selected)),
           const SizedBox(width:8),
-          Expanded(child:_zone(context,'Traseira direita',route,selected)),
+          Expanded(child:_zone(context,'Traseira direita','TRASEIRA D',route,selected)),
         ]),
         const SizedBox(height:8),
-        _zone(context,'Porta-malas',route,selected,wide:true),
+        _zone(context,'Porta-malas','PORTA-MALAS',route,selected,wide:true),
+        const SizedBox(height:6),
+        Text(
+          selected==null
+              ? 'Selecione um pacote e toque no local onde ele ficará.'
+              : 'Pacote P${selected.scanNumber.toString().padLeft(2,'0')} selecionado — toque em uma área.',
+          textAlign:TextAlign.center,
+          style:Theme.of(context).textTheme.bodySmall,
+        ),
       ]),
     );
   }
 
-  Widget _zone(BuildContext context,String zone,List<DeliveryPackage> route,DeliveryPackage? selected,{bool wide=false}){
+  Widget _zone(BuildContext context,String zone,String shortName,List<DeliveryPackage> route,DeliveryPackage? selected,{bool wide=false}){
     final packages=route.where((p)=>p.physicalZone==zone).toList();
-    final highlighted=selected!=null;
     final activeZone=selected?.physicalZone==zone;
+    final highlighted=selected!=null;
     return InkWell(
       onTap:()=>_assign(zone),
-      borderRadius:BorderRadius.circular(16),
+      borderRadius:BorderRadius.circular(18),
       child:AnimatedContainer(
         duration:const Duration(milliseconds:160),
-        constraints:BoxConstraints(minHeight:wide?88:118),
-        padding:const EdgeInsets.all(10),
-        decoration:BoxDecoration(color:activeZone?Theme.of(context).colorScheme.primaryContainer:Theme.of(context).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(16),border:Border.all(color:activeZone?Theme.of(context).colorScheme.primary:highlighted?Theme.of(context).colorScheme.outline:Theme.of(context).colorScheme.outlineVariant,width:activeZone?2:1)),
+        constraints:BoxConstraints(minHeight:wide?78:126),
+        padding:const EdgeInsets.all(9),
+        decoration:BoxDecoration(
+          color:activeZone
+              ?Theme.of(context).colorScheme.primaryContainer
+              :Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius:BorderRadius.circular(18),
+          border:Border.all(
+            color:activeZone
+                ?Theme.of(context).colorScheme.primary
+                :highlighted
+                    ?Theme.of(context).colorScheme.outline
+                    :Theme.of(context).colorScheme.outlineVariant,
+            width:activeZone?2:1,
+          ),
+        ),
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text(zone,style:const TextStyle(fontWeight:FontWeight.bold)),
+          Row(children:[
+            Expanded(child:Text(shortName,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12))),
+            if(packages.isNotEmpty)Text('${packages.length}',style:const TextStyle(fontWeight:FontWeight.bold)),
+          ]),
           const SizedBox(height:6),
-          if(packages.isEmpty)const Text('Vazio',style:TextStyle(fontSize:12))
-          else Wrap(spacing:4,runSpacing:4,children:[for(final p in packages)GestureDetector(onTap:(){if(mounted)setState(()=>selectedId=p.id);},child:Chip(label:Text('P${p.scanNumber.toString().padLeft(2,'0')}')))]),
+          if(packages.isEmpty)
+            const Expanded(child:Center(child:Text('Vazio',style:TextStyle(fontSize:12))))
+          else
+            Wrap(spacing:3,runSpacing:3,children:[
+              for(final p in packages)
+                GestureDetector(
+                  onTap:(){if(mounted)setState(()=>selectedId=p.id);},
+                  child:Chip(
+                    visualDensity:VisualDensity.compact,
+                    padding:EdgeInsets.zero,
+                    label:Text('P${p.scanNumber.toString().padLeft(2,'0')}'),
+                  ),
+                ),
+            ]),
         ]),
       ),
     );
