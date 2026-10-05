@@ -47,6 +47,7 @@ void main(){
     expect(find.text('TRASEIRA D'),findsOneWidget);
     expect(find.text('PORTA-MALAS'),findsOneWidget);
 
+    await tester.ensureVisible(find.text('Pacote 01'));
     await tester.tap(find.text('Pacote 01'));
     await tester.pump();
     expect(find.textContaining('Pacote P01 selecionado'),findsOneWidget);
