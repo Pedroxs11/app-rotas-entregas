@@ -104,10 +104,12 @@ void main(){
     expect(state.packages[2].status,DeliveryStatus.pending);expect(state.packages[3].status,DeliveryStatus.pending);expect(state.routeOptimized,isTrue);
   });
 
-  test('physical load zone names continue past Z without imposing alphabet cap',() async {
+  test('manual vehicle zones do not impose an automatic alphabetic distribution',() async {
     final items=List.generate(28,(i)=>_p('p$i',i+1,lat:-23.55-(i*.0001),lng:-46.63));
     final store=CoreStore(items,optimized:true);final state=AppState(store:store);await state.init();
-    await state.organizePhysicalLoad(groupSize:1,overwrite:true);
-    expect(state.packages[0].physicalZone,'A-01');expect(state.packages[25].physicalZone,'Z-01');expect(state.packages[26].physicalZone,'AA-01');expect(state.packages[27].physicalZone,'AB-01');expect(state.packages,hasLength(28));
+    expect(state.packages.every((p)=>p.physicalZone==null),isTrue);
+    await state.setPhysicalZone('p0','Frente esquerda');
+    await state.setPhysicalZone('p27','Porta-malas');
+    expect(state.packages[0].physicalZone,'Frente esquerda');expect(state.packages[27].physicalZone,'Porta-malas');expect(state.packages,hasLength(28));
   });
 }
