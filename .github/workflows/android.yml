@@ -147,6 +147,18 @@ jobs:
               'signingConfig = signingConfigs.getByName("release")',
               1,
           )
+          # Internal-test build: keep the release artifact reliable while ML Kit
+          # optional language classes are not packaged by the text-recognition plugin.
+          if 'isMinifyEnabled = false' not in s:
+              s = s.replace(
+                  'buildTypes {',
+                  '''buildTypes {
+        release {
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }''',
+                  1,
+              )
           p.write_text(s)
           PY
 
