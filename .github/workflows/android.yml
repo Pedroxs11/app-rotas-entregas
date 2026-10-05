@@ -33,36 +33,29 @@ jobs:
           grep -q 'namespace = "com.pedro.rotasentregas"' android/app/build.gradle.kts
           grep -q 'applicationId = "com.pedro.rotasentregas"' android/app/build.gradle.kts
 
-          python3 - <<'PY'
-          from pathlib import Path
+          activity="$(find android/app/src/main -type f \( -name MainActivity.kt -o -name MainActivity.java \) | head -n 1)"
+          test -n "$activity"
+          echo "Generated MainActivity: $activity"
 
-          root = Path("android/app/src/main")
-          target_dir = root / "kotlin/com/pedro/rotasentregas"
-          target_dir.mkdir(parents=True, exist_ok=True)
+          mkdir -p android/app/src/main/kotlin/com/pedro/rotasentregas
+          case "$activity" in
+            *.kt)
+              sed -i 's/^package com\\.pedro\\.app_rotasentregas$/package com.pedro.rotasentregas/' "$activity"
+              mv "$activity" android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
+              ;;
+            *.java)
+              mkdir -p android/app/src/main/java/com/pedro/rotasentregas
+              sed -i 's/^package com\\.pedro\\.app_rotasentregas;$/package com.pedro.rotasentregas;/' "$activity"
+              mv "$activity" android/app/src/main/java/com/pedro/rotasentregas/MainActivity.java
+              ;;
+            *)
+              echo "Unsupported MainActivity source: $activity"
+              exit 1
+              ;;
+          esac
 
-          activities = list(root.rglob("MainActivity.kt")) + list(root.rglob("MainActivity.java"))
-          if len(activities) != 1:
-              raise SystemExit(f"Expected exactly one generated MainActivity, found {len(activities)}")
-
-          source = activities[0]
-          content = source.read_text()
-          content = content.replace(
-              "package com.pedro.app_rotas_entregas",
-              "package com.pedro.rotasentregas",
-          )
-          if "package com.pedro.rotasentregas" not in content:
-              raise SystemExit(f"MainActivity package was not updated: {source}")
-
-          destination = target_dir / source.name
-          destination.write_text(content)
-          if source.resolve() != destination.resolve():
-              source.unlink()
-
-          print(f"Configured {destination}")
-          PY
-
-          test -f android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
-          grep -q '^package com.pedro.rotasentregas$' android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
+          grep -q '^package com.pedro.rotasentregas$' android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt 2>/dev/null ||           grep -q '^package com.pedro.rotasentregas;$' android/app/src/main/java/com/pedro/rotasentregas/MainActivity.java
+          test -f android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt ||           test -f android/app/src/main/java/com/pedro/rotasentregas/MainActivity.java
 
       - name: Configure Android permissions
         shell: bash
