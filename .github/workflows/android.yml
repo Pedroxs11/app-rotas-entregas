@@ -29,12 +29,36 @@ jobs:
         shell: bash
         run: |
           set -e
-          sed -i 's/com\\.pedro\\.app_rotas_entregas/com.pedro.rotasentregas/g' android/app/build.gradle.kts
+          python3 - <<'PY'
+          from pathlib import Path
 
-          activity="android/app/src/main/kotlin/com/pedro/app_rotas_entregas/MainActivity.kt"
-          mkdir -p android/app/src/main/kotlin/com/pedro/rotasentregas
-          sed -i '1c\package com.pedro.rotasentregas' "$activity"
-          mv "$activity" android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
+          gradle = Path("android/app/build.gradle.kts")
+          s = gradle.read_text()
+          s = s.replace('namespace = "com.pedro.app_rotas_entregas"', 'namespace = "com.pedro.rotasentregas"')
+          s = s.replace('applicationId = "com.pedro.app_rotas_entregas"', 'applicationId = "com.pedro.rotasentregas"')
+          gradle.write_text(s)
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          s = manifest.read_text()
+          s = s.replace('package="com.pedro.app_rotas_entregas"', 'package="com.pedro.rotasentregas"')
+          manifest.write_text(s)
+
+          activity = Path("android/app/src/main/kotlin/com/pedro/app_rotas_entregas/MainActivity.kt")
+          target = Path("android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          activity_text = activity.read_text()
+          activity_text = activity_text.replace(
+              "package com.pedro.app_rotas_entregas",
+              "package com.pedro.rotasentregas",
+              1,
+          )
+          target.write_text(activity_text)
+          activity.unlink()
+          PY
+
+          grep -nE 'namespace|applicationId' android/app/build.gradle.kts
+          grep -n 'package=' android/app/src/main/AndroidManifest.xml || true
+          head -n 1 android/app/src/main/kotlin/com/pedro/rotasentregas/MainActivity.kt
 
       - name: Configure Android permissions
         shell: bash
@@ -66,6 +90,12 @@ jobs:
 
       - name: Build phone APK
         run: flutter build apk --debug --target-platform android-arm64
+
+      - name: Verify phone APK package id
+        shell: bash
+        run: |
+          set -e
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | tail -1)/aapt" dump badging build/app/outputs/flutter-apk/app-debug.apk | grep -m1 "package: name='com.pedro.rotasentregas'"
 
       - name: Build validation AAB
         run: flutter build appbundle --debug
