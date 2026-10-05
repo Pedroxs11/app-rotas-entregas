@@ -120,3 +120,4 @@ class _LoadScreenState extends State<LoadScreen>{
     return Card(margin:const EdgeInsets.only(bottom:6),child:ListTile(selected:selected,leading:CircleAvatar(child:Text(p.scanNumber.toString().padLeft(2,'0'))),title:Text(p.label,style:const TextStyle(fontWeight:FontWeight.w600)),subtitle:Text(zone?.isNotEmpty==true?'$zone\n$address':'Sem posição no carro\n$address',maxLines:2,overflow:TextOverflow.ellipsis),trailing:zone?.isNotEmpty==true?const Chip(label:Text('OK')):const Chip(label:Text('Falta')),onTap:()=>setState(()=>selectedId=selected?null:p.id)));
   }
 }
+
