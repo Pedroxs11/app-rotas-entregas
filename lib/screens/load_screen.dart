@@ -11,7 +11,6 @@ class LoadScreen extends StatefulWidget {
 
 class _LoadScreenState extends State<LoadScreen>{
   String? selectedId;
-  static const zones=AppState.physicalZones;
 
   bool _active(DeliveryPackage p)=>p.status==DeliveryStatus.pending||p.status==DeliveryStatus.current||p.status==DeliveryStatus.absent||p.status==DeliveryStatus.addressProblem;
   List<DeliveryPackage> get _route=>widget.state.packages.where(_active).toList();
