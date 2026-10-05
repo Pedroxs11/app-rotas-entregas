@@ -152,7 +152,7 @@ jobs:
           if 'isMinifyEnabled = false' not in s:
               s = s.replace(
                   'buildTypes {',
-                  'buildTypes {\\n    release {\\n        isMinifyEnabled = false\\n        isShrinkResources = false\\n    }',
+                  'buildTypes {' + chr(10) + '    release {' + chr(10) + '        isMinifyEnabled = false' + chr(10) + '        isShrinkResources = false' + chr(10) + '    }',
                   1,
               )
           p.write_text(s)
