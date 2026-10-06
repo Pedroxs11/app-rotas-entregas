@@ -52,7 +52,7 @@ void main(){
     await tester.pump();
     expect(find.textContaining('Pacote P01 selecionado'),findsOneWidget);
 
-    await tester.tap(find.text('FRENTE E'));
+    await tester.ensureVisible(find.text('FRENTE E'));\n    await tester.tap(find.text('FRENTE E'));
     await tester.pumpAndSettle();
 
     expect(state.packages.first.physicalZone,'Frente esquerda');
