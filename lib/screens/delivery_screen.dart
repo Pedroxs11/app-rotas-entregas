@@ -19,8 +19,40 @@ class DeliveryScreen extends StatelessWidget {
 
   Future<String?> _askReceiver(BuildContext context)async{final controller=TextEditingController();String? error;final result=await showDialog<String>(context:context,barrierDismissible:false,builder:(d)=>StatefulBuilder(builder:(context,setDialogState)=>AlertDialog(title:const Text('Quem recebeu?'),content:TextField(controller:controller,autofocus:true,textCapitalization:TextCapitalization.words,textInputAction:TextInputAction.done,decoration:InputDecoration(labelText:'Nome de quem recebeu',hintText:'Ex.: Maria',errorText:error),onSubmitted:(_){final name=controller.text.trim();if(name.isEmpty){setDialogState(()=>error='Informe o nome para concluir a entrega.');}else{Navigator.pop(d,name);}}),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Cancelar')),FilledButton(onPressed:(){final name=controller.text.trim();if(name.isEmpty){setDialogState(()=>error='Informe o nome para concluir a entrega.');return;}Navigator.pop(d,name);},child:const Text('Confirmar entrega'))])));controller.dispose();return result;}
 
-  Future<void> _showDeliveryConfirmation(BuildContext context,{required bool hasNext})async{await showGeneralDialog<void>(context:context,barrierDismissible:false,barrierLabel:'Entrega confirmada',barrierColor:Colors.black45,transitionDuration:const Duration(milliseconds:180),pageBuilder:(dialogContext,_,__)=>Center(child:Material(color:Colors.transparent,child:Container(margin:const EdgeInsets.symmetric(horizontal:32),padding:const EdgeInsets.symmetric(horizontal:28,vertical:30),decoration:BoxDecoration(color:Theme.of(dialogContext).colorScheme.surface,borderRadius:BorderRadius.circular(24)),child:Column(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.check_circle,size:76,color:Theme.of(dialogContext).colorScheme.primary),const SizedBox(height:14),Text('Pacote entregue!',style:Theme.of(dialogContext).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.bold),textAlign:TextAlign.center),const SizedBox(height:8),Text(hasNext?'Indo para a próxima entrega…':'Rota concluída!',style:Theme.of(dialogContext).textTheme.titleMedium,textAlign:TextAlign.center)])))),transitionBuilder:(context,animation,_,child)=>FadeTransition(opacity:animation,child:ScaleTransition(scale:Tween<double>(begin:.94,end:1).animate(animation),child:child)));await Future<void>.delayed(const Duration(milliseconds:1500));if(context.mounted&&Navigator.of(context,rootNavigator:true).canPop())Navigator.of(context,rootNavigator:true).pop();}
-
+  Future<void> _showDeliveryConfirmation(BuildContext context,{required bool hasNext})async{
+    FocusManager.instance.primaryFocus?.unfocus();
+    final overlay=Overlay.of(context);
+    final entry=OverlayEntry(
+      builder:(overlayContext)=>Positioned.fill(
+        child:Material(
+          color:Colors.black45,
+          child:Center(
+            child:Container(
+              margin:const EdgeInsets.symmetric(horizontal:32),
+              padding:const EdgeInsets.symmetric(horizontal:28,vertical:30),
+              decoration:BoxDecoration(
+                color:Theme.of(overlayContext).colorScheme.surface,
+                borderRadius:BorderRadius.circular(24),
+              ),
+              child:Column(
+                mainAxisSize:MainAxisSize.min,
+                children:[
+                  Icon(Icons.check_circle,size:76,color:Theme.of(overlayContext).colorScheme.primary),
+                  const SizedBox(height:14),
+                  Text('Pacote entregue!',style:Theme.of(overlayContext).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.bold),textAlign:TextAlign.center),
+                  const SizedBox(height:8),
+                  Text(hasNext?'Indo para a próxima entrega…':'Rota concluída!',style:Theme.of(overlayContext).textTheme.titleMedium,textAlign:TextAlign.center),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    overlay.insert(entry);
+    await Future<void>.delayed(const Duration(milliseconds:1500));
+    if(entry.mounted)entry.remove();
+  }
   Future<void> _addressProblem(BuildContext context,int i,DeliveryPackage p)async{final ok=await showDialog<bool>(context:context,builder:(d)=>AlertDialog(title:const Text('Problema com o endereço?'),content:const Text('O pacote ficará em Problemas para conferência. Ele não será tratado como entregue.'),actions:[TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Cancelar')),FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Marcar e seguir'))]));if(!context.mounted)return;if(ok==true)await _finish(context,i,p,DeliveryStatus.addressProblem,'Separado para conferência');}
   Future<void> _reoptimize(BuildContext context)async{try{final pos=await LocationService().current();await state.optimizeFrom(pos.latitude,pos.longitude);if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Entregas restantes reotimizadas. As posições físicas da carga foram mantidas.')));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}}
 }
