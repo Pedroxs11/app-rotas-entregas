@@ -21,7 +21,7 @@ class _LoadScreenState extends State<LoadScreen>{
   List<DeliveryPackage> get _route=>widget.state.packages.where(_active).toList();
   bool get _organized=>_route.isNotEmpty&&(_isMoto||_route.every((p)=>p.physicalZone?.trim().isNotEmpty==true));
 
-  List<DeliveryPackage> get _visibleRoute{final q=search.trim().toLowerCase();if(q.isEmpty)return _route;return _route.where((p)=>p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q)).toList();}
+  List<DeliveryPackage> get _visibleRoute{final q=search.trim().toLowerCase();final items=_route.where((p)=>q.isEmpty||p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q)).toList();items.sort((a,b){final az=a.physicalZone?.trim().isNotEmpty==true?1:0;final bz=b.physicalZone?.trim().isNotEmpty==true?1:0;return bz.compareTo(az);});return items;}
   DeliveryPackage? _selected(){
     final id=selectedId;
     if(id==null)return null;
@@ -192,7 +192,7 @@ class _LoadScreenState extends State<LoadScreen>{
   Widget _packageTile(BuildContext context,DeliveryPackage p,bool selected){
     final zone=p.physicalZone?.trim();
     final address=p.address.formatted.isEmpty?p.address.raw:p.address.formatted;
-    return Card(key:_tileKeys.putIfAbsent(p.id,()=>GlobalKey()),margin:const EdgeInsets.only(bottom:6),child:ListTile(selected:selected,leading:CircleAvatar(radius:24,child:Text(p.scanNumber.toString().padLeft(2,'0'),style:const TextStyle(fontWeight:FontWeight.w900))),title:Text(p.label,style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text(_isMoto?address:(zone?.isNotEmpty==true?'$zone\n$address':'Sem posição no carro\n$address'),maxLines:2,overflow:TextOverflow.ellipsis),trailing:_isMoto?null:(zone?.isNotEmpty==true?const Chip(label:Text('OK')):const Chip(label:Text('Falta'))),onTap:()=>_togglePackage(p.id)));
+    final cs=Theme.of(context).colorScheme;return Card(key:_tileKeys.putIfAbsent(p.id,()=>GlobalKey()),margin:const EdgeInsets.only(bottom:6),color:selected?cs.inverseSurface:null,child:ListTile(selected:selected,selectedColor:selected?cs.onInverseSurface:null,leading:CircleAvatar(radius:24,backgroundColor:selected?cs.onInverseSurface:cs.primaryContainer,foregroundColor:selected?cs.inverseSurface:null,child:Text(p.scanNumber.toString().padLeft(2,'0'),style:const TextStyle(fontWeight:FontWeight.w900))),title:Text(p.label,style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text(_isMoto?address:(zone?.isNotEmpty==true?'$zone\n$address':'Sem posição no carro\n$address'),maxLines:2,overflow:TextOverflow.ellipsis),trailing:_isMoto?null:(zone?.isNotEmpty==true?const Chip(label:Text('OK')):const Chip(label:Text('Falta'))),onTap:()=>_togglePackage(p.id)));
   }
 }
 
