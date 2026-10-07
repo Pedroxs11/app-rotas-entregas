@@ -11,10 +11,11 @@ class LoadScreen extends StatefulWidget {
 
 class _LoadScreenState extends State<LoadScreen>{
   String? selectedId;
+  bool get _isMoto=>widget.state.vehicleType==VehicleType.motorcycle;
 
   bool _active(DeliveryPackage p)=>p.status==DeliveryStatus.pending||p.status==DeliveryStatus.current||p.status==DeliveryStatus.absent||p.status==DeliveryStatus.addressProblem;
   List<DeliveryPackage> get _route=>widget.state.packages.where(_active).toList();
-  bool get _organized=>_route.isNotEmpty&&_route.every((p)=>p.physicalZone?.trim().isNotEmpty==true);
+  bool get _organized=>_route.isNotEmpty&&(_isMoto||_route.every((p)=>p.physicalZone?.trim().isNotEmpty==true));
 
   DeliveryPackage? _selected(){
     final id=selectedId;
@@ -43,17 +44,17 @@ class _LoadScreenState extends State<LoadScreen>{
     final assigned=route.where((p)=>p.physicalZone?.trim().isNotEmpty==true).length;
     final missing=route.length-assigned;
     return Scaffold(
-      appBar:AppBar(title:const Text('Organizar o carro')),
+      appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[PopupMenuButton<VehicleType>(tooltip:'Veículo',onSelected:(v)=>setState(()=>widget.state.setVehicleType(v)),itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))])]),
       body:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
         Padding(padding:const EdgeInsets.fromLTRB(16,12,16,8),child:Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text('$assigned de ${route.length} pacotes posicionados',style:Theme.of(context).textTheme.titleLarge),
+          Text(_isMoto?'${route.length} pacotes • número como identificação':'$assigned de ${route.length} pacotes posicionados',style:Theme.of(context).textTheme.titleLarge),
           const SizedBox(height:6),
-          Text(selected==null?'Toque em um pacote e depois toque na área do carro onde ele ficará.':'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque na área do carro.'),
+          Text(_isMoto?'Na moto não usamos quadrantes. Use o número grande do pacote.':(selected==null?'Toque em um pacote e depois toque na área do carro onde ele ficará.':'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque na área do carro.')),
           const SizedBox(height:10),
           LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
         ])))),
         Expanded(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(16,0,16,12),child:Column(children:[
-          _carDiagram(context,route),
+          if(_isMoto)_motoCard(context,route) else _carDiagram(context,route),
           const SizedBox(height:14),
           if(selected!=null)SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:_clearSelected,icon:const Icon(Icons.remove_circle_outline),label:const Text('TIRAR PACOTE SELECIONADO DO CARRO'))),
           const SizedBox(height:8),
@@ -66,6 +67,8 @@ class _LoadScreenState extends State<LoadScreen>{
       ]),
     );
   }
+
+  Widget _motoCard(BuildContext context,List<DeliveryPackage> route){return Card(child:Padding(padding:const EdgeInsets.all(20),child:Column(children:[const Icon(Icons.two_wheeler,size:56),const SizedBox(height:8),const Text('MODO MOTO',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),const SizedBox(height:6),const Text('Sem quadrantes. Cada pacote será identificado pelo número.',textAlign:TextAlign.center),const SizedBox(height:14),Wrap(spacing:10,runSpacing:10,children:[for(final p in route.take(12))Container(width:72,padding:const EdgeInsets.symmetric(vertical:10),decoration:BoxDecoration(borderRadius:BorderRadius.circular(14),color:Theme.of(context).colorScheme.primaryContainer),child:Text(p.scanNumber.toString().padLeft(2,'0'),textAlign:TextAlign.center,style:const TextStyle(fontSize:26,fontWeight:FontWeight.w900)))])])));}
 
   Widget _carDiagram(BuildContext context,List<DeliveryPackage> route){
     final selected=_selected();
