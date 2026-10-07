@@ -21,7 +21,7 @@ class _LoadScreenState extends State<LoadScreen>{
   List<DeliveryPackage> get _route=>widget.state.packages.where(_active).toList();
   bool get _organized=>_route.isNotEmpty&&(_isMoto||_route.every((p)=>p.physicalZone?.trim().isNotEmpty==true));
 
-  List<DeliveryPackage> get _visibleRoute{final q=search.trim().toLowerCase();final items=_route.where((p)=>q.isEmpty||p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q)).toList();items.sort((a,b){final az=a.physicalZone?.trim().isNotEmpty==true?1:0;final bz=b.physicalZone?.trim().isNotEmpty==true?1:0;return bz.compareTo(az);});return items;}
+  List<DeliveryPackage> get _visibleRoute{final q=search.trim().toLowerCase();final items=_route.where((p){final unassigned=_isMoto||p.physicalZone?.trim().isNotEmpty!=true;if(!unassigned)return false;return q.isEmpty||p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q);}).toList();return items;}
   DeliveryPackage? _selected(){
     final id=selectedId;
     if(id==null)return null;
