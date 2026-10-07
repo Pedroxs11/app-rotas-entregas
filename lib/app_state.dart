@@ -1,7 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'domain/models.dart';
 import 'services/address_parser.dart';import 'services/package_service.dart';import 'services/local_store.dart';import 'services/package_store.dart';import 'services/sqlite_package_store.dart';import 'services/migrating_package_store.dart';import 'services/nominatim_geocoding_service.dart';import 'services/route_engine.dart';import 'services/cep_service.dart';import 'services/bounded_async.dart';
+enum VehicleType { car, motorcycle }
+
 class AppState extends ChangeNotifier {
+ VehicleType vehicleType=VehicleType.car;
+ void setVehicleType(VehicleType value){if(vehicleType==value)return;vehicleType=value;notifyListeners();}
  final PackageStore store;final geocoder=NominatimGeocodingService();final routeEngine=RouteEngine();final CepService cepService=ViaCepService();late final PackageService packageService=PackageService(AddressParser());List<DeliveryPackage> packages=[];bool loading=true,locating=false,routeOptimized=false;String? startupError;int lastLocateAttempted=0,lastLocateSucceeded=0,lastLocateFailed=0;
  AppState({PackageStore? store}):store=store??MigratingPackageStore(primary:SqlitePackageStore(),legacy:LocalStore());
  int get reviewCount=>packages.where((p)=>p.status!=DeliveryStatus.delivered&&p.address.validation!=ValidationStatus.confirmed).length;int get deliveredCount=>packages.where((p)=>p.status==DeliveryStatus.delivered).length;int get locatedCount=>packages.where((p)=>p.status!=DeliveryStatus.delivered&&p.address.latitude!=null&&p.address.longitude!=null).length;int get retryCount=>packages.where((p)=>p.status==DeliveryStatus.absent||p.status==DeliveryStatus.addressProblem||p.status==DeliveryStatus.skipped).length;
