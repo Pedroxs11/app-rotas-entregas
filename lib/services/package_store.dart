@@ -8,7 +8,6 @@ import '../domain/models.dart';
 abstract class PackageStore {
   Future<List<DeliveryPackage>> load();
   Future<bool> loadRouteOptimized();
-  Future<String?> loadVehicleType();
-  Future<void> save(List<DeliveryPackage> packages,{bool? routeOptimized,String? vehicleType});
+  Future<void> save(List<DeliveryPackage> packages,{bool? routeOptimized});
   Future<void> clear();
 }
