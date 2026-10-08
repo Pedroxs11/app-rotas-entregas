@@ -1,7 +1,7 @@
 name: app_rotas_entregas
 description: Triagem inteligente e otimização de rotas de entrega.
 publish_to: 'none'
-version: 0.2.0+7
+version: 0.2.0+8
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
