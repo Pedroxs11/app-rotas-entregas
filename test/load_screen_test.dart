@@ -79,5 +79,9 @@ void main(){
     expect(find.text('12'),findsWidgets);
     expect(find.text('INICIAR ENTREGAS'),findsOneWidget);
     expect(state.packages.every((p)=>p.physicalZone==null),isTrue);
+
+    final progress=tester.widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator));
+    expect(progress.value,1.0);
+    expect(find.text('Todos os pacotes estão posicionados. Confira o carro antes de sair.'),findsNothing);
   });
 }
