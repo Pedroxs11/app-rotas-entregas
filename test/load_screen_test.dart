@@ -59,4 +59,25 @@ void main(){
     expect(state.packages.first.physicalZone,'Frente esquerda');
     expect(find.text('P01'),findsOneWidget);
   });
+
+
+  testWidgets('moto does not require physical zones and uses package number identification', (tester) async {
+    final store=_LoadStore([_package(7),_package(12)]);
+    final state=AppState(store:store);
+    await state.init();
+    state.setVehicleType(VehicleType.motorcycle);
+
+    await tester.pumpWidget(MaterialApp(home:LoadScreen(state:state)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MODO MOTO'),findsOneWidget);
+    expect(find.text('Sem quadrantes. Cada pacote será identificado pelo número.'),findsOneWidget);
+    expect(find.text('FRENTE E'),findsNothing);
+    expect(find.text('TRASEIRA E'),findsNothing);
+    expect(find.text('PORTA-MALAS'),findsNothing);
+    expect(find.text('07'),findsWidgets);
+    expect(find.text('12'),findsWidgets);
+    expect(find.text('INICIAR ENTREGAS'),findsOneWidget);
+    expect(state.packages.every((p)=>p.physicalZone==null),isTrue);
+  });
 }
