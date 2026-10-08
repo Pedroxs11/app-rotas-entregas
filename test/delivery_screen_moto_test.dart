@@ -24,9 +24,10 @@ class _DeliveryStore implements PackageStore {
   }
 }
 
-DeliveryPackage _package(int n, String street) => DeliveryPackage(
+DeliveryPackage _package(int n, String street, {String? physicalZone}) => DeliveryPackage(
       id: 'p$n',
       scanNumber: n,
+      physicalZone: physicalZone,
       address: AddressData(
         raw: '$street, $n',
         street: street,
@@ -48,8 +49,9 @@ Future<AppState> _motoState(List<DeliveryPackage> packages) async {
 
 void main() {
   testWidgets('moto highlights the next package number and address', (tester) async {
-    final first = _package(7, 'Rua Teste');
-    final second = _package(12, 'Avenida Próxima');
+    // Existing physical zones must be ignored when a route is used in Moto mode.
+    final first = _package(7, 'Rua Teste', physicalZone: 'Frente esquerda');
+    final second = _package(12, 'Avenida Próxima', physicalZone: 'Porta-malas');
     final state = await _motoState([first, second]);
 
     await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
@@ -59,6 +61,8 @@ void main() {
     expect(find.text(first.label), findsWidgets);
     expect(find.text('Rua Teste, 7, São Paulo, SP'), findsOneWidget);
     expect(find.textContaining('Entrega 1 de 2'), findsOneWidget);
+    expect(find.text('Frente esquerda'), findsNothing);
+    expect(find.text('Porta-malas'), findsNothing);
 
     final packageTexts = tester.widgetList<Text>(find.text(first.label));
     expect(packageTexts.any((text) => text.style?.fontSize == 34), isTrue);
@@ -91,5 +95,19 @@ void main() {
 
     final packageTexts = tester.widgetList<Text>(find.text(second.label));
     expect(packageTexts.any((text) => text.style?.fontSize == 34), isTrue);
+  });
+
+  testWidgets('car keeps using the physical loading position', (tester) async {
+    final first = _package(7, 'Rua Teste', physicalZone: 'Frente esquerda');
+    final second = _package(12, 'Avenida Próxima', physicalZone: 'Frente direita');
+    final state = AppState(store: _DeliveryStore([first, second]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('PEGUE ESTE PACOTE'), findsOneWidget);
+    expect(find.text('Frente esquerda'), findsOneWidget);
+    expect(find.text('Rua Teste, 7, São Paulo, SP'), findsOneWidget);
   });
 }
