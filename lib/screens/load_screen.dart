@@ -60,7 +60,7 @@ class _LoadScreenState extends State<LoadScreen>{
           const SizedBox(height:6),
           Text(_isMoto?'Na moto não usamos quadrantes. Use o número grande do pacote.':(selected==null?'Toque em um pacote e depois toque na área do carro onde ele ficará.':'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque na área do carro.')),
           const SizedBox(height:10),
-          LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
+          LinearProgressIndicator(value:route.isEmpty?0:(_isMoto?1:assigned/route.length)),
         ])))),
         Expanded(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(16,0,16,12),child:Column(children:[
           if(_isMoto)_motoCard(context,route) else _carDiagram(context,route),
@@ -72,7 +72,7 @@ class _LoadScreenState extends State<LoadScreen>{
           TextField(decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Buscar pacote ou endereço',border:OutlineInputBorder(),isDense:true),onChanged:(v)=>setState(()=>search=v)),
           const SizedBox(height:8),
           Listener(behavior:HitTestBehavior.translucent,onPointerDown:(e)=>_dragSelect(e.position),onPointerMove:(e)=>_dragSelect(e.position),child:Column(children:[for(final p in _visibleRoute)_packageTile(context,p,multiSelect?selectedIds.contains(p.id):selected?.id==p.id)])),
-          if(missing==0)Padding(padding:const EdgeInsets.only(top:8),child:Text('Todos os pacotes estão posicionados. Confira o carro antes de sair.',style:TextStyle(color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w600))),
+          if(!_isMoto&&missing==0)Padding(padding:const EdgeInsets.only(top:8),child:Text('Todos os pacotes estão posicionados. Confira o carro antes de sair.',style:TextStyle(color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w600))),
         ]))),
         SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>DeliveryScreen(state:widget.state))):null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
       ]),
