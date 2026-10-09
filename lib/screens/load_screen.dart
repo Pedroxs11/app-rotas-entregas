@@ -14,6 +14,9 @@ class _LoadScreenState extends State<LoadScreen>{
   final Set<String> selectedIds=<String>{};
   final Map<String,GlobalKey> _tileKeys=<String,GlobalKey>{};
   bool multiSelect=false;
+  Offset? _selectionPointerStart;
+  bool _dragSelecting=false;
+  bool _suppressNextTap=false;
   String search='';
   bool get _isMoto=>widget.state.vehicleType==VehicleType.motorcycle;
 
@@ -35,10 +38,13 @@ class _LoadScreenState extends State<LoadScreen>{
     try{for(final id in ids){await widget.state.setPhysicalZone(id,zone);}if(mounted)setState((){selectedId=null;selectedIds.clear();});}
     catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
   }
-  void _togglePackage(String id){setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
+  void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
   void _selectAll(){setState(()=>selectedIds.addAll(_visibleRoute.map((p)=>p.id)));}
-  void _dragSelect(Offset pos){if(!multiSelect)return;for(final p in _visibleRoute){final ctx=_tileKeys[p.id]?.currentContext;if(ctx==null)continue;final box=ctx.findRenderObject() as RenderBox;final rect=box.localToGlobal(Offset.zero)&box.size;if(rect.contains(pos)&&!selectedIds.contains(p.id)){setState(()=>selectedIds.add(p.id));break;}}}
+  void _selectionPointerDown(Offset pos){if(!multiSelect)return;_selectionPointerStart=pos;_dragSelecting=false;}
+  void _selectionPointerMove(Offset pos){if(!multiSelect||_selectionPointerStart==null)return;final start=_selectionPointerStart!;if(!_dragSelecting&&(pos-start).distance>10){_dragSelecting=true;_selectAt(start);}if(_dragSelecting)_selectAt(pos);}
+  void _selectionPointerUp(){if(_dragSelecting){_suppressNextTap=true;WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_suppressNextTap=false;});}_selectionPointerStart=null;_dragSelecting=false;}
+  void _selectAt(Offset pos){for(final p in _visibleRoute){final ctx=_tileKeys[p.id]?.currentContext;if(ctx==null)continue;final object=ctx.findRenderObject();if(object is! RenderBox||!object.hasSize)continue;final rect=object.localToGlobal(Offset.zero)&object.size;if(rect.contains(pos)&&!selectedIds.contains(p.id)){setState(()=>selectedIds.add(p.id));break;}}}
 
   Future<void> _clearSelected()async{
     final p=_selected();
@@ -71,7 +77,7 @@ class _LoadScreenState extends State<LoadScreen>{
           const SizedBox(height:8),
           TextField(decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Buscar pacote ou endereço',border:OutlineInputBorder(),isDense:true),onChanged:(v)=>setState(()=>search=v)),
           const SizedBox(height:8),
-          Listener(behavior:HitTestBehavior.translucent,onPointerDown:(e)=>_dragSelect(e.position),onPointerMove:(e)=>_dragSelect(e.position),child:Column(children:[for(final p in _visibleRoute)_packageTile(context,p,multiSelect?selectedIds.contains(p.id):selected?.id==p.id)])),
+          Listener(behavior:HitTestBehavior.translucent,onPointerDown:(e)=>_selectionPointerDown(e.position),onPointerMove:(e)=>_selectionPointerMove(e.position),onPointerUp:(_)=>_selectionPointerUp(),onPointerCancel:(_)=>_selectionPointerUp(),child:Column(children:[for(final p in _visibleRoute)_packageTile(context,p,multiSelect?selectedIds.contains(p.id):selected?.id==p.id)])),
           if(!_isMoto&&missing==0)Padding(padding:const EdgeInsets.only(top:8),child:Text('Todos os pacotes estão posicionados. Confira o carro antes de sair.',style:TextStyle(color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w600))),
         ]))),
         SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>DeliveryScreen(state:widget.state))):null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
