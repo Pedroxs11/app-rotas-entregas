@@ -61,6 +61,28 @@ void main(){
   });
 
 
+  testWidgets('multi-select keeps individually tapped packages selected and assigns them together', (tester) async {
+    final store=_LoadStore([_package(1),_package(2),_package(3)]);
+    final state=AppState(store:store);
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home:LoadScreen(state:state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+    await tester.tap(find.text('Pacote 01'));
+    await tester.tap(find.text('Pacote 02'));
+    await tester.pump();
+
+    await tester.tap(find.text('FRENTE E'));
+    await tester.pumpAndSettle();
+
+    expect(state.packages[0].physicalZone,'Frente esquerda');
+    expect(state.packages[1].physicalZone,'Frente esquerda');
+    expect(state.packages[2].physicalZone,isNull);
+  });
+
   testWidgets('moto does not require physical zones and uses package number identification', (tester) async {
     final store=_LoadStore([_package(7),_package(12)]);
     final state=AppState(store:store);
