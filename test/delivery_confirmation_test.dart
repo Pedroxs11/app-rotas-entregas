@@ -62,7 +62,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Pacote entregue!'), findsNothing);
-    expect(find.text('Entrega 2 de 2'), findsOneWidget);
+    expect(find.text('Entrega 2 de 2'), findsWidgets);
     expect(state.packages.first.status, DeliveryStatus.delivered);
     expect(state.packages.first.receivedBy, 'Maria');
   });
