@@ -71,7 +71,9 @@ void main(){
 
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
+    await tester.ensureVisible(find.text('Pacote 01'));
     await tester.tap(find.text('Pacote 01'));
+    await tester.ensureVisible(find.text('Pacote 02'));
     await tester.tap(find.text('Pacote 02'));
     await tester.pump();
 
