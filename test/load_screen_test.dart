@@ -77,6 +77,7 @@ void main(){
     await tester.tap(find.text('Pacote 02'));
     await tester.pump();
 
+    await tester.ensureVisible(find.text('FRENTE E'));
     await tester.tap(find.text('FRENTE E'));
     await tester.pumpAndSettle();
 
