@@ -17,7 +17,13 @@ class DeliveryScreen extends StatelessWidget {
 
   Future<void> _finish(BuildContext context,int i,DeliveryPackage p,DeliveryStatus status,String label)async{final delivered=status==DeliveryStatus.delivered;String? receivedBy;if(delivered){receivedBy=await _askReceiver(context);if(receivedBy==null)return;}await state.update(i,p.copyWith(status:status,receivedBy:receivedBy,completedAt:delivered?DateTime.now():null,clearCompletedAt:!delivered));if(!context.mounted)return;final next=_next();if(delivered){await _showDeliveryConfirmation(context,hasNext:next!=null);if(next!=null&&context.mounted){await Navigator.of(context).pushReplacement(MaterialPageRoute(builder:(_)=>DeliveryScreen(state:state)));}return;}ScaffoldMessenger.of(context).clearSnackBars();ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration:const Duration(seconds:2),content:Text(next==null?'$label. Passagem concluída.':'$label. Próximo: ${next.physicalZone?.trim().isNotEmpty==true?next.physicalZone:next.label}')));}
 
-  Future<String?> _askReceiver(BuildContext context)async{final controller=TextEditingController();String? error;final result=await showDialog<String>(context:context,barrierDismissible:false,builder:(d)=>StatefulBuilder(builder:(context,setDialogState)=>AlertDialog(title:const Text('Quem recebeu?'),content:TextField(controller:controller,autofocus:true,textCapitalization:TextCapitalization.words,textInputAction:TextInputAction.done,decoration:InputDecoration(labelText:'Nome de quem recebeu',hintText:'Ex.: Maria',errorText:error),onSubmitted:(_){final name=controller.text.trim();if(name.isEmpty){setDialogState(()=>error='Informe o nome para concluir a entrega.');}else{Navigator.pop(d,name);}}),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Cancelar')),FilledButton(onPressed:(){final name=controller.text.trim();if(name.isEmpty){setDialogState(()=>error='Informe o nome para concluir a entrega.');return;}Navigator.pop(d,name);},child:const Text('Confirmar entrega'))])));controller.dispose();return result;}
+  Future<String?> _askReceiver(BuildContext context) {
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _ReceiverNameDialog(),
+    );
+  }
 
   Future<void> _showDeliveryConfirmation(BuildContext context,{required bool hasNext})async{
     FocusManager.instance.primaryFocus?.unfocus();
@@ -55,4 +61,61 @@ class DeliveryScreen extends StatelessWidget {
   }
   Future<void> _addressProblem(BuildContext context,int i,DeliveryPackage p)async{final ok=await showDialog<bool>(context:context,builder:(d)=>AlertDialog(title:const Text('Problema com o endereço?'),content:const Text('O pacote ficará em Problemas para conferência. Ele não será tratado como entregue.'),actions:[TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Cancelar')),FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Marcar e seguir'))]));if(!context.mounted)return;if(ok==true)await _finish(context,i,p,DeliveryStatus.addressProblem,'Separado para conferência');}
   Future<void> _reoptimize(BuildContext context)async{try{final pos=await LocationService().current();await state.optimizeFrom(pos.latitude,pos.longitude);if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Entregas restantes reotimizadas. As posições físicas da carga foram mantidas.')));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}}
+}
+
+
+class _ReceiverNameDialog extends StatefulWidget {
+  const _ReceiverNameDialog();
+
+  @override
+  State<_ReceiverNameDialog> createState() => _ReceiverNameDialogState();
+}
+
+class _ReceiverNameDialogState extends State<_ReceiverNameDialog> {
+  final TextEditingController _controller = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _confirm() {
+    final name = _controller.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Informe o nome para concluir a entrega.');
+      return;
+    }
+    Navigator.of(context).pop(name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Quem recebeu?'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.words,
+        textInputAction: TextInputAction.done,
+        decoration: InputDecoration(
+          labelText: 'Nome de quem recebeu',
+          hintText: 'Ex.: Maria',
+          errorText: _error,
+        ),
+        onSubmitted: (_) => _confirm(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _confirm,
+          child: const Text('Confirmar entrega'),
+        ),
+      ],
+    );
+  }
 }
