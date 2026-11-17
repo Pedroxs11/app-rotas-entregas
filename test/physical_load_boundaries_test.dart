@@ -13,6 +13,14 @@ class LoadStore implements PackageStore {
   @override Future<bool> loadRouteOptimized()async=>optimized;
   @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized})async{packages=[...value];if(routeOptimized!=null)optimized=routeOptimized;saves++;}
   @override Future<void> clear()async{packages=[];optimized=false;}
+ test('clears several package compartments in one persistence operation',()async{
+  final store=LoadStore([_p(1,zone:'Porta-malas'),_p(2,zone:'Porta-malas'),_p(3,zone:'Frente esquerda')]);
+  final state=AppState(store:store);await state.init();
+  await state.clearPhysicalZones({'p1','p2'});
+  expect(state.packages.map((p)=>p.physicalZone).toList(),[null,null,'Frente esquerda']);
+  expect(store.saves,1);
+ });
+
 }
 
 DeliveryPackage _p(int n,{DeliveryStatus status=DeliveryStatus.pending,String? zone})=>DeliveryPackage(
