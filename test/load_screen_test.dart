@@ -203,4 +203,34 @@ void main(){
     expect(state.packages.every((p)=>p.physicalZone=='Frente direita'),isTrue);
   });
 
+
+  testWidgets('drag selection selects every package crossed by the pointer', (tester) async {
+    tester.view.physicalSize = const Size(400, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = AppState(store: _LoadStore([
+      _package(1),
+      _package(2),
+      _package(3),
+    ]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+
+    final first = tester.getCenter(find.text('Pacote 01'));
+    final second = tester.getCenter(find.text('Pacote 02'));
+    final gesture = await tester.startGesture(first);
+    await gesture.moveTo(second);
+    await gesture.up();
+    await tester.pump();
+
+    expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
 }

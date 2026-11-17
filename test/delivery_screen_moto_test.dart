@@ -115,6 +115,23 @@ void main() {
     expect(packageTexts.any((text) => text.style?.fontSize == 34), isTrue);
   });
 
+
+  testWidgets('delivery screen remains scrollable on a compact phone viewport', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = await _motoState([_package(7, 'Rua Teste')]);
+    await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('ENTREGUE • PRÓXIMO'), findsOneWidget);
+    await tester.ensureVisible(find.text('ENTREGUE • PRÓXIMO'));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('car keeps using the physical loading position', (tester) async {
     final first = _package(7, 'Rua Teste', physicalZone: 'Frente esquerda');
     final second = _package(12, 'Avenida Próxima', physicalZone: 'Frente direita');
