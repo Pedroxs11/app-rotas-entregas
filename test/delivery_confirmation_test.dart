@@ -47,10 +47,10 @@ void main() {
     await state.init();
 
     await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     await tester.tap(find.text('ENTREGUE • PRÓXIMO'));
-    await tester.pumpAndSettle();
+    await tester.pump();
     await tester.enterText(find.byType(TextField), 'Maria');
     await tester.tap(find.text('Confirmar entrega'));
     await tester.pump();
@@ -61,7 +61,7 @@ void main() {
     expect(find.text('Pacote entregue!'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 1));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Pacote entregue!'), findsNothing);
     expect(find.text('Entrega 2 de 2'), findsWidgets);
