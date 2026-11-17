@@ -25,7 +25,8 @@ class _LoadScreenState extends State<LoadScreen>{
   bool _hasActiveZone(DeliveryPackage p)=>p.physicalZone?.trim().isNotEmpty==true&&widget.state.activePhysicalZones.contains(p.physicalZone);
   bool get _organized=>_route.isNotEmpty&&_route.every(_hasActiveZone);
 
-  List<DeliveryPackage> get _visibleRoute{final q=search.trim().toLowerCase();final items=_route.where((p){if(_hasActiveZone(p))return false;return q.isEmpty||p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q);}).toList();return items;}
+  bool _matchesSearch(DeliveryPackage p){final q=search.trim().toLowerCase();return q.isEmpty||p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q);}
+  List<DeliveryPackage> get _visibleRoute=>_route.where((p)=>!_hasActiveZone(p)&&_matchesSearch(p)).toList();
   DeliveryPackage? _selected(){
     final id=selectedId;
     if(id==null)return null;
@@ -41,7 +42,7 @@ class _LoadScreenState extends State<LoadScreen>{
   }
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
-  void _selectAll(){setState(()=>selectedIds.addAll(_visibleRoute.map((p)=>p.id)));}
+  void _selectAll(){setState(()=>selectedIds.addAll(_route.where(_matchesSearch).map((p)=>p.id)));}
   void _selectionPointerDown(Offset pos){if(!multiSelect)return;_selectionPointerStart=pos;_dragSelecting=false;}
   void _selectionPointerMove(Offset pos){if(!multiSelect||_selectionPointerStart==null)return;final start=_selectionPointerStart!;if(!_dragSelecting&&(pos-start).distance>10){_dragSelecting=true;_selectAt(start);}if(_dragSelecting)_selectAt(pos);}
   void _selectionPointerUp(){if(_dragSelecting){_suppressNextTap=true;WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_suppressNextTap=false;});}_selectionPointerStart=null;_dragSelecting=false;}
