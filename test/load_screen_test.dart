@@ -142,6 +142,42 @@ void main(){
   });
 
 
+  testWidgets('moto assigns multiple selected packages to one compartment', (tester) async {
+    final state = AppState(store: _LoadStore([
+      _package(7),
+      _package(12),
+      _package(18),
+    ]));
+    await state.init();
+    await state.setVehicleType(VehicleType.motorcycle);
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+    await tester.ensureVisible(find.text('Pacote 07'));
+    await tester.tap(find.text('Pacote 07'));
+    await tester.ensureVisible(find.text('Pacote 12'));
+    await tester.tap(find.text('Pacote 12'));
+    await tester.pump();
+
+    expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
+    await tester.ensureVisible(find.text('BAÚ TRASEIRO'));
+    await tester.tap(find.text('BAÚ TRASEIRO'));
+    await tester.pumpAndSettle();
+
+    expect(state.packages[0].physicalZone, 'Baú traseiro');
+    expect(state.packages[1].physicalZone, 'Baú traseiro');
+    expect(state.packages[2].physicalZone, isNull);
+    expect(find.text('P07 • Baú traseiro'), findsOneWidget);
+    expect(find.text('P12 • Baú traseiro'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNotNull,
+    );
+  });
+
   testWidgets('multi-select can move assigned packages together with unassigned packages', (tester) async {
     final store=_LoadStore([
       _package(1,physicalZone:'Porta-malas'),
@@ -204,17 +240,15 @@ void main(){
   });
 
 
-  testWidgets('drag selection selects every package crossed by the pointer', (tester) async {
-    tester.view.physicalSize = const Size(400, 1600);
+  testWidgets('drag selection crosses an 80-package load without skipping cards', (tester) async {
+    tester.view.physicalSize = const Size(400, 10000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final state = AppState(store: _LoadStore([
-      _package(1),
-      _package(2),
-      _package(3),
-    ]));
+    final state = AppState(
+      store: _LoadStore(List.generate(80, (index) => _package(index + 1))),
+    );
     await state.init();
 
     await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
@@ -222,16 +256,14 @@ void main(){
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
 
-    await tester.ensureVisible(find.text('Pacote 01'));
-    await tester.ensureVisible(find.text('Pacote 02'));
     final first = tester.getCenter(find.text('Pacote 01'));
-    final second = tester.getCenter(find.text('Pacote 02'));
+    final last = tester.getCenter(find.text('Pacote 80'));
     final gesture = await tester.startGesture(first);
-    await gesture.moveTo(second);
+    await gesture.moveTo(last);
     await gesture.up();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
+    expect(find.text('80 pacote(s) selecionado(s)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
