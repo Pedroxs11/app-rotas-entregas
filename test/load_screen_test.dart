@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/screens/load_screen.dart';
@@ -32,6 +33,7 @@ DeliveryPackage _package(int n)=>DeliveryPackage(
 );
 
 void main(){
+  setUp((){SharedPreferences.setMockInitialValues({});});
   testWidgets('car diagram lets driver manually place a package', (tester) async {
     final store=_LoadStore([_package(1),_package(2)]);
     final state=AppState(store:store);
@@ -96,17 +98,20 @@ void main(){
     await tester.pumpAndSettle();
 
     expect(find.text('MODO MOTO'),findsOneWidget);
-    expect(find.text('Sem quadrantes. Cada pacote será identificado pelo número.'),findsOneWidget);
+    expect(find.text('Selecione pacotes e toque no baú, bolsa ou mochila para organizar.'),findsOneWidget);
+    expect(find.text('BAÚ TRASEIRO'),findsOneWidget);
+    expect(find.text('BOLSA LATERAL ESQUERDA'),findsOneWidget);
     expect(find.text('FRENTE E'),findsNothing);
     expect(find.text('TRASEIRA E'),findsNothing);
     expect(find.text('PORTA-MALAS'),findsNothing);
     expect(find.text('07'),findsWidgets);
     expect(find.text('12'),findsWidgets);
     expect(find.text('INICIAR ENTREGAS'),findsOneWidget);
+    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,isNull);
     expect(state.packages.every((p)=>p.physicalZone==null),isTrue);
 
     final progress=tester.widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator));
-    expect(progress.value,1.0);
-    expect(find.text('Todos os pacotes estão posicionados. Confira o carro antes de sair.'),findsNothing);
+    expect(progress.value,0.0);
+    expect(find.text('Todos os pacotes estão posicionados. Confira a carga antes de sair.'),findsNothing);
   });
 }
