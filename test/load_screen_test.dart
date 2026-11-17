@@ -101,7 +101,7 @@ void main(){
     expect(find.text('MODO MOTO'),findsOneWidget);
     expect(find.text('Toque no espaço da moto onde cada pacote será transportado.'),findsOneWidget);
     expect(find.text('BAÚ TRASEIRO'),findsOneWidget);
-    expect(find.text('BOLSA LATERAL ESQUERDA'),findsOneWidget);
+    expect(find.text('BOLSA ESQUERDA'),findsOneWidget);
     expect(find.text('FRENTE E'),findsNothing);
     expect(find.text('TRASEIRA E'),findsNothing);
     expect(find.text('PORTA-MALAS'),findsNothing);
