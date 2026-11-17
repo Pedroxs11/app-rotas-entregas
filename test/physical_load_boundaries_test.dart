@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoadStore implements PackageStore {
   LoadStore(this.packages);
@@ -21,6 +22,8 @@ DeliveryPackage _p(int n,{DeliveryStatus status=DeliveryStatus.pending,String? z
 );
 
 void main(){
+ TestWidgetsFlutterBinding.ensureInitialized();
+ setUp(() => SharedPreferences.setMockInitialValues({}));
  test('manual organization uses the five vehicle areas without auto distribution',()async{
   final store=LoadStore(List.generate(5,(i)=>_p(i+1)));final state=AppState(store:store);await state.init();
   expect(state.packages.every((p)=>p.physicalZone==null),isTrue);
