@@ -20,16 +20,23 @@ class AppState extends ChangeNotifier {
    if(activePhysicalZones.isEmpty)activePhysicalZones=[...defaults];
   }catch(e){debugPrint('Could not load vehicle settings: $e');}
  }
- void setVehicleType(VehicleType value){
+ Future<void> setVehicleType(VehicleType value)async{
   if(vehicleType==value)return;
   vehicleType=value;
   final defaults=value==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
-  activePhysicalZones=[...defaults];
-  SharedPreferences.getInstance().then((prefs)async{
+  try{
+   final prefs=await SharedPreferences.getInstance();
    await prefs.setString('load_vehicle_type',value.name);
+   final saved=prefs.getStringList(_zonesPreferenceKey);
+   activePhysicalZones=(saved??defaults).where(defaults.contains).toList();
+   if(activePhysicalZones.isEmpty)activePhysicalZones=[...defaults];
    await prefs.setStringList(_zonesPreferenceKey,activePhysicalZones);
-  });
-  notifyListeners();
+  }catch(e){
+   activePhysicalZones=[...defaults];
+   debugPrint('Could not load vehicle compartments: $e');
+  }
+  packages=packages.map((p)=>p.status==DeliveryStatus.delivered?p:p.copyWith(clearPhysicalZone:true)).toList();
+  await _persist();
  }
  Future<void> setActivePhysicalZones(List<String> zones)async{
   final defaults=vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
