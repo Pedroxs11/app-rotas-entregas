@@ -141,4 +141,39 @@ void main(){
     expect(find.text('P07 • Baú traseiro'),findsOneWidget);
   });
 
+
+  testWidgets('multi-select can move assigned packages together with unassigned packages', (tester) async {
+    final store=_LoadStore([
+      _package(1,physicalZone:'Porta-malas'),
+      _package(2),
+    ]);
+    final state=AppState(store:store);
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home:LoadScreen(state:state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('P01'));
+    await tester.tap(find.text('P01'));
+    await tester.pump();
+    final selectedChip=tester.widget<InputChip>(
+      find.ancestor(of:find.text('P01'),matching:find.byType(InputChip)),
+    );
+    expect(selectedChip.selected,isTrue);
+
+    await tester.ensureVisible(find.text('Pacote 02'));
+    await tester.tap(find.text('Pacote 02'));
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('FRENTE E'));
+    await tester.tap(find.text('FRENTE E'));
+    await tester.pumpAndSettle();
+
+    expect(state.packages[0].physicalZone,'Frente esquerda');
+    expect(state.packages[1].physicalZone,'Frente esquerda');
+  });
+
 }
