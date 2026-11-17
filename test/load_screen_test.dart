@@ -17,9 +17,10 @@ class _LoadStore implements PackageStore {
   }
 }
 
-DeliveryPackage _package(int n)=>DeliveryPackage(
+DeliveryPackage _package(int n,{String? physicalZone})=>DeliveryPackage(
   id:'p$n',
   scanNumber:n,
+  physicalZone:physicalZone,
   address:AddressData(
     raw:'Rua Teste, $n',
     street:'Rua Teste',
@@ -98,7 +99,7 @@ void main(){
     await tester.pumpAndSettle();
 
     expect(find.text('MODO MOTO'),findsOneWidget);
-    expect(find.text('Selecione pacotes e toque no baú, bolsa ou mochila para organizar.'),findsOneWidget);
+    expect(find.text('Toque no espaço da moto onde cada pacote será transportado.'),findsOneWidget);
     expect(find.text('BAÚ TRASEIRO'),findsOneWidget);
     expect(find.text('BOLSA LATERAL ESQUERDA'),findsOneWidget);
     expect(find.text('FRENTE E'),findsNothing);
@@ -114,4 +115,28 @@ void main(){
     expect(progress.value,0.0);
     expect(find.text('Todos os pacotes estão posicionados. Confira a carga antes de sair.'),findsNothing);
   });
+  testWidgets('moto treats old car compartments as unassigned and allows reassignment', (tester) async {
+    final store=_LoadStore([_package(7,physicalZone:'Frente esquerda')]);
+    final state=AppState(store:store);
+    await state.init();
+    state.setVehicleType(VehicleType.motorcycle);
+
+    await tester.pumpWidget(MaterialApp(home:LoadScreen(state:state)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pacote 07'),findsOneWidget);
+    expect(find.text('Frente esquerda'),findsNothing);
+    expect(find.text('BAÚ TRASEIRO'),findsOneWidget);
+    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,isNull);
+
+    await tester.tap(find.text('Pacote 07'));
+    await tester.pump();
+    await tester.tap(find.text('BAÚ TRASEIRO'));
+    await tester.pumpAndSettle();
+
+    expect(state.packages.single.physicalZone,'Baú traseiro');
+    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,isNotNull);
+    expect(find.text('P07 • Baú traseiro'),findsOneWidget);
+  });
+
 }
