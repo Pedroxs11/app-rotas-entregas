@@ -40,6 +40,7 @@ class UnlocatedAddressesScreen extends StatelessWidget {
       final pending = state.packages.where(_needsAttention).toList();
       final located = state.packages.where((p) => _active(p) && p.address.latitude != null && p.address.longitude != null).length;
       final total = state.packages.where(_active).length;
+      final retryable = pending.where((p) => p.address.validation == ValidationStatus.confirmed && (p.address.latitude == null || p.address.longitude == null)).length;
       return Scaffold(
         appBar: AppBar(
           title: const Text('Corrigir endereços'),
@@ -95,12 +96,17 @@ class UnlocatedAddressesScreen extends StatelessWidget {
                 ),
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: state.locating ? null : () async {
+              onPressed: state.locating || retryable == 0 ? null : () async {
                 await state.locateConfirmed();
               },
               icon: const Icon(Icons.location_searching),
-              label: const Text('TENTAR LOCALIZAR NOVAMENTE'),
+              label: Text(retryable == 0 ? 'CORRIJA OS DADOS PARA TENTAR' : 'TENTAR LOCALIZAR NOVAMENTE ($retryable)'),
             ),
+            if (retryable == 0 && pending.isNotEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text('Os endereços com alerta precisam ser corrigidos e confirmados antes de uma nova busca.', textAlign: TextAlign.center),
+              ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: () => Navigator.pop(context),
