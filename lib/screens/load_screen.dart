@@ -47,9 +47,9 @@ class _LoadScreenState extends State<LoadScreen>{
   void _selectAt(Offset pos){for(final p in _visibleRoute){final ctx=_tileKeys[p.id]?.currentContext;if(ctx==null)continue;final object=ctx.findRenderObject();if(object is! RenderBox||!object.hasSize)continue;final rect=object.localToGlobal(Offset.zero)&object.size;if(rect.contains(pos)&&!selectedIds.contains(p.id)){setState(()=>selectedIds.add(p.id));break;}}}
 
   Future<void> _clearSelected()async{
-    final p=_selected();
-    if(p==null)return;
-    try{await widget.state.setPhysicalZone(p.id,null);if(mounted)setState((){});}
+    final ids=selectedIds.isNotEmpty?selectedIds.toList():(_selected()==null?<String>[]:[_selected()!.id]);
+    if(ids.isEmpty)return;
+    try{for(final id in ids){await widget.state.setPhysicalZone(id,null);}if(mounted)setState((){selectedId=null;selectedIds.clear();});}
     catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
   }
 
@@ -63,15 +63,16 @@ class _LoadScreenState extends State<LoadScreen>{
       body:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
         Padding(padding:const EdgeInsets.fromLTRB(16,12,16,8),child:Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Text(_isMoto?'${route.length} pacotes • número como identificação':'$assigned de ${route.length} pacotes posicionados',style:Theme.of(context).textTheme.titleLarge),
+          if(!_isMoto&&multiSelect)Padding(padding:const EdgeInsets.only(top:6),child:Text('${selectedIds.length} pacote(s) selecionado(s)',style:TextStyle(fontWeight:FontWeight.w700,color:Theme.of(context).colorScheme.primary))),
           const SizedBox(height:6),
-          Text(_isMoto?'Na moto não usamos quadrantes. Use o número grande do pacote.':(selected==null?'Toque em um pacote e depois toque na área do carro onde ele ficará.':'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque na área do carro.')),
+          Text(_isMoto?'Na moto não usamos quadrantes. Use o número grande do pacote.':(multiSelect?'Selecione vários pacotes e toque uma vez no compartimento para guardar todos.':(selected==null?'Toque em um pacote e depois toque na área do carro onde ele ficará.':'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque na área do carro.'))),
           const SizedBox(height:10),
           LinearProgressIndicator(value:route.isEmpty?0:(_isMoto?1:assigned/route.length)),
         ])))),
         Expanded(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(16,0,16,12),child:Column(children:[
           if(_isMoto)_motoCard(context,route) else _carDiagram(context,route),
           const SizedBox(height:14),
-          if(!_isMoto&&(selected!=null||selectedIds.isNotEmpty))SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:_clearSelected,icon:const Icon(Icons.remove_circle_outline),label:const Text('TIRAR PACOTE SELECIONADO DO CARRO'))),
+          if(!_isMoto&&(selected!=null||selectedIds.isNotEmpty))SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:_clearSelected,icon:const Icon(Icons.remove_circle_outline),label:Text(selectedIds.length>1?'RETIRAR ${selectedIds.length} PACOTES DO CARRO':'TIRAR PACOTE SELECIONADO DO CARRO'))),
           const SizedBox(height:8),
           Row(children:[Expanded(child:Text(_isMoto?'Pacotes':'Pacotes para posicionar',style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.bold))),if(multiSelect)TextButton(onPressed:_selectAll,child:const Text('Selecionar todos'))]),
           const SizedBox(height:8),
