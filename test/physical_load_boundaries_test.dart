@@ -114,4 +114,23 @@ void main() {
     );
     expect(store.saves, 1);
   });
+  test('vehicle changes restore each vehicle compartment setup and clear pending positions', () async {
+    final store = LoadStore([_p(1, zone: 'Frente esquerda')]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.setActivePhysicalZones(['Frente esquerda', 'Porta-malas']);
+    await state.setVehicleType(VehicleType.motorcycle);
+    expect(state.activePhysicalZones, AppState.motorcyclePhysicalZones);
+    expect(state.packages.single.physicalZone, isNull);
+
+    await state.setActivePhysicalZones(['Baú traseiro']);
+    await state.setVehicleType(VehicleType.car);
+    expect(state.activePhysicalZones, ['Frente esquerda', 'Porta-malas']);
+    expect(state.packages.single.physicalZone, isNull);
+
+    await state.setVehicleType(VehicleType.motorcycle);
+    expect(state.activePhysicalZones, ['Baú traseiro']);
+  });
+
 }
