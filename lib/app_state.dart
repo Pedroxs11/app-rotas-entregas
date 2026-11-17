@@ -1,15 +1,56 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'domain/models.dart';
 import 'services/address_parser.dart';import 'services/package_service.dart';import 'services/local_store.dart';import 'services/package_store.dart';import 'services/sqlite_package_store.dart';import 'services/migrating_package_store.dart';import 'services/nominatim_geocoding_service.dart';import 'services/route_engine.dart';import 'services/cep_service.dart';import 'services/bounded_async.dart';
 enum VehicleType { car, motorcycle }
 
 class AppState extends ChangeNotifier {
  VehicleType vehicleType=VehicleType.car;
- void setVehicleType(VehicleType value){if(vehicleType==value)return;vehicleType=value;notifyListeners();}
+ static const carPhysicalZones=<String>['Frente esquerda','Frente direita','Traseira esquerda','Traseira direita','Porta-malas'];
+ static const motorcyclePhysicalZones=<String>['Baú traseiro','Bolsa lateral esquerda','Bolsa lateral direita','Mochila de entrega'];
+ List<String> activePhysicalZones=[...carPhysicalZones];
+ String get _zonesPreferenceKey=>vehicleType==VehicleType.car?'load_zones_car':'load_zones_motorcycle';
+ Future<void> _loadVehicleSettings()async{
+  try{
+   final prefs=await SharedPreferences.getInstance();
+   vehicleType=prefs.getString('load_vehicle_type')=='motorcycle'?VehicleType.motorcycle:VehicleType.car;
+   final defaults=vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
+   activePhysicalZones=prefs.getStringList(_zonesPreferenceKey)??[...defaults];
+   activePhysicalZones=activePhysicalZones.where(defaults.contains).toList();
+   if(activePhysicalZones.isEmpty)activePhysicalZones=[...defaults];
+  }catch(e){debugPrint('Could not load vehicle settings: $e');}
+ }
+ void setVehicleType(VehicleType value){
+  if(vehicleType==value)return;
+  vehicleType=value;
+  final defaults=value==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
+  activePhysicalZones=[...defaults];
+  SharedPreferences.getInstance().then((prefs)async{
+   await prefs.setString('load_vehicle_type',value.name);
+   await prefs.setStringList(_zonesPreferenceKey,activePhysicalZones);
+  });
+  notifyListeners();
+ }
+ Future<void> setActivePhysicalZones(List<String> zones)async{
+  final defaults=vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
+  final cleaned=zones.where(defaults.contains).toSet().toList();
+  if(cleaned.isEmpty)throw ArgumentError('Ative pelo menos um compartimento.');
+  final removed=activePhysicalZones.where((z)=>!cleaned.contains(z)).toSet();
+  activePhysicalZones=cleaned;
+  for(var i=0;i<packages.length;i++){
+   final p=packages[i];
+   if(removed.contains(p.physicalZone)){
+    packages=[...packages]..[i]=p.copyWith(clearPhysicalZone:true);
+   }
+  }
+  final prefs=await SharedPreferences.getInstance();
+  await prefs.setStringList(_zonesPreferenceKey,cleaned);
+  await _persist();
+ }
  final PackageStore store;final geocoder=NominatimGeocodingService();final routeEngine=RouteEngine();final CepService cepService=ViaCepService();late final PackageService packageService=PackageService(AddressParser());List<DeliveryPackage> packages=[];bool loading=true,locating=false,routeOptimized=false;String? startupError;int lastLocateAttempted=0,lastLocateSucceeded=0,lastLocateFailed=0;
  AppState({PackageStore? store}):store=store??MigratingPackageStore(primary:SqlitePackageStore(),legacy:LocalStore());
  int get reviewCount=>packages.where((p)=>p.status!=DeliveryStatus.delivered&&p.address.validation!=ValidationStatus.confirmed).length;int get deliveredCount=>packages.where((p)=>p.status==DeliveryStatus.delivered).length;int get locatedCount=>packages.where((p)=>p.status!=DeliveryStatus.delivered&&p.address.latitude!=null&&p.address.longitude!=null).length;int get retryCount=>packages.where((p)=>p.status==DeliveryStatus.absent||p.status==DeliveryStatus.addressProblem||p.status==DeliveryStatus.skipped).length;
- Future<void> init()async{try{packages=await store.load();routeOptimized=await store.loadRouteOptimized();startupError=null;}catch(e,st){startupError=e.toString();debugPrint('Storage startup failed: $e\n$st');}finally{loading=false;notifyListeners();}}
+ Future<void> init()async{try{await _loadVehicleSettings();packages=await store.load();routeOptimized=await store.loadRouteOptimized();startupError=null;}catch(e,st){startupError=e.toString();debugPrint('Storage startup failed: $e\n$st');}finally{loading=false;notifyListeners();}}
  Future<void> addFromText(String text,{String? trackingCode})async{var p=packageService.fromOcr(text,packages,trackingCode:trackingCode);p=p.copyWith(address:await _enrichCep(p.address));packages=_clearLoadLabels([...packages,p]);routeOptimized=false;await _persist();if(p.address.validation==ValidationStatus.confirmed)await locateConfirmed();}
  Future<int> addManyFromText(String text)async{final lines=text.split(RegExp(r'\r?\n')).map((e)=>e.trim()).where((e)=>e.isNotEmpty).toList();final parsed=<DeliveryPackage>[];var known=[...packages];for(final line in lines){try{final p=packageService.fromOcr(line,[...known,...parsed]);parsed.add(p);}catch(_){}}final enriched=await mapBounded(parsed,(p)async=>p.copyWith(address:await _enrichCep(p.address)),concurrency:4);if(enriched.isEmpty)return 0;packages=_clearLoadLabels([...packages,...enriched]);routeOptimized=false;await _persist();if(packages.any((p)=>p.address.validation==ValidationStatus.confirmed&&p.address.latitude==null))await locateConfirmed();return enriched.length;}
  Future<AddressData> _enrichCep(AddressData a)async{if(a.cep==null||a.cep!.replaceAll(RegExp(r'\D'),'').length!=8)return a;try{final c=await cepService.lookup(a.cep!);if(c==null)return a;final number=a.number?.trim();final hasNumber=number?.isNotEmpty==true;return AddressData(raw:a.raw,street:c.street.isNotEmpty?c.street:a.street,number:number,complement:a.complement,neighborhood:c.neighborhood.isNotEmpty?c.neighborhood:a.neighborhood,city:c.city.isNotEmpty?c.city:a.city,state:c.state.isNotEmpty?c.state:a.state,cep:c.cep,latitude:a.latitude,longitude:a.longitude,confidence:hasNumber?1.0:.70,validation:hasNumber?ValidationStatus.confirmed:ValidationStatus.needsReview);}catch(_){return a;}}
@@ -21,8 +62,7 @@ class AppState extends ChangeNotifier {
  Future<void> optimizeFrom(double lat,double lng)async{final activeStatuses={DeliveryStatus.pending,DeliveryStatus.current,DeliveryStatus.absent,DeliveryStatus.addressProblem};final finished=packages.where((p)=>!activeStatuses.contains(p.status)).toList();final active=packages.where((p)=>activeStatuses.contains(p.status)).toList();packages=[...finished,..._optimize(active,lat,lng)];routeOptimized=true;await _persist();}
  List<DeliveryPackage> _optimize(List<DeliveryPackage> active,double lat,double lng){final pinned=<int,DeliveryPackage>{};final free=<DeliveryPackage>[];for(var i=0;i<active.length;i++){if(active[i].pinned){pinned[i]=active[i];}else{free.add(active[i]);}}final optimized=routeEngine.optimize(free,startLat:lat,startLng:lng);for(final e in pinned.entries){final insertAt=e.key<0?0:(e.key>optimized.length?optimized.length:e.key);optimized.insert(insertAt,e.value);}return optimized;}
  Future<int> prepareRetryRoute(double lat,double lng,{bool includeAddressProblems=false,bool includeSkipped=false})async{final retry=packages.where((p)=>p.status==DeliveryStatus.absent||(includeAddressProblems&&p.status==DeliveryStatus.addressProblem)||(includeSkipped&&p.status==DeliveryStatus.skipped)).toList();if(retry.isEmpty)return 0;final ids=retry.map((p)=>p.id).toSet();final reset=retry.map((p)=>p.copyWith(status:DeliveryStatus.pending,clearCompletedAt:true)).toList();final optimized=_optimize(reset,lat,lng);final untouched=packages.where((p)=>!ids.contains(p.id)).toList();packages=_clearLoadLabels([...untouched,...optimized]);routeOptimized=true;await _persist();return optimized.length;}
- static const physicalZones=<String>['Frente esquerda','Frente direita','Traseira esquerda','Traseira direita','Porta-malas'];
- Future<void> setPhysicalZone(String packageId,String? zone)async{if(!routeOptimized)throw StateError('Otimize a rota antes de organizar a carga.');if(zone!=null&&!physicalZones.contains(zone))throw ArgumentError.value(zone,'zone','posição física inválida');final index=packages.indexWhere((p)=>p.id==packageId);if(index<0)throw StateError('Pacote não encontrado.');final p=packages[index];if(p.status==DeliveryStatus.delivered)throw StateError('Pacote entregue não pode ser reorganizado.');packages=[...packages]..[index]=p.copyWith(physicalZone:zone,clearPhysicalZone:zone==null);await _persist();}
+ Future<void> setPhysicalZone(String packageId,String? zone)async{if(!routeOptimized)throw StateError('Otimize a rota antes de organizar a carga.');if(zone!=null&&!activePhysicalZones.contains(zone))throw ArgumentError.value(zone,'zone','posição física inválida');final index=packages.indexWhere((p)=>p.id==packageId);if(index<0)throw StateError('Pacote não encontrado.');final p=packages[index];if(p.status==DeliveryStatus.delivered)throw StateError('Pacote entregue não pode ser reorganizado.');packages=[...packages]..[index]=p.copyWith(physicalZone:zone,clearPhysicalZone:zone==null);await _persist();}
  List<DeliveryPackage> _clearLoadLabels(List<DeliveryPackage> source)=>source.map((p)=>p.status==DeliveryStatus.delivered?p:p.copyWith(clearPhysicalZone:true)).toList();
  Future<void> clear()async{packages=[];routeOptimized=false;lastLocateAttempted=lastLocateSucceeded=lastLocateFailed=0;await store.clear();notifyListeners();}Future<void> _persist()async{await store.save(packages,routeOptimized:routeOptimized);notifyListeners();}
 }
