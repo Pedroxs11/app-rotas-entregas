@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/screens/delivery_screen.dart';
@@ -48,6 +49,7 @@ Future<AppState> _motoState(List<DeliveryPackage> packages) async {
 }
 
 void main() {
+  setUp(() { SharedPreferences.setMockInitialValues({}); });
   testWidgets('moto highlights the next package number and address', (tester) async {
     // Existing physical zones must be ignored when a route is used in Moto mode.
     final first = _package(7, 'Rua Teste', physicalZone: 'Frente esquerda');
