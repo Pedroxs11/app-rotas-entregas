@@ -296,13 +296,12 @@ class _LoadScreenState extends State<LoadScreen>{
           else
             Wrap(spacing:3,runSpacing:3,children:[
               for(final p in packages)
-                GestureDetector(
-                  onTap:(){if(mounted)setState(()=>selectedId=p.id);},
-                  child:Chip(
-                    visualDensity:VisualDensity.compact,
-                    padding:EdgeInsets.zero,
-                    label:Text('P${p.scanNumber.toString().padLeft(2,'0')}'),
-                  ),
+                InputChip(
+                  visualDensity:VisualDensity.compact,
+                  padding:EdgeInsets.zero,
+                  selected:multiSelect?selectedIds.contains(p.id):selected?.id==p.id,
+                  onSelected:(_)=>_togglePackage(p.id),
+                  label:Text('P${p.scanNumber.toString().padLeft(2,'0')}'),
                 ),
             ]),
         ]),
