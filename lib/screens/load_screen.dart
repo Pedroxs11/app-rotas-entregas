@@ -59,7 +59,9 @@ class _LoadScreenState extends State<LoadScreen>{
   void _selectAlong(Offset from,Offset to){
     final distance=(to-from).distance;
     final steps=(distance/8).ceil();
-    final sampleCount=steps<1?1:(steps>120?120:steps);
+    // Long selections can cross dozens of cards in one pointer event. Keep
+    // the sampling dense enough to avoid skipping cards on large routes.
+    final sampleCount=steps.clamp(1,512).toInt();
     for(var step=1;step<=sampleCount;step++){
       final point=from+(to-from)*(step/sampleCount);
       _selectAt(point);
