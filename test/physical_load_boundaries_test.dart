@@ -133,6 +133,21 @@ void main() {
     expect(state.activePhysicalZones, ['Baú traseiro']);
   });
 
+
+  test('disabling a compartment clears active packages but preserves delivered history', () async {
+    final store = LoadStore([
+      _p(1, zone: 'Porta-malas'),
+      _p(2, status: DeliveryStatus.delivered, zone: 'Porta-malas'),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.setActivePhysicalZones(['Frente esquerda']);
+
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, 'Porta-malas');
+  });
+
   test('assigns several selected packages in one persistence operation', () async {
     final store = LoadStore(List.generate(4, (i) => _p(i + 1)));
     final state = AppState(store: store);

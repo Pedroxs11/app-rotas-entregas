@@ -205,7 +205,7 @@ void main(){
 
 
   testWidgets('drag selection selects every package crossed by the pointer', (tester) async {
-    tester.view.physicalSize = const Size(400, 1000);
+    tester.view.physicalSize = const Size(400, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -222,10 +222,12 @@ void main(){
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
 
+    await tester.ensureVisible(find.text('Pacote 01'));
+    await tester.ensureVisible(find.text('Pacote 02'));
     final first = tester.getCenter(find.text('Pacote 01'));
     final second = tester.getCenter(find.text('Pacote 02'));
     final gesture = await tester.startGesture(first);
-    await gesture.moveTo(second);
+    await gesture.moveTo(second, timeOffset: const Duration(milliseconds: 100));
     await gesture.up();
     await tester.pump();
 

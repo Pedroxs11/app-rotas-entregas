@@ -46,7 +46,7 @@ class AppState extends ChangeNotifier {
   activePhysicalZones=cleaned;
   for(var i=0;i<packages.length;i++){
    final p=packages[i];
-   if(removed.contains(p.physicalZone)){
+   if(p.status!=DeliveryStatus.delivered&&removed.contains(p.physicalZone)){
     packages=[...packages]..[i]=p.copyWith(clearPhysicalZone:true);
    }
   }

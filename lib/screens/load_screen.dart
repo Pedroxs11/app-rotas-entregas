@@ -15,6 +15,7 @@ class _LoadScreenState extends State<LoadScreen>{
   final Map<String,GlobalKey> _tileKeys=<String,GlobalKey>{};
   bool multiSelect=false;
   Offset? _selectionPointerStart;
+  Offset? _selectionPointerLast;
   bool _dragSelecting=false;
   bool _suppressNextTap=false;
   String search='';
@@ -43,9 +44,28 @@ class _LoadScreenState extends State<LoadScreen>{
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
   void _selectAll(){setState(()=>selectedIds.addAll(_route.where(_matchesSearch).map((p)=>p.id)));}
-  void _selectionPointerDown(Offset pos){if(!multiSelect)return;_selectionPointerStart=pos;_dragSelecting=false;}
-  void _selectionPointerMove(Offset pos){if(!multiSelect||_selectionPointerStart==null)return;final start=_selectionPointerStart!;if(!_dragSelecting&&(pos-start).distance>10){_dragSelecting=true;_selectAt(start);}if(_dragSelecting)_selectAt(pos);}
-  void _selectionPointerUp(){if(_dragSelecting){_suppressNextTap=true;WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_suppressNextTap=false;});}_selectionPointerStart=null;_dragSelecting=false;}
+  void _selectionPointerDown(Offset pos){if(!multiSelect)return;_selectionPointerStart=pos;_selectionPointerLast=pos;_dragSelecting=false;}
+  void _selectionPointerMove(Offset pos){
+    if(!multiSelect||_selectionPointerStart==null)return;
+    final start=_selectionPointerStart!;
+    final previous=_selectionPointerLast??start;
+    if(!_dragSelecting&&(pos-start).distance>10){
+      _dragSelecting=true;
+      _selectAt(start);
+    }
+    if(_dragSelecting)_selectAlong(previous,pos);
+    _selectionPointerLast=pos;
+  }
+  void _selectAlong(Offset from,Offset to){
+    final distance=(to-from).distance;
+    final steps=(distance/8).ceil();
+    final sampleCount=steps<1?1:(steps>120?120:steps);
+    for(var step=1;step<=sampleCount;step++){
+      final point=from+(to-from)*(step/sampleCount);
+      _selectAt(point);
+    }
+  }
+  void _selectionPointerUp(){if(_dragSelecting){_suppressNextTap=true;WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_suppressNextTap=false;});}_selectionPointerStart=null;_selectionPointerLast=null;_dragSelecting=false;}
   void _selectAt(Offset pos){for(final p in _visibleRoute){final ctx=_tileKeys[p.id]?.currentContext;if(ctx==null)continue;final object=ctx.findRenderObject();if(object is! RenderBox||!object.hasSize)continue;final rect=object.localToGlobal(Offset.zero)&object.size;if(rect.contains(pos)&&!selectedIds.contains(p.id)){setState(()=>selectedIds.add(p.id));break;}}}
 
   Future<void> _clearSelected()async{

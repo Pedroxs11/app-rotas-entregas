@@ -116,7 +116,7 @@ void main() {
   });
 
 
-  testWidgets('delivery screen remains scrollable on a compact phone viewport', (tester) async {
+  testWidgets('delivery actions stay visible on a compact phone viewport', (tester) async {
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -128,7 +128,8 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('ENTREGUE • PRÓXIMO'), findsOneWidget);
-    await tester.ensureVisible(find.text('ENTREGUE • PRÓXIMO'));
+    final actionRect = tester.getRect(find.text('ENTREGUE • PRÓXIMO'));
+    expect(actionRect.bottom, lessThanOrEqualTo(640));
     expect(tester.takeException(), isNull);
   });
 
