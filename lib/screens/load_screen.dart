@@ -64,9 +64,9 @@ class _LoadScreenState extends State<LoadScreen>{
       body:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
         Padding(padding:const EdgeInsets.fromLTRB(16,12,16,8),child:Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Text('$assigned de ${route.length} pacotes posicionados',style:Theme.of(context).textTheme.titleLarge),
-          if(!_isMoto&&multiSelect)Padding(padding:const EdgeInsets.only(top:6),child:Text('${selectedIds.length} pacote(s) selecionado(s)',style:TextStyle(fontWeight:FontWeight.w700,color:Theme.of(context).colorScheme.primary))),
+          if(multiSelect)Padding(padding:const EdgeInsets.only(top:6),child:Text('${selectedIds.length} pacote(s) selecionado(s)',style:TextStyle(fontWeight:FontWeight.w700,color:Theme.of(context).colorScheme.primary))),
           const SizedBox(height:6),
-          Text(multiSelect?'Selecione vários pacotes e toque uma vez no compartimento para guardar todos.':(selected==null?'Toque em um pacote e depois toque na área do carro onde ele ficará.':'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque na área do carro.')),
+          Text(multiSelect?'Selecione vários pacotes e toque uma vez no compartimento para guardar todos.':(selected==null?(_isMoto?'Toque em um pacote e depois no baú, bolsa ou mochila.':'Toque em um pacote e depois na área do carro onde ele ficará.'):'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque no compartimento do veículo.')),
           const SizedBox(height:10),
           LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
         ])))),
@@ -157,18 +157,21 @@ class _LoadScreenState extends State<LoadScreen>{
             const SizedBox(height:10),
             const Text('TRASEIRA E BAGAGEM',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1)),
             const SizedBox(height:8),
-            Wrap(
-              spacing:8,
-              runSpacing:8,
-              alignment:WrapAlignment.center,
-              children:[
-                for(final zone in rearZones)
-                  SizedBox(
-                    width:rearZones.length==1?double.infinity:145,
-                    child:_zone(context,zone,label(zone),route,_selected(),wide:true),
-                  ),
-              ],
-            ),
+            if(rearZones.length==1)
+              _zone(context,rearZones.first,label(rearZones.first),route,_selected(),wide:true)
+            else
+              Wrap(
+                spacing:8,
+                runSpacing:8,
+                alignment:WrapAlignment.center,
+                children:[
+                  for(final zone in rearZones)
+                    SizedBox(
+                      width:145,
+                      child:_zone(context,zone,label(zone),route,_selected(),wide:true),
+                    ),
+                ],
+              ),
           ],
           const SizedBox(height:10),
           Wrap(
