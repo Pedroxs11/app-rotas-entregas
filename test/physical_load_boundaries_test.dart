@@ -133,4 +133,18 @@ void main() {
     expect(state.activePhysicalZones, ['Baú traseiro']);
   });
 
+  test('assigns several selected packages in one persistence operation', () async {
+    final store = LoadStore(List.generate(4, (i) => _p(i + 1)));
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.setPhysicalZones({'p1', 'p2', 'p3'}, 'Porta-malas');
+
+    expect(
+      state.packages.map((p) => p.physicalZone).toList(),
+      ['Porta-malas', 'Porta-malas', 'Porta-malas', null],
+    );
+    expect(store.saves, 1);
+  });
+
 }
