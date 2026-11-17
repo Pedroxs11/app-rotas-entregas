@@ -80,6 +80,32 @@ jobs:
           p.write_text(s)
           PY
 
+      - name: Add missing CameraX concurrent futures dependency
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("android/build.gradle.kts")
+          source = path.read_text()
+          block = """
+          // camera_android_camerax compiles against CameraX 1.5.x, which references
+          // CallbackToFutureAdapter but does not expose concurrent-futures transitively.
+          subprojects {
+              plugins.withId("com.android.library") {
+                  if (name == "camera_android_camerax") {
+                      dependencies.add(
+                          "implementation",
+                          "androidx.concurrent:concurrent-futures:1.2.0",
+                      )
+                  }
+              }
+          }
+          """
+          if "androidx.concurrent:concurrent-futures" not in source:
+              path.write_text(source.rstrip() + "\\n\\n" + block.lstrip())
+          PY
+
       - name: Get dependencies
         run: flutter pub get
 
