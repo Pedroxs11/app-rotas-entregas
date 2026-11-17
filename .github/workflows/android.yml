@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - play-internal-test
+      - feature/organizador-carga-configuravel
   workflow_dispatch:
 
 jobs:
