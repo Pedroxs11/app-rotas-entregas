@@ -133,45 +133,61 @@ class _LoadScreenState extends State<LoadScreen>{
 
   Widget _carDiagram(BuildContext context,List<DeliveryPackage> route){
     final selected=_selected();
-    return Container(
-      constraints:const BoxConstraints(maxWidth:390),
-      padding:const EdgeInsets.fromLTRB(14,12,14,14),
-      decoration:BoxDecoration(
-        color:Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius:BorderRadius.circular(42),
-        border:Border.all(color:Theme.of(context).colorScheme.outline,width:2),
-        boxShadow:[BoxShadow(color:Theme.of(context).colorScheme.shadow.withValues(alpha:.10),blurRadius:10,offset:const Offset(0,4))],
-      ),
-      child:Column(children:[
-        const Icon(Icons.directions_car_filled,size:38),
-        const Text('VISÃO DO CARRO',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1.1)),
-        const SizedBox(height:8),
-        Container(
-          height:20,
-          margin:const EdgeInsets.symmetric(horizontal:24),
-          decoration:BoxDecoration(
-            color:Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius:BorderRadius.circular(12),
-            border:Border.all(color:Theme.of(context).colorScheme.outlineVariant),
-          ),
-          child:Center(child:Text('PARA-BRISA • FRENTE',style:Theme.of(context).textTheme.labelSmall)),
+    final colors=Theme.of(context).colorScheme;
+    return SizedBox(
+      width:double.infinity,
+      child:CustomPaint(
+        painter:_CarSilhouettePainter(
+          fill:colors.surfaceContainerLow,
+          outline:colors.outline,
+          glass:colors.surfaceContainerHighest,
+          tire:colors.onSurface.withValues(alpha:.72),
         ),
-        const SizedBox(height:10),
-        Wrap(
-          spacing:8,
-          runSpacing:8,
-          alignment:WrapAlignment.center,
-          children:[
-            for(final zone in widget.state.activePhysicalZones)
-              SizedBox(
-                width:zone=='Porta-malas'?double.infinity:150,
-                child:_zone(context,zone,zone.toUpperCase(),route,selected,wide:zone=='Porta-malas'),
+        child:Padding(
+          padding:const EdgeInsets.fromLTRB(28,20,28,22),
+          child:Column(children:[
+            const SizedBox(height:8),
+            const Text('FRENTE DO VEÍCULO',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1.1)),
+            const SizedBox(height:12),
+            Container(
+              height:34,
+              margin:const EdgeInsets.symmetric(horizontal:30),
+              decoration:BoxDecoration(
+                color:colors.surfaceContainerHighest,
+                borderRadius:BorderRadius.circular(18),
+                border:Border.all(color:colors.outlineVariant),
               ),
-          ],
+              child:Center(child:Text('PARA-BRISA',style:Theme.of(context).textTheme.labelSmall)),
+            ),
+            const SizedBox(height:12),
+            Wrap(
+              spacing:8,
+              runSpacing:8,
+              alignment:WrapAlignment.center,
+              children:[
+                for(final zone in widget.state.activePhysicalZones)
+                  SizedBox(
+                    width:zone=='Porta-malas'?double.infinity:150,
+                    child:_zone(context,zone,zone.toUpperCase(),route,selected,wide:zone=='Porta-malas'),
+                  ),
+              ],
+            ),
+            const SizedBox(height:12),
+            Container(
+              height:24,
+              margin:const EdgeInsets.symmetric(horizontal:42),
+              decoration:BoxDecoration(
+                color:colors.surfaceContainerHighest,
+                borderRadius:BorderRadius.circular(12),
+                border:Border.all(color:colors.outlineVariant),
+              ),
+              child:Center(child:Text('TRASEIRA',style:Theme.of(context).textTheme.labelSmall)),
+            ),
+            const SizedBox(height:8),
+            const Text('Toque em um compartimento para guardar os pacotes selecionados.',textAlign:TextAlign.center),
+          ]),
         ),
-        const SizedBox(height:8),
-        const Text('Toque em um compartimento para guardar os pacotes selecionados.',textAlign:TextAlign.center),
-      ]),
+      ),
     );
   }
 
@@ -232,3 +248,51 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 }
 
+
+
+class _CarSilhouettePainter extends CustomPainter {
+  final Color fill,outline,glass,tire;
+  const _CarSilhouettePainter({required this.fill,required this.outline,required this.glass,required this.tire});
+
+  @override
+  void paint(Canvas canvas,Size size){
+    final scale=size.width/360;
+    final body=Path()
+      ..moveTo(size.width*.34,8*scale)
+      ..quadraticBezierTo(size.width*.50,-2*scale,size.width*.66,8*scale)
+      ..lineTo(size.width*.82,24*scale)
+      ..quadraticBezierTo(size.width*.91,34*scale,size.width*.92,54*scale)
+      ..lineTo(size.width*.92,size.height-54*scale)
+      ..quadraticBezierTo(size.width*.90,size.height-18*scale,size.width*.72,size.height-8*scale)
+      ..quadraticBezierTo(size.width*.50,size.height+2*scale,size.width*.28,size.height-8*scale)
+      ..quadraticBezierTo(size.width*.10,size.height-18*scale,size.width*.08,size.height-54*scale)
+      ..lineTo(size.width*.08,54*scale)
+      ..quadraticBezierTo(size.width*.09,34*scale,size.width*.18,24*scale)
+      ..close();
+    canvas.drawPath(body,Paint()..color=fill..style=PaintingStyle.fill);
+    canvas.drawPath(body,Paint()..color=outline..style=PaintingStyle.stroke..strokeWidth=2*scale);
+    final tirePaint=Paint()..color=tire;
+    for(final y in [size.height*.22,size.height*.76]){
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(size.width*.045,y-25*scale,14*scale,50*scale),Radius.circular(6*scale)),tirePaint);
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(size.width*.915,y-25*scale,14*scale,50*scale),Radius.circular(6*scale)),tirePaint);
+    }
+    final windshield=Path()
+      ..moveTo(size.width*.29,30*scale)
+      ..quadraticBezierTo(size.width*.50,18*scale,size.width*.71,30*scale)
+      ..lineTo(size.width*.78,76*scale)
+      ..quadraticBezierTo(size.width*.50,88*scale,size.width*.22,76*scale)
+      ..close();
+    canvas.drawPath(windshield,Paint()..color=glass..style=PaintingStyle.fill);
+    canvas.drawPath(windshield,Paint()..color=outline..style=PaintingStyle.stroke..strokeWidth=1.2*scale);
+    final rear=Path()
+      ..moveTo(size.width*.22,size.height-70*scale)
+      ..quadraticBezierTo(size.width*.50,size.height-58*scale,size.width*.78,size.height-70*scale)
+      ..lineTo(size.width*.72,size.height-28*scale)
+      ..quadraticBezierTo(size.width*.50,size.height-18*scale,size.width*.28,size.height-28*scale)
+      ..close();
+    canvas.drawPath(rear,Paint()..color=glass..style=PaintingStyle.fill);
+    canvas.drawPath(rear,Paint()..color=outline..style=PaintingStyle.stroke..strokeWidth=1.2*scale);
+  }
+  @override
+  bool shouldRepaint(covariant _CarSilhouettePainter oldDelegate)=>fill!=oldDelegate.fill||outline!=oldDelegate.outline||glass!=oldDelegate.glass||tire!=oldDelegate.tire;
+}
