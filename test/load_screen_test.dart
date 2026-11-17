@@ -227,7 +227,7 @@ void main(){
     final first = tester.getCenter(find.text('Pacote 01'));
     final second = tester.getCenter(find.text('Pacote 02'));
     final gesture = await tester.startGesture(first);
-    await gesture.moveTo(second, timeOffset: const Duration(milliseconds: 100));
+    await gesture.moveTo(second);
     await gesture.up();
     await tester.pump();
 
