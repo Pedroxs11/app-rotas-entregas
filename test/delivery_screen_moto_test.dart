@@ -90,6 +90,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 1500));
     await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
 
     expect(find.textContaining('Entrega 2 de 2'), findsOneWidget);
     expect(find.text(second.label), findsWidgets);
