@@ -49,7 +49,7 @@ class _LoadScreenState extends State<LoadScreen>{
   Future<void> _clearSelected()async{
     final ids=selectedIds.isNotEmpty?selectedIds.toList():(_selected()==null?<String>[]:[_selected()!.id]);
     if(ids.isEmpty)return;
-    try{for(final id in ids){await widget.state.setPhysicalZone(id,null);}if(mounted)setState((){selectedId=null;selectedIds.clear();});}
+    try{await widget.state.clearPhysicalZones(ids.toSet());if(mounted)setState((){selectedId=null;selectedIds.clear();});}
     catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
   }
 
