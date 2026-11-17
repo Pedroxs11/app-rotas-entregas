@@ -7,46 +7,111 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LoadStore implements PackageStore {
   LoadStore(this.packages);
   List<DeliveryPackage> packages;
-  bool optimized=true;
-  int saves=0;
-  @override Future<List<DeliveryPackage>> load()async=>[...packages];
-  @override Future<bool> loadRouteOptimized()async=>optimized;
-  @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized})async{packages=[...value];if(routeOptimized!=null)optimized=routeOptimized;saves++;}
-  @override Future<void> clear()async{packages=[];optimized=false;}
- test('clears several package compartments in one persistence operation',()async{
-  final store=LoadStore([_p(1,zone:'Porta-malas'),_p(2,zone:'Porta-malas'),_p(3,zone:'Frente esquerda')]);
-  final state=AppState(store:store);await state.init();
-  await state.clearPhysicalZones({'p1','p2'});
-  expect(state.packages.map((p)=>p.physicalZone).toList(),[null,null,'Frente esquerda']);
-  expect(store.saves,1);
- });
+  bool optimized = true;
+  int saves = 0;
 
+  @override
+  Future<List<DeliveryPackage>> load() async => [...packages];
+
+  @override
+  Future<bool> loadRouteOptimized() async => optimized;
+
+  @override
+  Future<void> save(List<DeliveryPackage> value, {bool? routeOptimized}) async {
+    packages = [...value];
+    if (routeOptimized != null) optimized = routeOptimized;
+    saves++;
+  }
+
+  @override
+  Future<void> clear() async {
+    packages = [];
+    optimized = false;
+  }
 }
 
-DeliveryPackage _p(int n,{DeliveryStatus status=DeliveryStatus.pending,String? zone})=>DeliveryPackage(
- id:'p$n',scanNumber:n,status:status,physicalZone:zone,
- address:AddressData(raw:'Rua $n',street:'Rua',number:'$n',city:'São Paulo',state:'SP',confidence:1,validation:ValidationStatus.confirmed),
- scannedAt:DateTime.utc(2026,9,13,22,n%60),
-);
+DeliveryPackage _p(
+  int n, {
+  DeliveryStatus status = DeliveryStatus.pending,
+  String? zone,
+}) =>
+    DeliveryPackage(
+      id: 'p$n',
+      scanNumber: n,
+      status: status,
+      physicalZone: zone,
+      address: AddressData(
+        raw: 'Rua $n',
+        street: 'Rua',
+        number: '$n',
+        city: 'São Paulo',
+        state: 'SP',
+        confidence: 1,
+        validation: ValidationStatus.confirmed,
+      ),
+      scannedAt: DateTime.utc(2026, 9, 13, 22, n % 60),
+    );
 
-void main(){
- TestWidgetsFlutterBinding.ensureInitialized();
- setUp(() => SharedPreferences.setMockInitialValues({}));
- test('manual organization uses the five vehicle areas without auto distribution',()async{
-  final store=LoadStore(List.generate(5,(i)=>_p(i+1)));final state=AppState(store:store);await state.init();
-  expect(state.packages.every((p)=>p.physicalZone==null),isTrue);
-  await state.setPhysicalZone('p1','Frente esquerda');
-  await state.setPhysicalZone('p2','Frente direita');
-  await state.setPhysicalZone('p3','Traseira esquerda');
-  await state.setPhysicalZone('p4','Traseira direita');
-  await state.setPhysicalZone('p5','Porta-malas');
-  expect(state.packages.map((p)=>p.physicalZone).toList(),['Frente esquerda','Frente direita','Traseira esquerda','Traseira direita','Porta-malas']);
-  expect(store.saves,5);
- });
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
 
- test('manual organization allows multiple packages in the same vehicle area',()async{
-  final store=LoadStore(List.generate(8,(i)=>_p(i+1)));final state=AppState(store:store);await state.init();
-  for(final p in state.packages.take(4)){await state.setPhysicalZone(p.id,'Porta-malas');}
-  expect(state.packages.take(4).every((p)=>p.physicalZone=='Porta-malas'),isTrue);
- });
+  test('manual organization uses the five vehicle areas without auto distribution', () async {
+    final store = LoadStore(List.generate(5, (i) => _p(i + 1)));
+    final state = AppState(store: store);
+    await state.init();
+
+    expect(state.packages.every((p) => p.physicalZone == null), isTrue);
+
+    await state.setPhysicalZone('p1', 'Frente esquerda');
+    await state.setPhysicalZone('p2', 'Frente direita');
+    await state.setPhysicalZone('p3', 'Traseira esquerda');
+    await state.setPhysicalZone('p4', 'Traseira direita');
+    await state.setPhysicalZone('p5', 'Porta-malas');
+
+    expect(
+      state.packages.map((p) => p.physicalZone).toList(),
+      [
+        'Frente esquerda',
+        'Frente direita',
+        'Traseira esquerda',
+        'Traseira direita',
+        'Porta-malas',
+      ],
+    );
+    expect(store.saves, 5);
+  });
+
+  test('manual organization allows multiple packages in the same vehicle area', () async {
+    final store = LoadStore(List.generate(8, (i) => _p(i + 1)));
+    final state = AppState(store: store);
+    await state.init();
+
+    for (final p in state.packages.take(4)) {
+      await state.setPhysicalZone(p.id, 'Porta-malas');
+    }
+
+    expect(
+      state.packages.take(4).every((p) => p.physicalZone == 'Porta-malas'),
+      isTrue,
+    );
+  });
+
+  test('clears several package compartments in one persistence operation', () async {
+    final store = LoadStore([
+      _p(1, zone: 'Porta-malas'),
+      _p(2, zone: 'Porta-malas'),
+      _p(3, zone: 'Frente esquerda'),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.clearPhysicalZones({'p1', 'p2'});
+
+    expect(
+      state.packages.map((p) => p.physicalZone).toList(),
+      [null, null, 'Frente esquerda'],
+    );
+    expect(store.saves, 1);
+  });
 }
