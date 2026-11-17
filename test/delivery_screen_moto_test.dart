@@ -44,7 +44,7 @@ DeliveryPackage _package(int n, String street, {String? physicalZone}) => Delive
 Future<AppState> _motoState(List<DeliveryPackage> packages) async {
   final state = AppState(store: _DeliveryStore(packages));
   await state.init();
-  state.setVehicleType(VehicleType.motorcycle);
+  await state.setVehicleType(VehicleType.motorcycle);
   return state;
 }
 
