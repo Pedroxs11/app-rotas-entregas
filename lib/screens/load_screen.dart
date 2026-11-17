@@ -22,9 +22,10 @@ class _LoadScreenState extends State<LoadScreen>{
 
   bool _active(DeliveryPackage p)=>p.status==DeliveryStatus.pending||p.status==DeliveryStatus.current||p.status==DeliveryStatus.absent||p.status==DeliveryStatus.addressProblem;
   List<DeliveryPackage> get _route=>widget.state.packages.where(_active).toList();
-  bool get _organized=>_route.isNotEmpty&&_route.every((p)=>p.physicalZone?.trim().isNotEmpty==true);
+  bool _hasActiveZone(DeliveryPackage p)=>p.physicalZone?.trim().isNotEmpty==true&&widget.state.activePhysicalZones.contains(p.physicalZone);
+  bool get _organized=>_route.isNotEmpty&&_route.every(_hasActiveZone);
 
-  List<DeliveryPackage> get _visibleRoute{final q=search.trim().toLowerCase();final items=_route.where((p){final unassigned=p.physicalZone?.trim().isNotEmpty!=true;if(!unassigned)return false;return q.isEmpty||p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q);}).toList();return items;}
+  List<DeliveryPackage> get _visibleRoute{final q=search.trim().toLowerCase();final items=_route.where((p){if(_hasActiveZone(p))return false;return q.isEmpty||p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q);}).toList();return items;}
   DeliveryPackage? _selected(){
     final id=selectedId;
     if(id==null)return null;
@@ -56,7 +57,7 @@ class _LoadScreenState extends State<LoadScreen>{
   @override Widget build(BuildContext context){
     final route=_route;
     final selected=_selected();
-    final assigned=route.where((p)=>p.physicalZone?.trim().isNotEmpty==true).length;
+    final assigned=route.where(_hasActiveZone).length;
     final missing=route.length-assigned;
     return Scaffold(
       appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[IconButton(tooltip:'Configurar compartimentos',onPressed:_configureZones,icon:const Icon(Icons.tune)),IconButton(tooltip:'Selecionar vários',onPressed:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),PopupMenuButton<VehicleType>(tooltip:'Veículo',onSelected:(v)=>setState(()=>widget.state.setVehicleType(v)),itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))])]),
@@ -113,22 +114,78 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   Widget _motoCard(BuildContext context,List<DeliveryPackage> route){
-    return Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[
-      const Icon(Icons.two_wheeler,size:56),
-      const SizedBox(height:6),
-      const Text('MODO MOTO',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
-      const Text('Selecione pacotes e toque no baú, bolsa ou mochila para organizar.',textAlign:TextAlign.center),
-      const SizedBox(height:12),
-      Wrap(spacing:8,runSpacing:8,children:[
-        for(final zone in widget.state.activePhysicalZones)
-          SizedBox(width:widget.state.activePhysicalZones.length<=2?double.infinity:150,child:_zone(context,zone,zone.toUpperCase(),route,_selected(),wide:true)),
-      ]),
-      const SizedBox(height:10),
-      Wrap(spacing:8,runSpacing:8,children:[
-        for(final p in route)if(p.physicalZone!=null)
-          Chip(avatar:const Icon(Icons.inventory_2_outlined,size:16),label:Text('P${p.scanNumber.toString().padLeft(2,'0')} • ${p.physicalZone}')),
-      ]),
-    ])));
+    final zones=widget.state.activePhysicalZones;
+    final sideZones=zones.where((z)=>z=='Bolsa lateral esquerda'||z=='Bolsa lateral direita').toList();
+    final rearZones=zones.where((z)=>z=='Baú traseiro'||z=='Mochila de entrega').toList();
+    String label(String zone)=>switch(zone){
+      'Bolsa lateral esquerda'=>'BOLSA ESQUERDA',
+      'Bolsa lateral direita'=>'BOLSA DIREITA',
+      'Baú traseiro'=>'BAÚ TRASEIRO',
+      'Mochila de entrega'=>'MOCHILA DE ENTREGA',
+      _=>zone.toUpperCase(),
+    };
+    return Card(
+      child:Padding(
+        padding:const EdgeInsets.all(14),
+        child:Column(children:[
+          const Text('MODO MOTO',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
+          const SizedBox(height:4),
+          const Text('Toque no espaço da moto onde cada pacote será transportado.',textAlign:TextAlign.center),
+          const SizedBox(height:12),
+          const Text('FRENTE DA MOTO',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1)),
+          const SizedBox(height:8),
+          Row(
+            crossAxisAlignment:CrossAxisAlignment.center,
+            children:[
+              for(final zone in sideZones)
+                Expanded(
+                  child:Padding(
+                    padding:const EdgeInsets.symmetric(horizontal:3),
+                    child:_zone(context,zone,label(zone),route,_selected(),wide:true),
+                  ),
+                ),
+              Expanded(
+                flex:sideZones.isEmpty?1:2,
+                child:Column(children:[
+                  Icon(Icons.two_wheeler,size:sideZones.isEmpty?76:64,color:Theme.of(context).colorScheme.onSurfaceVariant),
+                  Text('MOTO',style:Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight:FontWeight.bold)),
+                ]),
+              ),
+            ],
+          ),
+          if(rearZones.isNotEmpty)...[
+            const SizedBox(height:10),
+            const Text('TRASEIRA E BAGAGEM',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1)),
+            const SizedBox(height:8),
+            Wrap(
+              spacing:8,
+              runSpacing:8,
+              alignment:WrapAlignment.center,
+              children:[
+                for(final zone in rearZones)
+                  SizedBox(
+                    width:rearZones.length==1?double.infinity:145,
+                    child:_zone(context,zone,label(zone),route,_selected(),wide:true),
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height:10),
+          Wrap(
+            spacing:8,
+            runSpacing:8,
+            children:[
+              for(final p in route)
+                if(_hasActiveZone(p))
+                  Chip(
+                    avatar:const Icon(Icons.inventory_2_outlined,size:16),
+                    label:Text('P\${p.scanNumber.toString().padLeft(2,'0')} • \${p.physicalZone}'),
+                  ),
+            ],
+          ),
+        ]),
+      ),
+    );
   }
 
   Widget _carDiagram(BuildContext context,List<DeliveryPackage> route){
@@ -253,7 +310,7 @@ class _LoadScreenState extends State<LoadScreen>{
   Widget _packageTile(BuildContext context,DeliveryPackage p,bool selected){
     final zone=p.physicalZone?.trim();
     final address=p.address.formatted.isEmpty?p.address.raw:p.address.formatted;
-    final cs=Theme.of(context).colorScheme;return Card(key:_tileKeys.putIfAbsent(p.id,()=>GlobalKey()),margin:const EdgeInsets.only(bottom:6),color:selected?cs.inverseSurface:null,child:ListTile(selected:selected,selectedColor:selected?cs.onInverseSurface:null,leading:CircleAvatar(radius:24,backgroundColor:selected?cs.onInverseSurface:cs.primaryContainer,foregroundColor:selected?cs.inverseSurface:null,child:Text(p.scanNumber.toString().padLeft(2,'0'),style:const TextStyle(fontWeight:FontWeight.w900))),title:Text(p.label,style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text(_isMoto?address:(zone?.isNotEmpty==true?'$zone\n$address':'Sem posição no carro\n$address'),maxLines:2,overflow:TextOverflow.ellipsis),trailing:_isMoto?null:(zone?.isNotEmpty==true?const Chip(label:Text('OK')):const Chip(label:Text('Falta'))),onTap:()=>_togglePackage(p.id)));
+    final cs=Theme.of(context).colorScheme;return Card(key:_tileKeys.putIfAbsent(p.id,()=>GlobalKey()),margin:const EdgeInsets.only(bottom:6),color:selected?cs.inverseSurface:null,child:ListTile(selected:selected,selectedColor:selected?cs.onInverseSurface:null,leading:CircleAvatar(radius:24,backgroundColor:selected?cs.onInverseSurface:cs.primaryContainer,foregroundColor:selected?cs.inverseSurface:null,child:Text(p.scanNumber.toString().padLeft(2,'0'),style:const TextStyle(fontWeight:FontWeight.w900))),title:Text(p.label,style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text(_isMoto?address:(_hasActiveZone(p)?'$zone\n$address':'Sem posição no carro\n$address'),maxLines:2,overflow:TextOverflow.ellipsis),trailing:_isMoto?null:(_hasActiveZone(p)?const Chip(label:Text('OK')):const Chip(label:Text('Falta'))),onTap:()=>_togglePackage(p.id)));
   }
 }
 
