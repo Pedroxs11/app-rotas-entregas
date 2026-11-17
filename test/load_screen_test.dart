@@ -176,4 +176,30 @@ void main(){
     expect(state.packages[1].physicalZone,'Frente esquerda');
   });
 
+  testWidgets('select all includes packages already positioned in a compartment', (tester) async {
+    final store=_LoadStore([
+      _package(1,physicalZone:'Porta-malas'),
+      _package(2),
+      _package(3,physicalZone:'Traseira direita'),
+    ]);
+    final state=AppState(store:store);
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home:LoadScreen(state:state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+    await tester.tap(find.text('Selecionar todos'));
+    await tester.pump();
+
+    expect(find.text('3 pacote(s) selecionado(s)'),findsOneWidget);
+
+    await tester.ensureVisible(find.text('FRENTE D'));
+    await tester.tap(find.text('FRENTE D'));
+    await tester.pumpAndSettle();
+
+    expect(state.packages.every((p)=>p.physicalZone=='Frente direita'),isTrue);
+  });
+
 }
