@@ -190,6 +190,7 @@ void main(){
 
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
+    await tester.ensureVisible(find.text('Selecionar todos'));
     await tester.tap(find.text('Selecionar todos'));
     await tester.pump();
 
