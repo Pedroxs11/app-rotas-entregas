@@ -92,9 +92,10 @@ jobs:
           // camera_android_camerax compiles against CameraX 1.5.x, which references
           // CallbackToFutureAdapter but does not expose concurrent-futures transitively.
           subprojects {
-              plugins.withId("com.android.library") {
-                  if (name == "camera_android_camerax") {
-                      dependencies.add(
+              val cameraPlugin = this
+              cameraPlugin.plugins.withId("com.android.library") {
+                  if (cameraPlugin.name == "camera_android_camerax") {
+                      cameraPlugin.dependencies.add(
                           "implementation",
                           "androidx.concurrent:concurrent-futures:1.2.0",
                       )
@@ -103,7 +104,7 @@ jobs:
           }
           """
           if "androidx.concurrent:concurrent-futures" not in source:
-              path.write_text(source.rstrip() + "\\n\\n" + block.lstrip())
+              path.write_text(source.rstrip() + chr(10) * 2 + block.lstrip())
           PY
 
       - name: Get dependencies
