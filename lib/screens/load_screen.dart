@@ -147,7 +147,7 @@ class _LoadScreenState extends State<LoadScreen>{
           padding:const EdgeInsets.fromLTRB(28,20,28,22),
           child:Column(children:[
             const SizedBox(height:8),
-            const Text('FRENTE DO VEÍCULO',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1.1)),
+            const Text('FRENTE',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1.1)),
             const SizedBox(height:12),
             Container(
               height:34,
@@ -168,7 +168,7 @@ class _LoadScreenState extends State<LoadScreen>{
                 for(final zone in widget.state.activePhysicalZones)
                   SizedBox(
                     width:zone=='Porta-malas'?double.infinity:150,
-                    child:_zone(context,zone,zone.toUpperCase(),route,selected,wide:zone=='Porta-malas'),
+                    child:_zone(context,zone,_carZoneLabel(zone),route,selected,wide:zone=='Porta-malas'),
                   ),
               ],
             ),
@@ -190,6 +190,15 @@ class _LoadScreenState extends State<LoadScreen>{
       ),
     );
   }
+
+  String _carZoneLabel(String zone)=>switch(zone){
+    'Frente esquerda'=>'FRENTE E',
+    'Frente direita'=>'FRENTE D',
+    'Traseira esquerda'=>'TRASEIRA E',
+    'Traseira direita'=>'TRASEIRA D',
+    'Porta-malas'=>'PORTA-MALAS',
+    _=>zone.toUpperCase(),
+  };
 
   Widget _zone(BuildContext context,String zone,String shortName,List<DeliveryPackage> route,DeliveryPackage? selected,{bool wide=false}){
     final packages=route.where((p)=>p.physicalZone==zone).toList();
