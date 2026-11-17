@@ -182,7 +182,7 @@ class _LoadScreenState extends State<LoadScreen>{
                 if(_hasActiveZone(p))
                   Chip(
                     avatar:const Icon(Icons.inventory_2_outlined,size:16),
-                    label:Text('P\${p.scanNumber.toString().padLeft(2,'0')} • \${p.physicalZone}'),
+                    label:Text('P${p.scanNumber.toString().padLeft(2,'0')} • ${p.physicalZone}'),
                   ),
             ],
           ),
