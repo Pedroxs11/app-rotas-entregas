@@ -70,6 +70,21 @@ void main() {
     expect(packageTexts.any((text) => text.style?.fontSize == 34), isTrue);
   });
 
+
+  testWidgets('moto shows assigned compartment and package number during delivery', (tester) async {
+    final package = _package(7, 'Rua Teste');
+    final state = await _motoState([package]);
+    await state.setPhysicalZone(package.id, 'Baú traseiro');
+
+    await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
+    await tester.pump();
+
+    expect(find.text('BAÚ TRASEIRO'), findsOneWidget);
+    expect(find.text(package.label), findsWidgets);
+    final compartmentTexts = tester.widgetList<Text>(find.text('Baú traseiro'));
+    expect(compartmentTexts.any((text) => text.style?.fontSize == 34), isTrue);
+  });
+
   testWidgets('moto advances to the next package after delivery', (tester) async {
     final first = _package(7, 'Rua Teste');
     final second = _package(12, 'Avenida Próxima');
