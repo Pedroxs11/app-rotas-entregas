@@ -129,8 +129,10 @@ void main(){
     expect(find.text('BAÚ TRASEIRO'),findsOneWidget);
     expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,isNull);
 
+    await tester.ensureVisible(find.text('Pacote 07'));
     await tester.tap(find.text('Pacote 07'));
     await tester.pump();
+    await tester.ensureVisible(find.text('BAÚ TRASEIRO'));
     await tester.tap(find.text('BAÚ TRASEIRO'));
     await tester.pumpAndSettle();
 
