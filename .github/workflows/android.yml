@@ -104,7 +104,7 @@ jobs:
       # A Play-ready release is built only when all four signing secrets exist.
       # The keystore itself is decoded only inside the ephemeral GitHub runner.
       - name: Configure Play release signing
-        if: ${{ env.SIGNING_READY == 'true' }}
+        if: ${{ env.SIGNING_READY == 'true' && github.ref == 'refs/heads/play-internal-test' }}
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -204,6 +204,7 @@ jobs:
           compression-level: 0
 
       - name: Upload Play release AAB
+        if: ${{ env.SIGNING_READY == 'true' && github.ref == 'refs/heads/play-internal-test' }}
         uses: actions/upload-artifact@v4
         with:
           name: rotas-entregas-play-release-aab
