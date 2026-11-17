@@ -134,6 +134,21 @@ void main() {
   });
 
 
+  test('switching vehicle clears active positions but preserves delivered load history', () async {
+    final store = LoadStore([
+      _p(1, zone: 'Porta-malas'),
+      _p(2, status: DeliveryStatus.delivered, zone: 'Porta-malas'),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.setVehicleType(VehicleType.motorcycle);
+
+    expect(state.activePhysicalZones, AppState.motorcyclePhysicalZones);
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, 'Porta-malas');
+  });
+
   test('disabling a compartment clears active packages but preserves delivered history', () async {
     final store = LoadStore([
       _p(1, zone: 'Porta-malas'),
