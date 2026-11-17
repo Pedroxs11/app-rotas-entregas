@@ -22,9 +22,9 @@ class _LoadScreenState extends State<LoadScreen>{
 
   bool _active(DeliveryPackage p)=>p.status==DeliveryStatus.pending||p.status==DeliveryStatus.current||p.status==DeliveryStatus.absent||p.status==DeliveryStatus.addressProblem;
   List<DeliveryPackage> get _route=>widget.state.packages.where(_active).toList();
-  bool get _organized=>_route.isNotEmpty&&(_isMoto||_route.every((p)=>p.physicalZone?.trim().isNotEmpty==true));
+  bool get _organized=>_route.isNotEmpty&&_route.every((p)=>p.physicalZone?.trim().isNotEmpty==true);
 
-  List<DeliveryPackage> get _visibleRoute{final q=search.trim().toLowerCase();final items=_route.where((p){final unassigned=_isMoto||p.physicalZone?.trim().isNotEmpty!=true;if(!unassigned)return false;return q.isEmpty||p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q);}).toList();return items;}
+  List<DeliveryPackage> get _visibleRoute{final q=search.trim().toLowerCase();final items=_route.where((p){final unassigned=p.physicalZone?.trim().isNotEmpty!=true;if(!unassigned)return false;return q.isEmpty||p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q);}).toList();return items;}
   DeliveryPackage? _selected(){
     final id=selectedId;
     if(id==null)return null;
@@ -59,34 +59,77 @@ class _LoadScreenState extends State<LoadScreen>{
     final assigned=route.where((p)=>p.physicalZone?.trim().isNotEmpty==true).length;
     final missing=route.length-assigned;
     return Scaffold(
-      appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[if(!_isMoto)IconButton(tooltip:'Selecionar vários',onPressed:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),PopupMenuButton<VehicleType>(tooltip:'Veículo',onSelected:(v)=>setState(()=>widget.state.setVehicleType(v)),itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))])]),
+      appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[IconButton(tooltip:'Configurar compartimentos',onPressed:_configureZones,icon:const Icon(Icons.tune)),IconButton(tooltip:'Selecionar vários',onPressed:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),PopupMenuButton<VehicleType>(tooltip:'Veículo',onSelected:(v)=>setState(()=>widget.state.setVehicleType(v)),itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))])]),
       body:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
         Padding(padding:const EdgeInsets.fromLTRB(16,12,16,8),child:Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text(_isMoto?'${route.length} pacotes • número como identificação':'$assigned de ${route.length} pacotes posicionados',style:Theme.of(context).textTheme.titleLarge),
+          Text('$assigned de ${route.length} pacotes posicionados',style:Theme.of(context).textTheme.titleLarge),
           if(!_isMoto&&multiSelect)Padding(padding:const EdgeInsets.only(top:6),child:Text('${selectedIds.length} pacote(s) selecionado(s)',style:TextStyle(fontWeight:FontWeight.w700,color:Theme.of(context).colorScheme.primary))),
           const SizedBox(height:6),
-          Text(_isMoto?'Na moto não usamos quadrantes. Use o número grande do pacote.':(multiSelect?'Selecione vários pacotes e toque uma vez no compartimento para guardar todos.':(selected==null?'Toque em um pacote e depois toque na área do carro onde ele ficará.':'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque na área do carro.'))),
+          Text(multiSelect?'Selecione vários pacotes e toque uma vez no compartimento para guardar todos.':(selected==null?'Toque em um pacote e depois toque na área do carro onde ele ficará.':'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque na área do carro.'))),
           const SizedBox(height:10),
-          LinearProgressIndicator(value:route.isEmpty?0:(_isMoto?1:assigned/route.length)),
+          LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
         ])))),
         Expanded(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(16,0,16,12),child:Column(children:[
           if(_isMoto)_motoCard(context,route) else _carDiagram(context,route),
           const SizedBox(height:14),
-          if(!_isMoto&&(selected!=null||selectedIds.isNotEmpty))SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:_clearSelected,icon:const Icon(Icons.remove_circle_outline),label:Text(selectedIds.length>1?'RETIRAR ${selectedIds.length} PACOTES DO CARRO':'TIRAR PACOTE SELECIONADO DO CARRO'))),
+          if(selected!=null||selectedIds.isNotEmpty)SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:_clearSelected,icon:const Icon(Icons.remove_circle_outline),label:Text(selectedIds.length>1?'RETIRAR ${selectedIds.length} PACOTES':'RETIRAR PACOTE SELECIONADO'))),
           const SizedBox(height:8),
           Row(children:[Expanded(child:Text(_isMoto?'Pacotes':'Pacotes para posicionar',style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.bold))),if(multiSelect)TextButton(onPressed:_selectAll,child:const Text('Selecionar todos'))]),
           const SizedBox(height:8),
           TextField(decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Buscar pacote ou endereço',border:OutlineInputBorder(),isDense:true),onChanged:(v)=>setState(()=>search=v)),
           const SizedBox(height:8),
           Listener(behavior:HitTestBehavior.translucent,onPointerDown:(e)=>_selectionPointerDown(e.position),onPointerMove:(e)=>_selectionPointerMove(e.position),onPointerUp:(_)=>_selectionPointerUp(),onPointerCancel:(_)=>_selectionPointerUp(),child:Column(children:[for(final p in _visibleRoute)_packageTile(context,p,multiSelect?selectedIds.contains(p.id):selected?.id==p.id)])),
-          if(!_isMoto&&missing==0)Padding(padding:const EdgeInsets.only(top:8),child:Text('Todos os pacotes estão posicionados. Confira o carro antes de sair.',style:TextStyle(color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w600))),
+          if(missing==0)Padding(padding:const EdgeInsets.only(top:8),child:Text('Todos os pacotes estão posicionados. Confira a carga antes de sair.',style:TextStyle(color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w600))),
         ]))),
         SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>DeliveryScreen(state:widget.state))):null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
       ]),
     );
   }
 
-  Widget _motoCard(BuildContext context,List<DeliveryPackage> route){return Card(child:Padding(padding:const EdgeInsets.all(20),child:Column(children:[const Icon(Icons.two_wheeler,size:56),const SizedBox(height:8),const Text('MODO MOTO',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),const SizedBox(height:6),const Text('Sem quadrantes. Cada pacote será identificado pelo número.',textAlign:TextAlign.center),const SizedBox(height:14),Wrap(spacing:10,runSpacing:10,children:[for(final p in route.take(12))Container(width:72,padding:const EdgeInsets.symmetric(vertical:10),decoration:BoxDecoration(borderRadius:BorderRadius.circular(14),color:Theme.of(context).colorScheme.primaryContainer),child:Text(p.scanNumber.toString().padLeft(2,'0'),textAlign:TextAlign.center,style:const TextStyle(fontSize:26,fontWeight:FontWeight.w900)))])])));}
+  Future<void> _configureZones()async{
+    final defaults=_isMoto?AppState.motorcyclePhysicalZones:AppState.carPhysicalZones;
+    final selected=widget.state.activePhysicalZones.toSet();
+    await showDialog<void>(context:context,builder:(dialogContext)=>StatefulBuilder(builder:(context,setDialogState)=>AlertDialog(
+      title:Text(_isMoto?'Compartimentos da moto':'Compartimentos do carro'),
+      content:Column(mainAxisSize:MainAxisSize.min,children:[
+        const Text('Ative apenas os espaços que existem no seu veículo.'),
+        const SizedBox(height:8),
+        for(final zone in defaults)CheckboxListTile(
+          contentPadding:EdgeInsets.zero,
+          dense:true,
+          title:Text(zone),
+          value:selected.contains(zone),
+          onChanged:(value)=>setDialogState(()=>value==true?selected.add(zone):selected.remove(zone)),
+        ),
+      ]),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Cancelar')),
+        FilledButton(onPressed:selected.isEmpty?null:()async{
+          try{await widget.state.setActivePhysicalZones(selected.toList());if(dialogContext.mounted)Navigator.pop(dialogContext);if(mounted)setState((){});}
+          catch(e){if(dialogContext.mounted)ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content:Text('$e')));}
+        },child:const Text('Salvar')),
+      ],
+    )));
+  }
+
+  Widget _motoCard(BuildContext context,List<DeliveryPackage> route){
+    return Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[
+      const Icon(Icons.two_wheeler,size:56),
+      const SizedBox(height:6),
+      const Text('MODO MOTO',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
+      const Text('Selecione pacotes e toque no baú, bolsa ou mochila para organizar.',textAlign:TextAlign.center),
+      const SizedBox(height:12),
+      Wrap(spacing:8,runSpacing:8,children:[
+        for(final zone in widget.state.activePhysicalZones)
+          SizedBox(width:widget.state.activePhysicalZones.length<=2?double.infinity:150,child:_zone(context,zone,zone.toUpperCase(),route,_selected(),wide:true)),
+      ]),
+      const SizedBox(height:10),
+      Wrap(spacing:8,runSpacing:8,children:[
+        for(final p in route)if(p.physicalZone!=null)
+          Chip(avatar:const Icon(Icons.inventory_2_outlined,size:16),label:Text('P${p.scanNumber.toString().padLeft(2,'0')} • ${p.physicalZone}')),
+      ]),
+    ])));
+  }
 
   Widget _carDiagram(BuildContext context,List<DeliveryPackage> route){
     final selected=_selected();
