@@ -143,48 +143,34 @@ class _LoadScreenState extends State<LoadScreen>{
         boxShadow:[BoxShadow(color:Theme.of(context).colorScheme.shadow.withValues(alpha:.10),blurRadius:10,offset:const Offset(0,4))],
       ),
       child:Column(children:[
-        const Text('FRENTE',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1.2)),
-        const SizedBox(height:6),
+        const Icon(Icons.directions_car_filled,size:38),
+        const Text('VISÃO DO CARRO',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1.1)),
+        const SizedBox(height:8),
         Container(
           height:20,
           margin:const EdgeInsets.symmetric(horizontal:24),
           decoration:BoxDecoration(
+            color:Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius:BorderRadius.circular(12),
             border:Border.all(color:Theme.of(context).colorScheme.outlineVariant),
           ),
-          child:Center(child:Text('PARA-BRISA',style:Theme.of(context).textTheme.labelSmall)),
+          child:Center(child:Text('PARA-BRISA • FRENTE',style:Theme.of(context).textTheme.labelSmall)),
         ),
         const SizedBox(height:10),
-        Row(children:[
-          Expanded(child:_zone(context,'Frente esquerda','FRENTE E',route,selected)),
-          const SizedBox(width:8),
-          Expanded(child:_zone(context,'Frente direita','FRENTE D',route,selected)),
-        ]),
-        const SizedBox(height:8),
-        Container(
-          height:10,
-          margin:const EdgeInsets.symmetric(horizontal:8),
-          decoration:BoxDecoration(
-            color:Theme.of(context).colorScheme.outlineVariant.withValues(alpha:.35),
-            borderRadius:BorderRadius.circular(8),
-          ),
+        Wrap(
+          spacing:8,
+          runSpacing:8,
+          alignment:WrapAlignment.center,
+          children:[
+            for(final zone in widget.state.activePhysicalZones)
+              SizedBox(
+                width:zone=='Porta-malas'?double.infinity:150,
+                child:_zone(context,zone,zone.toUpperCase(),route,selected,wide:zone=='Porta-malas'),
+              ),
+          ],
         ),
         const SizedBox(height:8),
-        Row(children:[
-          Expanded(child:_zone(context,'Traseira esquerda','TRASEIRA E',route,selected)),
-          const SizedBox(width:8),
-          Expanded(child:_zone(context,'Traseira direita','TRASEIRA D',route,selected)),
-        ]),
-        const SizedBox(height:8),
-        _zone(context,'Porta-malas','PORTA-MALAS',route,selected,wide:true),
-        const SizedBox(height:6),
-        Text(
-          selected==null
-              ? 'Selecione um pacote e toque no local onde ele ficará.'
-              : 'Pacote P${selected.scanNumber.toString().padLeft(2,'0')} selecionado — toque em uma área.',
-          textAlign:TextAlign.center,
-          style:Theme.of(context).textTheme.bodySmall,
-        ),
+        const Text('Toque em um compartimento para guardar os pacotes selecionados.',textAlign:TextAlign.center),
       ]),
     );
   }
