@@ -57,7 +57,7 @@ void main() {
     final state = await _motoState([first, second]);
 
     await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('PEGUE ESTE PACOTE'), findsOneWidget);
     expect(find.text(first.label), findsWidgets);
@@ -76,20 +76,20 @@ void main() {
     final state = await _motoState([first, second]);
 
     await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     await tester.tap(find.text('ENTREGUE • PRÓXIMO'));
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(find.text('Quem recebeu?'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'Maria');
     await tester.tap(find.text('Confirmar entrega'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('Indo para a próxima entrega…'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 1500));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.textContaining('Entrega 2 de 2'), findsOneWidget);
     expect(find.text(second.label), findsWidgets);
@@ -106,7 +106,7 @@ void main() {
     await state.init();
 
     await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('PEGUE ESTE PACOTE'), findsOneWidget);
     expect(find.text('Frente esquerda'), findsOneWidget);
