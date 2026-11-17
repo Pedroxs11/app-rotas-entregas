@@ -79,7 +79,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
     await tester.pump();
 
-    expect(find.text('BAÚ TRASEIRO'), findsOneWidget);
+    expect(find.text('Baú traseiro'), findsOneWidget);
     expect(find.text(package.label), findsWidgets);
     final compartmentTexts = tester.widgetList<Text>(find.text('Baú traseiro'));
     expect(compartmentTexts.any((text) => text.style?.fontSize == 34), isTrue);
