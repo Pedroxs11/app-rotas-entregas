@@ -53,7 +53,7 @@ void main(){
     await tester.ensureVisible(find.text('Pacote 01'));
     await tester.tap(find.text('Pacote 01'));
     await tester.pump();
-    expect(find.textContaining('Pacote P01 selecionado'),findsOneWidget);
+    expect(find.textContaining('Pacote 01 selecionado'),findsOneWidget);
 
     await tester.ensureVisible(find.text('FRENTE E'));
     await tester.tap(find.text('FRENTE E'));
