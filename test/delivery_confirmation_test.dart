@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/screens/delivery_screen.dart';
@@ -40,6 +41,7 @@ DeliveryPackage _package(int number) => DeliveryPackage(
 );
 
 void main() {
+  setUp(() { SharedPreferences.setMockInitialValues({}); });
   testWidgets('delivery confirmation stays for 1.5 seconds then advances', (tester) async {
     final state = AppState(store: _DeliveryStore([_package(1), _package(2)]));
     await state.init();
