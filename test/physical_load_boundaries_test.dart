@@ -147,4 +147,36 @@ void main() {
     expect(store.saves, 1);
   });
 
+  test('bulk assignment rejects unknown package ids without partial changes', () async {
+    final store = LoadStore(List.generate(2, (i) => _p(i + 1)));
+    final state = AppState(store: store);
+    await state.init();
+
+    await expectLater(
+      state.setPhysicalZones({'p1', 'missing'}, 'Porta-malas'),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(state.packages.every((p) => p.physicalZone == null), isTrue);
+    expect(store.saves, 0);
+  });
+
+  test('bulk assignment rejects delivered packages atomically', () async {
+    final store = LoadStore([
+      _p(1),
+      _p(2, status: DeliveryStatus.delivered, zone: 'Porta-malas'),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await expectLater(
+      state.setPhysicalZones({'p1', 'p2'}, 'Frente esquerda'),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(state.packages.first.physicalZone, isNull);
+    expect(state.packages.last.physicalZone, 'Porta-malas');
+    expect(store.saves, 0);
+  });
+
 }
