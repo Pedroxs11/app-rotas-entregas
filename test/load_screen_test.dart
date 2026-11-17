@@ -93,7 +93,7 @@ void main(){
     final store=_LoadStore([_package(7),_package(12)]);
     final state=AppState(store:store);
     await state.init();
-    state.setVehicleType(VehicleType.motorcycle);
+    await state.setVehicleType(VehicleType.motorcycle);
 
     await tester.pumpWidget(MaterialApp(home:LoadScreen(state:state)));
     await tester.pumpAndSettle();
@@ -119,7 +119,7 @@ void main(){
     final store=_LoadStore([_package(7,physicalZone:'Frente esquerda')]);
     final state=AppState(store:store);
     await state.init();
-    state.setVehicleType(VehicleType.motorcycle);
+    await state.setVehicleType(VehicleType.motorcycle);
 
     await tester.pumpWidget(MaterialApp(home:LoadScreen(state:state)));
     await tester.pumpAndSettle();
