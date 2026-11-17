@@ -160,7 +160,7 @@ jobs:
           PY
 
       - name: Build signed Play release AAB
-        if: ${{ env.SIGNING_READY == 'true' }}
+        if: ${{ env.SIGNING_READY == 'true' && github.ref == 'refs/heads/play-internal-test' }}
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -181,7 +181,7 @@ jobs:
           fi
 
       - name: Publish Play release to internal testing
-        if: ${{ env.SIGNING_READY == 'true' }}
+        if: ${{ env.SIGNING_READY == 'true' && github.ref == 'refs/heads/play-internal-test' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
