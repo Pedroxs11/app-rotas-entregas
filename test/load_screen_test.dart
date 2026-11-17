@@ -172,9 +172,11 @@ void main(){
     expect(state.packages[2].physicalZone, isNull);
     expect(find.text('P07 • Baú traseiro'), findsOneWidget);
     expect(find.text('P12 • Baú traseiro'), findsOneWidget);
+    // The third package is intentionally left unassigned, so starting the
+    // delivery route must remain disabled until the full load is organized.
     expect(
       tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-      isNotNull,
+      isNull,
     );
   });
 
