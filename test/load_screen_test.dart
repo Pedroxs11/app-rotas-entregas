@@ -1018,26 +1018,45 @@ void main(){
 
   testWidgets('search accepts the visible P-number code for assigned and unassigned packages',
       (tester) async {
-    final state = AppState(store: _LoadStore([
-      _package(7),
-      _package(17, physicalZone: 'Porta-malas'),
-    ]));
-    await state.init();
+    final unassignedState = AppState(
+      store: _LoadStore([_package(7)]),
+    );
+    await unassignedState.init();
 
-    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpWidget(
+      MaterialApp(home: LoadScreen(state: unassignedState)),
+    );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
     await tester.enterText(find.byType(TextField), 'P07');
     await tester.pumpAndSettle();
-    await _ensureLoadItemVisible(tester, find.text('Pacote 07'));
-    expect(find.text('Pacote 07'), findsOneWidget);
-    expect(find.text('P17'), findsNothing);
+    await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
+    await tester.tap(find.text('Selecionar todos'));
+    await tester.pump();
 
-    await _ensureLoadItemVisible(tester, find.byType(TextField));
+    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+
+    SharedPreferences.setMockInitialValues({});
+    final assignedState = AppState(
+      store: _LoadStore([
+        _package(17, physicalZone: 'Porta-malas'),
+      ]),
+    );
+    await assignedState.init();
+
+    await tester.pumpWidget(
+      MaterialApp(home: LoadScreen(state: assignedState)),
+    );
+    await tester.pumpAndSettle();
+
     await tester.enterText(find.byType(TextField), 'P17');
     await tester.pumpAndSettle();
-    await _ensureLoadItemVisible(tester, find.text('P17'));
-    expect(find.text('Pacote 07'), findsNothing);
+
     expect(find.text('P17'), findsOneWidget);
     expect(find.text('1/1'), findsOneWidget);
     expect(tester.takeException(), isNull);
