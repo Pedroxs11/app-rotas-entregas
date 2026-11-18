@@ -400,7 +400,8 @@ class _LoadScreenState extends State<LoadScreen>{
 
   Widget _motoCard(BuildContext context,List<DeliveryPackage> route){
     final zones=widget.state.activePhysicalZones;
-    final sideZones=zones.where((z)=>z=='Bolsa lateral esquerda'||z=='Bolsa lateral direita').toList();
+    final leftSideZone=zones.contains('Bolsa lateral esquerda')?'Bolsa lateral esquerda':null;
+    final rightSideZone=zones.contains('Bolsa lateral direita')?'Bolsa lateral direita':null;
     final rearZones=zones.where((z)=>z=='Baú traseiro'||z=='Mochila de entrega').toList();
     String label(String zone)=>switch(zone){
       'Bolsa lateral esquerda'=>'BOLSA ESQUERDA',
@@ -422,19 +423,28 @@ class _LoadScreenState extends State<LoadScreen>{
           Row(
             crossAxisAlignment:CrossAxisAlignment.center,
             children:[
-              for(final zone in sideZones)
-                Expanded(
-                  child:Padding(
-                    padding:const EdgeInsets.symmetric(horizontal:3),
-                    child:_zone(context,zone,label(zone),route,_selected(),wide:true),
-                  ),
-                ),
               Expanded(
-                flex:sideZones.isEmpty?1:2,
+                child:leftSideZone==null
+                    ?const SizedBox.shrink()
+                    :Padding(
+                        padding:const EdgeInsets.symmetric(horizontal:3),
+                        child:_zone(context,leftSideZone,label(leftSideZone),route,_selected(),wide:true),
+                      ),
+              ),
+              Expanded(
+                flex:2,
                 child:Column(children:[
-                  Icon(Icons.two_wheeler,size:sideZones.isEmpty?76:64,color:Theme.of(context).colorScheme.onSurfaceVariant),
+                  Icon(Icons.two_wheeler,size:64,color:Theme.of(context).colorScheme.onSurfaceVariant),
                   Text('MOTO',style:Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight:FontWeight.bold)),
                 ]),
+              ),
+              Expanded(
+                child:rightSideZone==null
+                    ?const SizedBox.shrink()
+                    :Padding(
+                        padding:const EdgeInsets.symmetric(horizontal:3),
+                        child:_zone(context,rightSideZone,label(rightSideZone),route,_selected(),wide:true),
+                      ),
               ),
             ],
           ),
