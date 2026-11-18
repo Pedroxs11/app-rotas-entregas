@@ -208,7 +208,7 @@ class _LoadScreenState extends State<LoadScreen>{
           Text('$assigned de ${route.length} pacotes posicionados',style:Theme.of(context).textTheme.titleLarge),
           if(multiSelect)Padding(padding:const EdgeInsets.only(top:6),child:Text('${selectedIds.length} pacote(s) selecionado(s)',style:TextStyle(fontWeight:FontWeight.w700,color:Theme.of(context).colorScheme.primary))),
           const SizedBox(height:6),
-          Text(multiSelect?'Selecione vários pacotes e toque uma vez no compartimento para guardar todos.':(selected==null?(_isMoto?'Toque em um pacote e depois no baú, bolsa ou mochila.':'Toque em um pacote e depois na área do carro onde ele ficará.'):'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque no compartimento do veículo.')),
+          Text(multiSelect?'Toque para marcar; mantenha pressionado e arraste para selecionar vários. Depois toque no compartimento para guardar todos.':(selected==null?(_isMoto?'Toque em um pacote e depois no baú, bolsa ou mochila.':'Toque em um pacote e depois na área do carro onde ele ficará.'):'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque no compartimento do veículo.')),
           const SizedBox(height:10),
           LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
         ])))),
