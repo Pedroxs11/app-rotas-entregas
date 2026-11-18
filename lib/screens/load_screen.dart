@@ -20,6 +20,8 @@ class _LoadScreenState extends State<LoadScreen>{
   final GlobalKey _scrollViewportKey=GlobalKey();
   Timer? _autoScrollTimer;
   Offset? _lastSelectionPointer;
+  List<DeliveryPackage> _dragSelectionPackages = const [];
+  int? _lastSelectionIndex;
   String? _selectionStartPackageId;
   double _autoScrollDirection=0;
   double _autoScrollSpeed=0;
@@ -63,10 +65,18 @@ class _LoadScreenState extends State<LoadScreen>{
   void _selectAll(){setState(()=>selectedIds.addAll(_route.where(_matchesSearch).map((p)=>p.id)));}
   void _selectionPointerDown(Offset pos) {
     if (!multiSelect) return;
-    _selectionStartPackageId = _packageIdAt(pos);
+    _dragSelectionPackages = _visibleRoute;
+    _selectionStartPackageId = _packageIdAt(pos, _dragSelectionPackages);
     _lastSelectionPointer = pos;
+    _lastSelectionIndex = _selectionStartPackageId == null
+        ? null
+        : _dragSelectionPackages.indexWhere(
+            (package) => package.id == _selectionStartPackageId,
+          );
     _dragSelecting = _selectionStartPackageId != null;
-    if (_dragSelecting) _selectAt(pos);
+    if (_dragSelecting && selectedIds.add(_selectionStartPackageId!)) {
+      setState(() {});
+    }
   }
 
   void _selectionPointerMove(Offset pos) {
@@ -140,10 +150,15 @@ class _LoadScreenState extends State<LoadScreen>{
     _stopSelectionAutoScroll();
     _selectionStartPackageId = null;
     _lastSelectionPointer = null;
+    _dragSelectionPackages = const [];
+    _lastSelectionIndex = null;
     _dragSelecting = false;
   }
-  String? _packageIdAt(Offset pos) {
-    for (final package in _visibleRoute) {
+  String? _packageIdAt(
+    Offset pos, [
+    List<DeliveryPackage>? visiblePackages,
+  ]) {
+    for (final package in visiblePackages ?? _visibleRoute) {
       final context = _tileKeys[package.id]?.currentContext;
       if (context == null) continue;
       final object = context.findRenderObject();
@@ -155,22 +170,26 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   void _selectAt(Offset pos) {
-    final currentId = _packageIdAt(pos);
-    final startId = _selectionStartPackageId ?? currentId;
-    if (currentId == null || startId == null) return;
+    final visible = _dragSelectionPackages;
+    if (visible.isEmpty) return;
 
-    final visible = _visibleRoute;
-    final startIndex = visible.indexWhere((package) => package.id == startId);
+    final currentId = _packageIdAt(pos, visible);
+    if (currentId == null) return;
+
     final currentIndex = visible.indexWhere((package) => package.id == currentId);
-    if (startIndex < 0 || currentIndex < 0) return;
+    if (currentIndex < 0) return;
 
-    final first = startIndex < currentIndex ? startIndex : currentIndex;
-    final last = startIndex > currentIndex ? startIndex : currentIndex;
-    final matches = visible
-        .sublist(first, last + 1)
-        .map((package) => package.id)
-        .where((id) => !selectedIds.contains(id))
-        .toSet();
+    final previousIndex = _lastSelectionIndex ?? currentIndex;
+    if (currentIndex == previousIndex) return;
+
+    final first = previousIndex < currentIndex ? previousIndex : currentIndex;
+    final last = previousIndex > currentIndex ? previousIndex : currentIndex;
+    final matches = <String>{};
+    for (var index = first; index <= last; index++) {
+      final id = visible[index].id;
+      if (!selectedIds.contains(id)) matches.add(id);
+    }
+    _lastSelectionIndex = currentIndex;
     if (matches.isNotEmpty) setState(() => selectedIds.addAll(matches));
   }
 
