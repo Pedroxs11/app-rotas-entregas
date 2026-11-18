@@ -78,7 +78,20 @@ class _LoadScreenState extends State<LoadScreen>{
   }
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
-  void _selectAll(){setState(()=>selectedIds.addAll(_visibleRoute.map((p)=>p.id)));}
+  bool _allVisiblePackagesSelected(List<DeliveryPackage> visible) =>
+      visible.isNotEmpty && visible.every((package) => selectedIds.contains(package.id));
+
+  void _toggleSelectAll(List<DeliveryPackage> visible) {
+    if (visible.isEmpty) return;
+    setState(() {
+      final ids = visible.map((package) => package.id).toSet();
+      if (ids.every(selectedIds.contains)) {
+        selectedIds.removeAll(ids);
+      } else {
+        selectedIds.addAll(ids);
+      }
+    });
+  }
   void _registerTileBox(String id, RenderBox box, bool attached) {
     if (attached) {
       _mountedTileBoxes[id] = box;
@@ -346,10 +359,16 @@ class _LoadScreenState extends State<LoadScreen>{
                                     ),
                               ),
                             ),
-                            if (multiSelect)
+                            if (multiSelect && visibleRoute.isNotEmpty)
                               TextButton(
-                                onPressed: _selectAll,
-                                child: const Text('Selecionar todos'),
+                                onPressed: () => _toggleSelectAll(visibleRoute),
+                                child: Text(
+                                  _allVisiblePackagesSelected(visibleRoute)
+                                      ? (search.trim().isEmpty
+                                          ? 'Desmarcar todos'
+                                          : 'Desmarcar resultados')
+                                      : 'Selecionar todos',
+                                ),
                               ),
                           ],
                         ),
