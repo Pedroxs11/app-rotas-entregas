@@ -379,4 +379,30 @@ void main(){
     expect(tester.takeException(), isNull);
   });
 
+
+  testWidgets('a positioned package can be moved directly between compartments', (tester) async {
+    final state = AppState(store: _LoadStore([
+      _package(1, physicalZone: 'Porta-malas'),
+      _package(2, physicalZone: 'Frente direita'),
+    ]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('P01'));
+    await tester.tap(find.text('P01'));
+    await tester.pump();
+
+    expect(find.text('Pacote 01 selecionado.'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('FRENTE E'));
+    await tester.tap(find.text('FRENTE E'));
+    await tester.pumpAndSettle();
+
+    expect(state.packages[0].physicalZone, 'Frente esquerda');
+    expect(state.packages[1].physicalZone, 'Frente direita');
+    expect(find.text('P01'), findsOneWidget);
+  });
+
 }
