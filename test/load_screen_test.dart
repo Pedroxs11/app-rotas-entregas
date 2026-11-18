@@ -1130,4 +1130,33 @@ void main(){
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   });
+
+
+  testWidgets('search does not report empty when a matching package is already assigned',
+      (tester) async {
+    final state = AppState(
+      store: _LoadStore([
+        _package(1, physicalZone: 'Porta-malas'),
+        _package(2),
+      ]),
+    );
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Rua Teste, 1');
+    await tester.pumpAndSettle();
+
+    expect(find.text('P01'), findsOneWidget);
+    expect(
+      find.text('Nenhum pacote encontrado para essa busca.'),
+      findsNothing,
+    );
+    expect(find.text('Sem resultados'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
 }
