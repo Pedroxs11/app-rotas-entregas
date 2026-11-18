@@ -214,6 +214,33 @@ void main() {
     expect(store.saves, 1);
   });
 
+  test('bulk assignment organizes 600 active packages in one persistence operation', () async {
+    final packages = [
+      for (var i = 1; i <= 600; i++) _p(i),
+      _p(601, status: DeliveryStatus.delivered, zone: 'Porta-malas'),
+    ];
+    final store = LoadStore(packages);
+    final state = AppState(store: store);
+    await state.init();
+
+    final activeIds = state.packages
+        .where((p) => p.status != DeliveryStatus.delivered)
+        .map((p) => p.id)
+        .toSet();
+    expect(activeIds, hasLength(600));
+
+    await state.setPhysicalZones(activeIds, 'Porta-malas');
+
+    expect(state.packages, hasLength(601));
+    expect(
+      state.packages.take(600).every((p) => p.physicalZone == 'Porta-malas'),
+      isTrue,
+    );
+    expect(state.packages.last.status, DeliveryStatus.delivered);
+    expect(state.packages.last.physicalZone, 'Porta-malas');
+    expect(store.saves, 1);
+  });
+
   test('bulk assignment rejects unknown package ids without partial changes', () async {
     final store = LoadStore(List.generate(2, (i) => _p(i + 1)));
     final state = AppState(store: store);
