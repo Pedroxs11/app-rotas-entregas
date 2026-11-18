@@ -209,4 +209,21 @@ void main() {
     expect(store.saves, 0);
   });
 
+  test('disabling a compartment clears large active loads in one pass and preserves delivered history', () async {
+    final packages = [
+      for (var i = 1; i <= 600; i++)
+        _p(i, zone: 'Porta-malas'),
+      _p(601, status: DeliveryStatus.delivered, zone: 'Porta-malas'),
+    ];
+    final store = LoadStore(packages);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.setActivePhysicalZones(['Frente esquerda']);
+
+    expect(state.packages.take(600).every((p) => p.physicalZone == null), isTrue);
+    expect(state.packages.last.physicalZone, 'Porta-malas');
+    expect(store.saves, 1);
+  });
+
 }
