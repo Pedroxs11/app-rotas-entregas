@@ -387,18 +387,21 @@ void main(){
     final second = tester.getCenter(find.text('Pacote 02'));
     final fourth = tester.getCenter(find.text('Pacote 04'));
     final sixth = tester.getCenter(find.text('Pacote 06'));
-    final gesture = await tester.startGesture(first);
+    final gesture = await tester.startGesture(
+      first,
+      timeStamp: Duration.zero,
+    );
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
 
-    // Advance pointer events and the fake scheduler clock together. The
-    // long-press starts at 600 ms, so each move uses the next monotonic
-    // timestamp and then pumps the matching frame before the next move.
-    var pointerTimestamp = const Duration(milliseconds: 600);
+    // Use an explicit pointer-down timestamp and keep move timestamps
+    // monotonic. The first move mirrors the 700 ms long-press drag used by
+    // the auto-scroll test; each subsequent frame advances by 16 ms.
+    var pointerTimestamp = const Duration(milliseconds: 700);
     Future<void> moveToNextFrame(Offset position) async {
-      pointerTimestamp += const Duration(milliseconds: 16);
       await gesture.moveTo(position, timeStamp: pointerTimestamp);
       await tester.pump(const Duration(milliseconds: 16));
+      pointerTimestamp += const Duration(milliseconds: 16);
     }
 
     await moveToNextFrame(fourth);
