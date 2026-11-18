@@ -322,9 +322,14 @@ void main(){
         reason: 'Only nearby package rows should be built ($vehicle).',
       );
 
-      await tester.drag(
-        find.byType(CustomScrollView),
-        const Offset(0, -50000),
+      await tester.scrollUntilVisible(
+        find.text('Pacote 600'),
+        1000,
+        scrollable: find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first,
+        maxScrolls: 100,
       );
       await tester.pumpAndSettle();
 
