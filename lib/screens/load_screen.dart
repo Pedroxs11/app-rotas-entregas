@@ -20,6 +20,7 @@ class _LoadScreenState extends State<LoadScreen>{
   final GlobalKey _scrollViewportKey=GlobalKey();
   Timer? _autoScrollTimer;
   Offset? _lastSelectionPointer;
+  String? _selectionStartPackageId;
   double _autoScrollDirection=0;
   double _autoScrollSpeed=0;
   bool multiSelect=false;
