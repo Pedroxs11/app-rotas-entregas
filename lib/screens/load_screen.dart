@@ -66,6 +66,17 @@ class _LoadScreenState extends State<LoadScreen>{
   void _selectionPointerDown(Offset pos) {
     if (!multiSelect) return;
     _dragSelectionPackages = _visibleRoute;
+    if (_dragSelectionPackages.length == 8) {
+      final rects = _dragSelectionPackages.map((package) {
+        final itemContext = _tileKeys[package.id]?.currentContext;
+        final itemObject = itemContext?.findRenderObject();
+        final rect = itemObject is RenderBox && itemObject.hasSize
+            ? (itemObject.localToGlobal(Offset.zero) & itemObject.size)
+            : null;
+        return '${package.id}:$rect';
+      }).join(' | ');
+      debugPrint('LOAD_DRAG_RECTS $rects');
+    }
     _selectionStartPackageId = _packageIdAt(pos, _dragSelectionPackages);
     _lastSelectionPointer = pos;
     _lastSelectionIndex = _selectionStartPackageId == null
