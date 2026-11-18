@@ -330,4 +330,53 @@ void main(){
     expect(state.packages[2].physicalZone, isNull);
   });
 
+
+  testWidgets('search filters packages already placed in compartments', (tester) async {
+    final state = AppState(store: _LoadStore([
+      _package(1, physicalZone: 'Porta-malas'),
+      _package(2, physicalZone: 'Porta-malas'),
+      _package(3, physicalZone: 'Porta-malas'),
+    ]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Rua Teste, 2');
+    await tester.pump();
+
+    expect(find.text('P02'), findsOneWidget);
+    expect(find.text('P01'), findsNothing);
+    expect(find.text('P03'), findsNothing);
+    expect(find.text('1/3'), findsOneWidget);
+  });
+
+  testWidgets('large compartments collapse after eight package chips', (tester) async {
+    final state = AppState(store: _LoadStore(
+      List.generate(12, (index) => _package(index + 1, physicalZone: 'Porta-malas')),
+    ));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('P08'), findsOneWidget);
+    expect(find.text('P09'), findsNothing);
+    expect(find.text('Ver todos (12)'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Ver todos (12)'));
+    await tester.tap(find.text('Ver todos (12)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('P12'), findsOneWidget);
+    expect(find.text('Mostrar menos'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Mostrar menos'));
+    await tester.tap(find.text('Mostrar menos'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('P12'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
 }
