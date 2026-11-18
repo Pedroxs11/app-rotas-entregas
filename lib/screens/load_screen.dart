@@ -71,6 +71,7 @@ class _LoadScreenState extends State<LoadScreen>{
 
   void _selectionPointerMove(Offset pos) {
     if (!multiSelect || !_dragSelecting) return;
+    debugPrint('CARGO_DRAG_MOVE start=$_selectionStartPackageId position=$pos');
     _lastSelectionPointer = pos;
     _selectAt(pos);
     _updateSelectionAutoScroll();
@@ -157,6 +158,7 @@ class _LoadScreenState extends State<LoadScreen>{
   void _selectAt(Offset pos) {
     final currentId = _packageIdAt(pos);
     final startId = _selectionStartPackageId ?? currentId;
+    debugPrint('CARGO_SELECT_AT start=$startId current=$currentId');
     if (currentId == null || startId == null) return;
 
     final visible = _visibleRoute;
