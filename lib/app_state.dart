@@ -15,8 +15,10 @@ class AppState extends ChangeNotifier {
    final prefs=await SharedPreferences.getInstance();
    vehicleType=prefs.getString('load_vehicle_type')=='motorcycle'?VehicleType.motorcycle:VehicleType.car;
    final defaults=vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
-   activePhysicalZones=prefs.getStringList(_zonesPreferenceKey)??[...defaults];
-   activePhysicalZones=activePhysicalZones.where(defaults.contains).toList();
+   final savedZones=prefs.getStringList(_zonesPreferenceKey)??defaults;
+   // Keep the vehicle's canonical physical order even if preferences were
+   // saved in a different order after toggling compartments.
+   activePhysicalZones=defaults.where(savedZones.contains).toList();
    if(activePhysicalZones.isEmpty)activePhysicalZones=[...defaults];
   }catch(e){debugPrint('Could not load vehicle settings: $e');}
  }
@@ -40,7 +42,9 @@ class AppState extends ChangeNotifier {
  }
  Future<void> setActivePhysicalZones(List<String> zones)async{
   final defaults=vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
-  final cleaned=zones.where(defaults.contains).toSet().toList();
+  final requested=zones.toSet();
+  // The visual diagram uses this order to preserve the real left/right sides.
+  final cleaned=defaults.where(requested.contains).toList();
   if(cleaned.isEmpty)throw ArgumentError('Ative pelo menos um compartimento.');
   if(cleaned.length==activePhysicalZones.length&&cleaned.every(activePhysicalZones.contains))return;
   final removed=activePhysicalZones.where((z)=>!cleaned.contains(z)).toSet();
