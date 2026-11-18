@@ -1159,4 +1159,44 @@ void main(){
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   });
+
+
+  testWidgets('car compartment order stays physically correct when preferences are reversed',
+      (tester) async {
+    final state = AppState(
+      store: _LoadStore([_package(1)]),
+    );
+    await state.init();
+    await state.setActivePhysicalZones([
+      'Frente direita',
+      'Frente esquerda',
+      'Traseira direita',
+      'Traseira esquerda',
+    ]);
+
+    expect(
+      state.activePhysicalZones,
+      [
+        'Frente esquerda',
+        'Frente direita',
+        'Traseira esquerda',
+        'Traseira direita',
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    final frontLeft = tester.getTopLeft(find.text('FRENTE E'));
+    final frontRight = tester.getTopLeft(find.text('FRENTE D'));
+    final rearLeft = tester.getTopLeft(find.text('TRASEIRA E'));
+    final rearRight = tester.getTopLeft(find.text('TRASEIRA D'));
+
+    expect(frontLeft.dx, lessThan(frontRight.dx));
+    expect(rearLeft.dx, lessThan(rearRight.dx));
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
 }
