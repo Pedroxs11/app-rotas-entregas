@@ -474,7 +474,29 @@ class _LoadScreenState extends State<LoadScreen>{
 
   Widget _carDiagram(BuildContext context,List<DeliveryPackage> route){
     final selected=_selected();
+    final zones=widget.state.activePhysicalZones;
+    final frontZones=zones.where((zone)=>zone=='Frente esquerda'||zone=='Frente direita').toList();
+    final rearZones=zones.where((zone)=>zone=='Traseira esquerda'||zone=='Traseira direita').toList();
+    final hasTrunk=zones.contains('Porta-malas');
     final colors=Theme.of(context).colorScheme;
+
+    Widget zoneRow(List<String> rowZones)=>Row(
+      children:[
+        for(var index=0;index<rowZones.length;index++)...[
+          if(index>0)const SizedBox(width:8),
+          Expanded(
+            child:_zone(
+              context,
+              rowZones[index],
+              _carZoneLabel(rowZones[index]),
+              route,
+              selected,
+            ),
+          ),
+        ],
+      ],
+    );
+
     return SizedBox(
       width:double.infinity,
       child:CustomPaint(
@@ -500,19 +522,18 @@ class _LoadScreenState extends State<LoadScreen>{
               ),
               child:Center(child:Text('PARA-BRISA',style:Theme.of(context).textTheme.labelSmall)),
             ),
-            const SizedBox(height:12),
-            Wrap(
-              spacing:8,
-              runSpacing:8,
-              alignment:WrapAlignment.center,
-              children:[
-                for(final zone in widget.state.activePhysicalZones)
-                  SizedBox(
-                    width:zone=='Porta-malas'?double.infinity:150,
-                    child:_zone(context,zone,_carZoneLabel(zone),route,selected,wide:zone=='Porta-malas'),
-                  ),
-              ],
-            ),
+            if(frontZones.isNotEmpty)...[
+              const SizedBox(height:12),
+              zoneRow(frontZones),
+            ],
+            if(rearZones.isNotEmpty)...[
+              const SizedBox(height:8),
+              zoneRow(rearZones),
+            ],
+            if(hasTrunk)...[
+              const SizedBox(height:8),
+              _zone(context,'Porta-malas','PORTA-MALAS',route,selected,wide:true),
+            ],
             const SizedBox(height:12),
             Container(
               height:24,
