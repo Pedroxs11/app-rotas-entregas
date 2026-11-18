@@ -42,6 +42,7 @@ class AppState extends ChangeNotifier {
   final defaults=vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
   final cleaned=zones.where(defaults.contains).toSet().toList();
   if(cleaned.isEmpty)throw ArgumentError('Ative pelo menos um compartimento.');
+  if(cleaned.length==activePhysicalZones.length&&cleaned.every(activePhysicalZones.contains))return;
   final removed=activePhysicalZones.where((z)=>!cleaned.contains(z)).toSet();
   activePhysicalZones=cleaned;
   if(removed.isNotEmpty){
