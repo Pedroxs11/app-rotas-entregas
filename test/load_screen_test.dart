@@ -38,11 +38,34 @@ Future<void> _ensureLoadItemVisible(WidgetTester tester, Finder finder) async {
     of: find.byType(CustomScrollView),
     matching: find.byType(Scrollable),
   ).first;
+  final viewportFinder = find.byType(CustomScrollView);
+
   await tester.scrollUntilVisible(
     finder,
     250,
     scrollable: scrollable,
   );
+
+  for (var attempt = 0; attempt < 20; attempt++) {
+    if (finder.evaluate().isEmpty) {
+      await tester.drag(scrollable, const Offset(0, -250));
+    } else {
+      final target = tester.getRect(finder.first);
+      final viewport = tester.getRect(viewportFinder);
+      if (target.top >= viewport.top && target.bottom <= viewport.bottom) {
+        return;
+      }
+      final delta = target.top < viewport.top ? 250.0 : -250.0;
+      await tester.drag(scrollable, Offset(0, delta));
+    }
+    await tester.pumpAndSettle();
+  }
+
+  expect(finder, findsWidgets);
+  final target = tester.getRect(finder.first);
+  final viewport = tester.getRect(viewportFinder);
+  expect(target.top, greaterThanOrEqualTo(viewport.top));
+  expect(target.bottom, lessThanOrEqualTo(viewport.bottom));
 }
 
 void main(){
