@@ -74,6 +74,7 @@ class _LoadScreenState extends State<LoadScreen>{
             (package) => package.id == _selectionStartPackageId,
           );
     _dragSelecting = _selectionStartPackageId != null;
+    debugPrint('LOAD_DRAG_START hit=$_selectionStartPackageId total=${_dragSelectionPackages.length} pos=$pos');
     if (_dragSelecting && selectedIds.add(_selectionStartPackageId!)) {
       setState(() {});
     }
@@ -82,6 +83,7 @@ class _LoadScreenState extends State<LoadScreen>{
   void _selectionPointerMove(Offset pos) {
     if (!multiSelect || !_dragSelecting) return;
     _lastSelectionPointer = pos;
+    debugPrint('LOAD_DRAG_MOVE active=$_dragSelecting pos=$pos');
     _selectAt(pos);
     _updateSelectionAutoScroll();
   }
@@ -174,6 +176,7 @@ class _LoadScreenState extends State<LoadScreen>{
     if (visible.isEmpty) return;
 
     final currentId = _packageIdAt(pos, visible);
+    debugPrint('LOAD_DRAG_HIT id=$currentId last=$_lastSelectionIndex pos=$pos');
     if (currentId == null) return;
 
     final currentIndex = visible.indexWhere((package) => package.id == currentId);
