@@ -295,7 +295,8 @@ void main(){
     final viewport = tester.getRect(find.byType(CustomScrollView));
     final bottomEdge = Offset(viewport.center.dx, viewport.bottom - 8);
     final gesture = await tester.startGesture(first);
-    await gesture.moveTo(bottomEdge, timeStamp: const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(bottomEdge, timeStamp: const Duration(milliseconds: 700));
     for (var frame = 0; frame < 60; frame++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
@@ -375,7 +376,8 @@ void main(){
     final first = tester.getCenter(find.text('Pacote 01'));
     final last = tester.getCenter(find.text('Pacote 80'));
     final gesture = await tester.startGesture(first);
-    await gesture.moveTo(last);
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(last, timeStamp: const Duration(milliseconds: 700));
     await gesture.up();
     await tester.pumpAndSettle();
 
@@ -403,7 +405,8 @@ void main(){
     final first = tester.getCenter(find.text('Pacote 01'));
     final last = tester.getCenter(find.text('Pacote 600'));
     final gesture = await tester.startGesture(first);
-    await gesture.moveTo(last);
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(last, timeStamp: const Duration(milliseconds: 700));
     await gesture.up();
     await tester.pumpAndSettle();
 
