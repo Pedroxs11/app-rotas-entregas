@@ -237,19 +237,15 @@ class _LoadScreenState extends State<LoadScreen>{
                 ],
               ),
           ],
-          const SizedBox(height:10),
-          Wrap(
-            spacing:8,
-            runSpacing:8,
-            children:[
-              for(final p in route)
-                if(_hasActiveZone(p))
-                  Chip(
-                    avatar:const Icon(Icons.inventory_2_outlined,size:16),
-                    label:Text('P${p.scanNumber.toString().padLeft(2,'0')} • ${p.physicalZone}'),
-                  ),
-            ],
-          ),
+          if(route.any(_hasActiveZone))
+            Padding(
+              padding:const EdgeInsets.only(top:8),
+              child:Text(
+                'Cada pacote está identificado no compartimento correspondente.',
+                textAlign:TextAlign.center,
+                style:Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
         ]),
       ),
     );
