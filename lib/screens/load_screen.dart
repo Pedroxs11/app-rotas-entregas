@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../app_state.dart';
 import '../domain/models.dart';
 import 'delivery_screen.dart';
@@ -14,7 +15,10 @@ class LoadScreen extends StatefulWidget {
 class _LoadScreenState extends State<LoadScreen>{
   String? selectedId;
   final Set<String> selectedIds=<String>{};
-  final Map<String,GlobalKey> _tileKeys=<String,GlobalKey>{};
+  // Only rows currently mounted by the lazy list are registered here.
+  // This keeps pointer hit-testing proportional to the visible rows, not the full load.
+  final Map<String, RenderBox> _mountedTileBoxes = <String, RenderBox>{};
+  final Map<String, int> _dragSelectionIndexById = <String, int>{};
   final Set<String> _expandedZones=<String>{};
   final ScrollController _scrollController=ScrollController();
   final GlobalKey _scrollViewportKey=GlobalKey();
@@ -63,16 +67,27 @@ class _LoadScreenState extends State<LoadScreen>{
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
   void _selectAll(){setState(()=>selectedIds.addAll(_route.where(_matchesSearch).map((p)=>p.id)));}
-  void _selectionPointerDown(Offset pos) {
+  void _registerTileBox(String id, RenderBox box, bool attached) {
+    if (attached) {
+      _mountedTileBoxes[id] = box;
+    } else if (identical(_mountedTileBoxes[id], box)) {
+      _mountedTileBoxes.remove(id);
+    }
+  }
+
+  void _selectionPointerDown(Offset pos, String packageId) {
     if (!multiSelect) return;
     _dragSelectionPackages = _visibleRoute;
-    _selectionStartPackageId = _packageIdAt(pos, _dragSelectionPackages);
+    _dragSelectionIndexById = {
+      for (var index = 0; index < _dragSelectionPackages.length; index++)
+        _dragSelectionPackages[index].id: index,
+    };
+    _selectionStartPackageId =
+        _dragSelectionIndexById.containsKey(packageId) ? packageId : null;
     _lastSelectionPointer = pos;
     _lastSelectionIndex = _selectionStartPackageId == null
         ? null
-        : _dragSelectionPackages.indexWhere(
-            (package) => package.id == _selectionStartPackageId,
-          );
+        : _dragSelectionIndexById[_selectionStartPackageId!];
     _dragSelecting = _selectionStartPackageId != null;
     if (_dragSelecting && selectedIds.add(_selectionStartPackageId!)) {
       setState(() {});
@@ -151,20 +166,19 @@ class _LoadScreenState extends State<LoadScreen>{
     _selectionStartPackageId = null;
     _lastSelectionPointer = null;
     _dragSelectionPackages = const [];
+    _dragSelectionIndexById.clear();
     _lastSelectionIndex = null;
     _dragSelecting = false;
   }
-  String? _packageIdAt(
-    Offset pos, [
-    List<DeliveryPackage>? visiblePackages,
-  ]) {
-    for (final package in visiblePackages ?? _visibleRoute) {
-      final context = _tileKeys[package.id]?.currentContext;
-      if (context == null) continue;
-      final object = context.findRenderObject();
-      if (object is! RenderBox || !object.hasSize) continue;
-      final rect = object.localToGlobal(Offset.zero) & object.size;
-      if (rect.contains(pos)) return package.id;
+  String? _packageIdAt(Offset pos) {
+    for (final entry in _mountedTileBoxes.entries) {
+      final box = entry.value;
+      if (!box.attached || !box.hasSize ||
+          !_dragSelectionIndexById.containsKey(entry.key)) {
+        continue;
+      }
+      final rect = box.localToGlobal(Offset.zero) & box.size;
+      if (rect.contains(pos)) return entry.key;
     }
     return null;
   }
@@ -173,11 +187,11 @@ class _LoadScreenState extends State<LoadScreen>{
     final visible = _dragSelectionPackages;
     if (visible.isEmpty) return;
 
-    final currentId = _packageIdAt(pos, visible);
+    final currentId = _packageIdAt(pos);
     if (currentId == null) return;
 
-    final currentIndex = visible.indexWhere((package) => package.id == currentId);
-    if (currentIndex < 0) return;
+    final currentIndex = _dragSelectionIndexById[currentId];
+    if (currentIndex == null) return;
 
     final previousIndex = _lastSelectionIndex ?? currentIndex;
     if (currentIndex == previousIndex) return;
@@ -592,14 +606,16 @@ class _LoadScreenState extends State<LoadScreen>{
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onLongPressStart: multiSelect
-          ? (details) => _selectionPointerDown(details.globalPosition)
+          ? (details) => _selectionPointerDown(details.globalPosition, p.id)
           : null,
       onLongPressMoveUpdate: multiSelect
           ? (details) => _selectionPointerMove(details.globalPosition)
           : null,
-      child: Card(
-        key: _tileKeys.putIfAbsent(p.id, () => GlobalKey()),
-        margin: const EdgeInsets.only(bottom: 6),
+      child: _TrackedPackageTile(
+        packageId: p.id,
+        onChanged: _registerTileBox,
+        child: Card(
+          margin: const EdgeInsets.only(bottom: 6),
         color: selected ? cs.inverseSurface : null,
         child: ListTile(
           selected: selected,
@@ -625,6 +641,7 @@ class _LoadScreenState extends State<LoadScreen>{
               ? null
               : (_hasActiveZone(p) ? const Chip(label: Text('OK')) : const Chip(label: Text('Falta'))),
           onTap: () => _togglePackage(p.id),
+        ),
         ),
       ),
     );
@@ -678,4 +695,59 @@ class _CarSilhouettePainter extends CustomPainter {
   }
   @override
   bool shouldRepaint(covariant _CarSilhouettePainter oldDelegate)=>fill!=oldDelegate.fill||outline!=oldDelegate.outline||glass!=oldDelegate.glass||tire!=oldDelegate.tire;
+}
+
+
+class _TrackedPackageTile extends SingleChildRenderObjectWidget {
+  const _TrackedPackageTile({
+    required this.packageId,
+    required this.onChanged,
+    required super.child,
+  });
+
+  final String packageId;
+  final void Function(String id, RenderBox box, bool attached) onChanged;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _TrackedPackageTileRenderBox(packageId, onChanged);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _TrackedPackageTileRenderBox renderObject,
+  ) {
+    renderObject.updateRegistration(packageId, onChanged);
+  }
+}
+
+class _TrackedPackageTileRenderBox extends RenderProxyBox {
+  _TrackedPackageTileRenderBox(this.packageId, this.onChanged);
+
+  String packageId;
+  void Function(String id, RenderBox box, bool attached) onChanged;
+
+  void updateRegistration(
+    String nextPackageId,
+    void Function(String id, RenderBox box, bool attached) nextOnChanged,
+  ) {
+    if (packageId != nextPackageId) {
+      onChanged(packageId, this, false);
+      packageId = nextPackageId;
+    }
+    onChanged = nextOnChanged;
+    if (attached) onChanged(packageId, this, true);
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    onChanged(packageId, this, true);
+  }
+
+  @override
+  void detach() {
+    onChanged(packageId, this, false);
+    super.detach();
+  }
 }
