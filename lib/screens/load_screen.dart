@@ -13,6 +13,7 @@ class _LoadScreenState extends State<LoadScreen>{
   String? selectedId;
   final Set<String> selectedIds=<String>{};
   final Map<String,GlobalKey> _tileKeys=<String,GlobalKey>{};
+  final Set<String> _expandedZones=<String>{};
   bool multiSelect=false;
   Offset? _selectionPointerStart;
   Offset? _selectionPointerLast;
@@ -114,7 +115,7 @@ class _LoadScreenState extends State<LoadScreen>{
     final assigned=route.where(_hasActiveZone).length;
     final missing=route.length-assigned;
     return Scaffold(
-      appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[IconButton(tooltip:'Configurar compartimentos',onPressed:_configureZones,icon:const Icon(Icons.tune)),IconButton(tooltip:'Selecionar vários',onPressed:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),PopupMenuButton<VehicleType>(tooltip:'Veículo',onSelected:(v)async{await widget.state.setVehicleType(v);if(mounted)setState((){selectedId=null;selectedIds.clear();});},itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))])]),
+      appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[IconButton(tooltip:'Configurar compartimentos',onPressed:_configureZones,icon:const Icon(Icons.tune)),IconButton(tooltip:'Selecionar vários',onPressed:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),PopupMenuButton<VehicleType>(tooltip:'Veículo',onSelected:(v)async{await widget.state.setVehicleType(v);if(mounted)setState((){selectedId=null;selectedIds.clear();_expandedZones.clear();});},itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))])]),
       body:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
         Padding(padding:const EdgeInsets.fromLTRB(16,12,16,8),child:Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Text('$assigned de ${route.length} pacotes posicionados',style:Theme.of(context).textTheme.titleLarge),
@@ -125,13 +126,22 @@ class _LoadScreenState extends State<LoadScreen>{
           LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
         ])))),
         Expanded(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(16,0,16,12),child:Column(children:[
+          TextField(
+            decoration:InputDecoration(
+              prefixIcon:const Icon(Icons.search),
+              suffixIcon:search.isEmpty?null:IconButton(tooltip:'Limpar busca',onPressed:()=>setState(()=>search=''),icon:const Icon(Icons.close)),
+              hintText:'Buscar pacote ou endereço',
+              border:const OutlineInputBorder(),
+              isDense:true,
+            ),
+            onChanged:(v)=>setState(()=>search=v),
+          ),
+          const SizedBox(height:10),
           if(_isMoto)_motoCard(context,route) else _carDiagram(context,route),
           const SizedBox(height:14),
           if(selected!=null||selectedIds.isNotEmpty)SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:_clearSelected,icon:const Icon(Icons.remove_circle_outline),label:Text(selectedIds.length>1?'RETIRAR ${selectedIds.length} PACOTES':'RETIRAR PACOTE SELECIONADO'))),
           const SizedBox(height:8),
           Row(children:[Expanded(child:Text(_isMoto?'Pacotes':'Pacotes para posicionar',style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.bold))),if(multiSelect)TextButton(onPressed:_selectAll,child:const Text('Selecionar todos'))]),
-          const SizedBox(height:8),
-          TextField(decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Buscar pacote ou endereço',border:OutlineInputBorder(),isDense:true),onChanged:(v)=>setState(()=>search=v)),
           const SizedBox(height:8),
           Listener(behavior:HitTestBehavior.translucent,onPointerDown:(e)=>_selectionPointerDown(e.position),onPointerMove:(e)=>_selectionPointerMove(e.position),onPointerUp:(_)=>_selectionPointerUp(),onPointerCancel:(_)=>_selectionPointerUp(),child:Column(children:[for(final p in _visibleRoute)_packageTile(context,p,multiSelect?selectedIds.contains(p.id):selected?.id==p.id)])),
           if(missing==0)Padding(padding:const EdgeInsets.only(top:8),child:Text('Todos os pacotes estão posicionados. Confira a carga antes de sair.',style:TextStyle(color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w600))),
@@ -160,7 +170,7 @@ class _LoadScreenState extends State<LoadScreen>{
       actions:[
         TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Cancelar')),
         FilledButton(onPressed:selected.isEmpty?null:()async{
-          try{await widget.state.setActivePhysicalZones(selected.toList());if(dialogContext.mounted)Navigator.pop(dialogContext);if(mounted)setState((){});}
+          try{await widget.state.setActivePhysicalZones(selected.toList());if(dialogContext.mounted)Navigator.pop(dialogContext);if(mounted)setState((){_expandedZones.removeWhere((zone)=>!selected.contains(zone));});}
           catch(e){if(dialogContext.mounted)ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content:Text('$e')));}
         },child:const Text('Salvar')),
       ],
@@ -315,9 +325,15 @@ class _LoadScreenState extends State<LoadScreen>{
   };
 
   Widget _zone(BuildContext context,String zone,String shortName,List<DeliveryPackage> route,DeliveryPackage? selected,{bool wide=false}){
-    final packages=route.where((p)=>p.physicalZone==zone).toList();
-    final activeZone=selected?.physicalZone==zone;
-    final highlighted=selected!=null;
+    final allPackages=route.where((p)=>p.physicalZone==zone).toList();
+    final packages=allPackages.where(_matchesSearch).toList();
+    final expanded=_expandedZones.contains(zone);
+    final visiblePackages=expanded?packages:packages.take(8).toList();
+    final activeZone=multiSelect
+        ?route.any((p)=>p.physicalZone==zone&&selectedIds.contains(p.id))
+        :selected?.physicalZone==zone;
+    final highlighted=selected!=null||selectedIds.isNotEmpty;
+    final hasSearch=search.trim().isNotEmpty;
     return InkWell(
       onTap:()=>_assign(zone),
       borderRadius:BorderRadius.circular(18),
@@ -342,14 +358,23 @@ class _LoadScreenState extends State<LoadScreen>{
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Row(children:[
             Expanded(child:Text(shortName,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12))),
-            if(packages.isNotEmpty)Text('${packages.length}',style:const TextStyle(fontWeight:FontWeight.bold)),
+            if(allPackages.isNotEmpty)Text(
+              hasSearch?' ${packages.length}/${allPackages.length}':'${allPackages.length}',
+              style:const TextStyle(fontWeight:FontWeight.bold),
+            ),
           ]),
           const SizedBox(height:6),
           if(packages.isEmpty)
-            const SizedBox(height:72,child:Center(child:Text('Vazio',style:TextStyle(fontSize:12))))
-          else
+            SizedBox(
+              height:allPackages.isEmpty?72:40,
+              child:Center(child:Text(
+                allPackages.isEmpty?'Vazio':'Sem resultados',
+                style:const TextStyle(fontSize:12),
+              )),
+            )
+          else ...[
             Wrap(spacing:3,runSpacing:3,children:[
-              for(final p in packages)
+              for(final p in visiblePackages)
                 InputChip(
                   visualDensity:VisualDensity.compact,
                   padding:EdgeInsets.zero,
@@ -358,6 +383,21 @@ class _LoadScreenState extends State<LoadScreen>{
                   label:Text('P${p.scanNumber.toString().padLeft(2,'0')}'),
                 ),
             ]),
+            if(packages.length>8)
+              Align(
+                alignment:Alignment.centerLeft,
+                child:TextButton(
+                  style:TextButton.styleFrom(
+                    minimumSize:Size.zero,
+                    padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                    tapTargetSize:MaterialTapTargetSize.shrinkWrap,
+                    visualDensity:VisualDensity.compact,
+                  ),
+                  onPressed:()=>setState(()=>expanded?_expandedZones.remove(zone):_expandedZones.add(zone)),
+                  child:Text(expanded?'Mostrar menos':'Ver todos (${packages.length})'),
+                ),
+              ),
+          ],
         ]),
       ),
     );
