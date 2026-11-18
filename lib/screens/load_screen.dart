@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../domain/models.dart';
@@ -14,6 +16,12 @@ class _LoadScreenState extends State<LoadScreen>{
   final Set<String> selectedIds=<String>{};
   final Map<String,GlobalKey> _tileKeys=<String,GlobalKey>{};
   final Set<String> _expandedZones=<String>{};
+  final ScrollController _scrollController=ScrollController();
+  final GlobalKey _scrollViewportKey=GlobalKey();
+  Timer? _autoScrollTimer;
+  Offset? _lastSelectionPointer;
+  double _autoScrollDirection=0;
+  double _autoScrollSpeed=0;
   bool multiSelect=false;
   Offset? _selectionPointerStart;
   Offset? _selectionPointerLast;
@@ -25,6 +33,8 @@ class _LoadScreenState extends State<LoadScreen>{
 
   @override
   void dispose(){
+    _autoScrollTimer?.cancel();
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -52,17 +62,74 @@ class _LoadScreenState extends State<LoadScreen>{
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
   void _selectAll(){setState(()=>selectedIds.addAll(_route.where(_matchesSearch).map((p)=>p.id)));}
-  void _selectionPointerDown(Offset pos){if(!multiSelect)return;_selectionPointerStart=pos;_selectionPointerLast=pos;_dragSelecting=false;}
+  void _selectionPointerDown(Offset pos){if(!multiSelect)return;_selectionPointerStart=pos;_selectionPointerLast=pos;_lastSelectionPointer=pos;_dragSelecting=false;}
   void _selectionPointerMove(Offset pos){
     if(!multiSelect||_selectionPointerStart==null)return;
+    _lastSelectionPointer=pos;
     final start=_selectionPointerStart!;
     final previous=_selectionPointerLast??start;
     if(!_dragSelecting&&(pos-start).distance>10){
       _dragSelecting=true;
       _selectAt(start);
     }
-    if(_dragSelecting)_selectAlong(previous,pos);
+    if(_dragSelecting){
+      _selectAlong(previous,pos);
+      _updateSelectionAutoScroll();
+    }
     _selectionPointerLast=pos;
+  }
+
+  void _updateSelectionAutoScroll(){
+    if(!_dragSelecting||_lastSelectionPointer==null||!_scrollController.hasClients){
+      _stopSelectionAutoScroll();
+      return;
+    }
+    final viewportContext=_scrollViewportKey.currentContext;
+    final viewportObject=viewportContext?.findRenderObject();
+    if(viewportObject is! RenderBox||!viewportObject.hasSize){
+      _stopSelectionAutoScroll();
+      return;
+    }
+    final viewport=viewportObject.localToGlobal(Offset.zero)&viewportObject.size;
+    final pointerY=_lastSelectionPointer!.dy;
+    const edgeSize=64.0;
+    if(pointerY<viewport.top+edgeSize){
+      _autoScrollDirection=-1;
+      _autoScrollSpeed=(6+((viewport.top+edgeSize-pointerY)/edgeSize).clamp(0.0,1.0)*22).toDouble();
+    }else if(pointerY>viewport.bottom-edgeSize){
+      _autoScrollDirection=1;
+      _autoScrollSpeed=(6+((pointerY-(viewport.bottom-edgeSize))/edgeSize).clamp(0.0,1.0)*22).toDouble();
+    }else{
+      _stopSelectionAutoScroll();
+      return;
+    }
+    _autoScrollTimer??=Timer.periodic(const Duration(milliseconds:16),_autoScrollTick);
+  }
+
+  void _autoScrollTick(Timer timer){
+    if(!mounted||!_dragSelecting||!_scrollController.hasClients){
+      _stopSelectionAutoScroll();
+      return;
+    }
+    final position=_scrollController.position;
+    final next=(position.pixels+_autoScrollDirection*_autoScrollSpeed).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    ).toDouble();
+    if((next-position.pixels).abs()<0.5){
+      _stopSelectionAutoScroll();
+      return;
+    }
+    _scrollController.jumpTo(next);
+    final pointer=_lastSelectionPointer;
+    if(pointer!=null)_selectAt(pointer);
+  }
+
+  void _stopSelectionAutoScroll(){
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer=null;
+    _autoScrollDirection=0;
+    _autoScrollSpeed=0;
   }
   void _selectAlong(Offset from,Offset to){
     // Test the pointer segment against each card instead of sampling a fixed
@@ -106,7 +173,17 @@ class _LoadScreenState extends State<LoadScreen>{
         clip(-dy,from.dy-rect.top)&&
         clip(dy,rect.bottom-from.dy);
   }
-  void _selectionPointerUp(){if(_dragSelecting){_suppressNextTap=true;WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_suppressNextTap=false;});}_selectionPointerStart=null;_selectionPointerLast=null;_dragSelecting=false;}
+  void _selectionPointerUp(){
+    if(_dragSelecting){
+      _suppressNextTap=true;
+      WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_suppressNextTap=false;});
+    }
+    _stopSelectionAutoScroll();
+    _selectionPointerStart=null;
+    _selectionPointerLast=null;
+    _lastSelectionPointer=null;
+    _dragSelecting=false;
+  }
   void _selectAt(Offset pos){for(final p in _visibleRoute){final ctx=_tileKeys[p.id]?.currentContext;if(ctx==null)continue;final object=ctx.findRenderObject();if(object is! RenderBox||!object.hasSize)continue;final rect=object.localToGlobal(Offset.zero)&object.size;if(rect.contains(pos)&&!selectedIds.contains(p.id)){setState(()=>selectedIds.add(p.id));break;}}}
 
   Future<void> _clearSelected()async{
@@ -132,7 +209,7 @@ class _LoadScreenState extends State<LoadScreen>{
           const SizedBox(height:10),
           LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
         ])))),
-        Expanded(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(16,0,16,12),child:Column(children:[
+        Expanded(child:SingleChildScrollView(key:_scrollViewportKey,controller:_scrollController,padding:const EdgeInsets.fromLTRB(16,0,16,12),child:Column(children:[
           TextField(
             controller:_searchController,
             decoration:InputDecoration(
