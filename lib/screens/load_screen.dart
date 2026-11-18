@@ -23,8 +23,6 @@ class _LoadScreenState extends State<LoadScreen>{
   double _autoScrollDirection=0;
   double _autoScrollSpeed=0;
   bool multiSelect=false;
-  Offset? _selectionPointerStart;
-  Offset? _selectionPointerLast;
   bool _dragSelecting=false;
   bool _suppressNextTap=false;
   String search='';
