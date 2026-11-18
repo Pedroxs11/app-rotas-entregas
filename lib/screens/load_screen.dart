@@ -91,6 +91,7 @@ class _LoadScreenState extends State<LoadScreen>{
     _lastSelectionPointer = pos;
     _dragSelecting = true;
     _selectAt(pos);
+    if (mounted) setState(() {});
   }
 
   void _selectionPointerMove(Offset pos) {
@@ -207,7 +208,8 @@ class _LoadScreenState extends State<LoadScreen>{
   }
   void _selectionPointerUp() {
     _cancelPendingSelection();
-    if (_dragSelecting) {
+    final wasDragging = _dragSelecting;
+    if (wasDragging) {
       _suppressNextTap = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _suppressNextTap = false;
@@ -218,6 +220,7 @@ class _LoadScreenState extends State<LoadScreen>{
     _selectionPointerLast = null;
     _lastSelectionPointer = null;
     _dragSelecting = false;
+    if (wasDragging && mounted) setState(() {});
   }
   void _selectAt(Offset pos){for(final p in _visibleRoute){final ctx=_tileKeys[p.id]?.currentContext;if(ctx==null)continue;final object=ctx.findRenderObject();if(object is! RenderBox||!object.hasSize)continue;final rect=object.localToGlobal(Offset.zero)&object.size;if(rect.contains(pos)&&!selectedIds.contains(p.id)){setState(()=>selectedIds.add(p.id));break;}}}
 
@@ -248,6 +251,7 @@ class _LoadScreenState extends State<LoadScreen>{
           child: CustomScrollView(
               key: _scrollViewportKey,
               controller: _scrollController,
+              physics: _dragSelecting ? const NeverScrollableScrollPhysics() : null,
               slivers: [
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
