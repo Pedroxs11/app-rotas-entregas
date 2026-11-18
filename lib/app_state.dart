@@ -44,11 +44,17 @@ class AppState extends ChangeNotifier {
   if(cleaned.isEmpty)throw ArgumentError('Ative pelo menos um compartimento.');
   final removed=activePhysicalZones.where((z)=>!cleaned.contains(z)).toSet();
   activePhysicalZones=cleaned;
-  for(var i=0;i<packages.length;i++){
-   final p=packages[i];
-   if(p.status!=DeliveryStatus.delivered&&removed.contains(p.physicalZone)){
-    packages=[...packages]..[i]=p.copyWith(clearPhysicalZone:true);
+  if(removed.isNotEmpty){
+   final next=[...packages];
+   var changed=false;
+   for(var i=0;i<next.length;i++){
+    final p=next[i];
+    if(p.status!=DeliveryStatus.delivered&&removed.contains(p.physicalZone)){
+     next[i]=p.copyWith(clearPhysicalZone:true);
+     changed=true;
+    }
    }
+   if(changed)packages=next;
   }
   final prefs=await SharedPreferences.getInstance();
   await prefs.setStringList(_zonesPreferenceKey,cleaned);
