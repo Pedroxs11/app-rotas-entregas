@@ -209,4 +209,52 @@ void main() {
       await tester.pumpAndSettle();
     }
   });
+
+  testWidgets('motorcycle side bags stay on their configured physical sides',
+      (tester) async {
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Future<void> verifySide({
+      required String zone,
+      required String label,
+      required bool isLeft,
+    }) async {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState(
+        store: _ConfigurationStore([_package(10)]),
+      );
+      await state.init();
+      await state.setVehicleType(VehicleType.motorcycle);
+      await state.setActivePhysicalZones([zone]);
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      final bagCenter = tester.getCenter(find.text(label));
+      final motorcycleCenter = tester.getCenter(find.byIcon(Icons.two_wheeler));
+      if (isLeft) {
+        expect(bagCenter.dx, lessThan(motorcycleCenter.dx));
+      } else {
+        expect(bagCenter.dx, greaterThan(motorcycleCenter.dx));
+      }
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+
+    await verifySide(
+      zone: 'Bolsa lateral esquerda',
+      label: 'BOLSA ESQUERDA',
+      isLeft: true,
+    );
+    await verifySide(
+      zone: 'Bolsa lateral direita',
+      label: 'BOLSA DIREITA',
+      isLeft: false,
+    );
+  });
 }
