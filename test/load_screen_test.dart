@@ -242,6 +242,41 @@ void main(){
   });
 
 
+  testWidgets('drag selection auto-scrolls through packages on a phone-sized screen', (tester) async {
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = AppState(
+      store: _LoadStore(List.generate(60, (index) => _package(index + 1))),
+    );
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('Pacote 01'));
+    final first = tester.getCenter(find.text('Pacote 01'));
+    final viewport = tester.getRect(find.byType(SingleChildScrollView));
+    final bottomEdge = Offset(viewport.center.dx, viewport.bottom - 8);
+    final gesture = await tester.startGesture(first);
+    await gesture.moveTo(bottomEdge, timeStamp: const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 900));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final selectionLabel = tester.widget<Text>(
+      find.textContaining('pacote(s) selecionado(s)'),
+    );
+    final selectedCount = int.parse(selectionLabel.data!.split(' ').first);
+    expect(selectedCount, greaterThan(10));
+    expect(tester.takeException(), isNull);
+  });
+
+
   testWidgets('drag selection crosses an 80-package load without skipping cards', (tester) async {
     tester.view.physicalSize = const Size(400, 10000);
     tester.view.devicePixelRatio = 1;
