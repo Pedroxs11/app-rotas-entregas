@@ -1057,13 +1057,18 @@ void main(){
     await tester.enterText(find.byType(TextField), 'P17');
     await tester.pumpAndSettle();
 
-    expect(find.text('P17'), findsOneWidget);
+    expect(find.widgetWithText(InputChip, 'P17'), findsOneWidget);
     expect(find.text('1/1'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('starting deliveries clears the temporary load selection',
       (tester) async {
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final state = AppState(
       store: _LoadStore([
         _package(1, physicalZone: 'Porta-malas'),
