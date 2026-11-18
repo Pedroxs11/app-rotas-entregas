@@ -325,42 +325,43 @@ void main(){
   });
 
 
-  testWidgets('drag selection auto-scrolls through packages on a phone-sized screen', (tester) async {
+  testWidgets('car and motorcycle drag selection auto-scroll on a phone-sized screen', (tester) async {
     tester.view.physicalSize = const Size(400, 850);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final state = AppState(
-      store: _LoadStore(List.generate(60, (index) => _package(index + 1))),
-    );
-    await state.init();
+    for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+      SharedPreferences.setMockInitialValues(
+        vehicle == VehicleType.motorcycle
+            ? {'load_vehicle_type': 'motorcycle'}
+            : {},
+      );
+      final state = AppState(
+        store: _LoadStore(List.generate(60, (index) => _package(index + 1))),
+      );
+      await state.init();
 
-    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Selecionar vários'));
-    await tester.pump();
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pump();
 
-    await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
-    final first = tester.getCenter(find.text('Pacote 01'));
-    final viewport = tester.getRect(find.byType(CustomScrollView));
-    final bottomEdge = Offset(viewport.center.dx, viewport.bottom - 8);
-    final gesture = await tester.startGesture(first);
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
-    await gesture.moveTo(bottomEdge, timeStamp: const Duration(milliseconds: 700));
-    for (var frame = 0; frame < 60; frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
+      final selectedCount = await _dragSelectToBottom(
+        tester,
+        autoScrollDuration: const Duration(seconds: 2),
+      );
+
+      expect(
+        selectedCount,
+        greaterThan(10),
+        reason: 'Drag selection should keep auto-scrolling in $vehicle mode.',
+      );
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
     }
-    await gesture.up();
-    await tester.pumpAndSettle();
-
-    final selectionLabel = tester.widget<Text>(
-      find.textContaining('pacote(s) selecionado(s)'),
-    );
-    final selectedCount = int.parse(selectionLabel.data!.split(' ').first);
-    expect(selectedCount, greaterThan(10));
-    expect(tester.takeException(), isNull);
   });
 
 
