@@ -776,4 +776,17 @@ void main(){
     }
   });
 
+
+  testWidgets('car package row separates load status and address with a line break', (tester) async {
+    final state = AppState(store: _LoadStore([_package(1)]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sem posição no carro\nRua Teste, 1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+
 }
