@@ -299,7 +299,7 @@ void main(){
     expect(state.packages[1].physicalZone,'Frente esquerda');
   });
 
-  testWidgets('select all includes packages already positioned in a compartment', (tester) async {
+  testWidgets('select all only includes unassigned packages', (tester) async {
     final store=_LoadStore([
       _package(1,physicalZone:'Porta-malas'),
       _package(2),
@@ -317,13 +317,15 @@ void main(){
     await tester.tap(find.text('Selecionar todos'));
     await tester.pump();
 
-    expect(find.text('3 pacote(s) selecionado(s)'),findsOneWidget);
+    expect(find.text('1 pacote(s) selecionado(s)'),findsOneWidget);
 
     await _ensureLoadItemVisible(tester, find.text('FRENTE D'));
     await tester.tap(find.text('FRENTE D'));
     await tester.pumpAndSettle();
 
-    expect(state.packages.every((p)=>p.physicalZone=='Frente direita'),isTrue);
+    expect(state.packages[0].physicalZone, 'Porta-malas');
+    expect(state.packages[1].physicalZone, 'Frente direita');
+    expect(state.packages[2].physicalZone, 'Traseira direita');
   });
 
 
