@@ -591,8 +591,6 @@ class _LoadScreenState extends State<LoadScreen>{
       onLongPressMoveUpdate: multiSelect
           ? (details) => _selectionPointerMove(details.globalPosition)
           : null,
-      onLongPressEnd: multiSelect ? (_) => _selectionPointerUp() : null,
-      onLongPressCancel: multiSelect ? _selectionPointerUp : null,
       child: Card(
         key: _tileKeys.putIfAbsent(p.id, () => GlobalKey()),
         margin: const EdgeInsets.only(bottom: 6),
