@@ -778,6 +778,9 @@ void main(){
 
 
   testWidgets('car package row separates load status and address with a line break', (tester) async {
+    // Keep this UI assertion independent from vehicle preferences written by
+    // previous tests in the same SharedPreferences test environment.
+    SharedPreferences.setMockInitialValues({});
     final state = AppState(store: _LoadStore([_package(1)]));
     await state.init();
 
