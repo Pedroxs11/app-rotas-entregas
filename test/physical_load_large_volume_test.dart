@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class VolumeStore implements PackageStore {
  VolumeStore(this.packages);List<DeliveryPackage> packages;bool optimized=true;int saves=0;
@@ -22,5 +23,26 @@ void main(){
   expect(state.packages.first.physicalZone,'Frente esquerda');
   expect(state.packages.last.physicalZone,'Porta-malas');
   expect(state.packages,hasLength(600));
+ });
+
+ test('200 packages can be bulk-organized in car and motorcycle compartments',()async{
+  SharedPreferences.setMockInitialValues({});
+  final store=VolumeStore(List.generate(200,(i)=>_p(i+1)));
+  final state=AppState(store:store);
+  await state.init();
+
+  final allIds=state.packages.map((p)=>p.id).toSet();
+  expect(allIds,hasLength(200));
+  await state.setPhysicalZones(allIds,'Porta-malas');
+  expect(state.packages.every((p)=>p.physicalZone=='Porta-malas'),isTrue);
+
+  await state.setVehicleType(VehicleType.motorcycle);
+  expect(state.packages.every((p)=>p.physicalZone==null),isTrue);
+  expect(state.activePhysicalZones,contains('Baú traseiro'));
+
+  await state.setPhysicalZones(allIds,'Baú traseiro');
+  expect(state.packages,hasLength(200));
+  expect(state.packages.every((p)=>p.physicalZone=='Baú traseiro'),isTrue);
+  expect(store.saves,greaterThan(0));
  });
 }
