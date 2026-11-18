@@ -226,4 +226,15 @@ void main() {
     expect(store.saves, 1);
   });
 
+  test('saving the unchanged compartment setup does not persist again', () async {
+    final store = LoadStore([_p(1, zone: 'Porta-malas')]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.setActivePhysicalZones(AppState.carPhysicalZones);
+
+    expect(state.packages.single.physicalZone, 'Porta-malas');
+    expect(store.saves, 0);
+  });
+
 }
