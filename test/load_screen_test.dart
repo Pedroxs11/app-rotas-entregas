@@ -536,6 +536,72 @@ void main(){
   });
 
 
+  testWidgets('car and motorcycle can bulk-organize 600 packages from the load screen', (tester) async {
+    tester.view.physicalSize = const Size(400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+      SharedPreferences.setMockInitialValues(
+        vehicle == VehicleType.motorcycle
+            ? {'load_vehicle_type': 'motorcycle'}
+            : {'load_vehicle_type': 'car'},
+      );
+      final state = AppState(
+        store: _LoadStore(
+          List.generate(600, (index) => _package(index + 1)),
+        ),
+      );
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pump();
+      await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
+      await tester.tap(find.text('Selecionar todos'));
+      await tester.pump();
+
+      expect(find.text('600 pacote(s) selecionado(s)'), findsOneWidget);
+
+      final targetLabel = vehicle == VehicleType.car
+          ? 'PORTA-MALAS'
+          : 'MOCHILA DE ENTREGA';
+      final targetZone = vehicle == VehicleType.car
+          ? 'Porta-malas'
+          : 'Mochila de entrega';
+      await _ensureLoadItemVisible(tester, find.text(targetLabel));
+      await tester.tap(find.text(targetLabel));
+      await tester.pumpAndSettle();
+
+      expect(state.packages, hasLength(600));
+      expect(
+        state.packages.every((p) => p.physicalZone == targetZone),
+        isTrue,
+        reason: 'All 600 packages must be assigned in $vehicle mode.',
+      );
+      expect(find.text('600 de 600 pacotes posicionados'), findsOneWidget);
+      expect(find.text('Ver todos (600)'), findsOneWidget);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNotNull,
+      );
+      expect(tester.takeException(), isNull);
+
+      await _ensureLoadItemVisible(tester, find.text('Ver todos (600)'));
+      await tester.tap(find.text('Ver todos (600)'));
+      await tester.pumpAndSettle();
+      expect(find.text('P600'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
+
   testWidgets('drag selection auto-scrolls through an 80-package load', (tester) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
