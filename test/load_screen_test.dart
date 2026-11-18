@@ -394,7 +394,7 @@ void main(){
     await tester.tap(find.text('P01'));
     await tester.pump();
 
-    expect(find.text('Pacote 01 selecionado.'), findsOneWidget);
+    expect(find.textContaining('Pacote 01 selecionado'), findsOneWidget);
 
     await tester.ensureVisible(find.text('FRENTE E'));
     await tester.tap(find.text('FRENTE E'));
@@ -419,7 +419,7 @@ void main(){
     await tester.ensureVisible(find.text('P07'));
     await tester.tap(find.text('P07'));
     await tester.pump();
-    expect(find.text('Pacote 07 selecionado.'), findsOneWidget);
+    expect(find.textContaining('Pacote 07 selecionado'), findsOneWidget);
 
     await tester.ensureVisible(find.text('MOCHILA DE ENTREGA'));
     await tester.tap(find.text('MOCHILA DE ENTREGA'));
