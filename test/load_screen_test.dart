@@ -365,6 +365,47 @@ void main(){
   });
 
 
+  testWidgets('drag selection stays contiguous when the finger changes direction', (tester) async {
+    tester.view.physicalSize = const Size(400, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = AppState(
+      store: _LoadStore(List.generate(8, (index) => _package(index + 1))),
+    );
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+
+    final first = tester.getCenter(find.text('Pacote 01'));
+    final second = tester.getCenter(find.text('Pacote 02'));
+    final fourth = tester.getCenter(find.text('Pacote 04'));
+    final sixth = tester.getCenter(find.text('Pacote 06'));
+    final gesture = await tester.startGesture(first);
+    await tester.pump(const Duration(milliseconds: 600));
+
+    await gesture.moveTo(fourth, timeStamp: const Duration(milliseconds: 700));
+    await tester.pump();
+    expect(find.text('4 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await gesture.moveTo(second, timeStamp: const Duration(milliseconds: 800));
+    await tester.pump();
+    expect(find.text('4 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await gesture.moveTo(sixth, timeStamp: const Duration(milliseconds: 900));
+    await tester.pump();
+    expect(find.text('6 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+
   testWidgets('car and motorcycle large loads build package rows lazily', (tester) async {
     tester.view.physicalSize = const Size(400, 850);
     tester.view.devicePixelRatio = 1;
