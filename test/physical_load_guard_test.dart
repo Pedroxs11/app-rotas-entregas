@@ -51,4 +51,28 @@ void main(){
   expect(state.packages.single.physicalZone,'Porta-malas');
   expect(store.saves,0);
  });
+
+ test('inactive skipped packages cannot be reassigned, including in a bulk operation',()async{
+  final store=GuardStore([
+   _package('active',1),
+   _package('skipped',2,zone:'Porta-malas',status:DeliveryStatus.skipped),
+  ],optimized:true);
+  final state=AppState(store:store);await state.init();
+
+  await expectLater(
+   state.setPhysicalZones({'active','skipped'},'Frente esquerda'),
+   throwsA(isA<StateError>()),
+  );
+  expect(state.packages.first.physicalZone,isNull);
+  expect(state.packages.last.physicalZone,'Porta-malas');
+  expect(store.saves,0);
+
+  await expectLater(
+   state.setPhysicalZone('skipped','Frente esquerda'),
+   throwsA(isA<StateError>()),
+  );
+  expect(state.packages.last.physicalZone,'Porta-malas');
+  expect(store.saves,0);
+ });
+
 }
