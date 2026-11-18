@@ -57,15 +57,46 @@ class _LoadScreenState extends State<LoadScreen>{
     _selectionPointerLast=pos;
   }
   void _selectAlong(Offset from,Offset to){
-    final distance=(to-from).distance;
-    final steps=(distance/8).ceil();
-    // Long selections can cross dozens of cards in one pointer event. Keep
-    // the sampling dense enough to avoid skipping cards on large routes.
-    final sampleCount=steps.clamp(1,512).toInt();
-    for(var step=1;step<=sampleCount;step++){
-      final point=from+(to-from)*(step/sampleCount);
-      _selectAt(point);
+    // Test the pointer segment against each card instead of sampling a fixed
+    // number of points. A fixed cap can skip cards when a driver selects a
+    // very large load in one long drag.
+    final matches=<String>[];
+    for(final p in _visibleRoute){
+      if(selectedIds.contains(p.id))continue;
+      final ctx=_tileKeys[p.id]?.currentContext;
+      if(ctx==null)continue;
+      final object=ctx.findRenderObject();
+      if(object is! RenderBox||!object.hasSize)continue;
+      final rect=object.localToGlobal(Offset.zero)&object.size;
+      if(_segmentIntersectsRect(from,to,rect))matches.add(p.id);
     }
+    if(matches.isNotEmpty)setState(()=>selectedIds.addAll(matches));
+  }
+
+  bool _segmentIntersectsRect(Offset from,Offset to,Rect rect){
+    if(rect.contains(from)||rect.contains(to))return true;
+    final dx=to.dx-from.dx;
+    final dy=to.dy-from.dy;
+    var minT=0.0;
+    var maxT=1.0;
+
+    bool clip(double p,double q){
+      if(p==0)return q>=0;
+      final ratio=q/p;
+      if(p<0){
+        if(ratio>maxT)return false;
+        if(ratio>minT)minT=ratio;
+      }else{
+        if(ratio<minT)return false;
+        if(ratio<maxT)maxT=ratio;
+      }
+      return true;
+    }
+
+    return clip(-dx,from.dx-rect.left)&&
+        clip(dx,rect.right-from.dx)&&
+        clip(-dy,from.dy-rect.top)&&
+        clip(dy,rect.bottom-from.dy);
   }
   void _selectionPointerUp(){if(_dragSelecting){_suppressNextTap=true;WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_suppressNextTap=false;});}_selectionPointerStart=null;_selectionPointerLast=null;_dragSelecting=false;}
   void _selectAt(Offset pos){for(final p in _visibleRoute){final ctx=_tileKeys[p.id]?.currentContext;if(ctx==null)continue;final object=ctx.findRenderObject();if(object is! RenderBox||!object.hasSize)continue;final rect=object.localToGlobal(Offset.zero)&object.size;if(rect.contains(pos)&&!selectedIds.contains(p.id)){setState(()=>selectedIds.add(p.id));break;}}}
