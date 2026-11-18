@@ -1029,11 +1029,14 @@ void main(){
 
     await tester.enterText(find.byType(TextField), 'P07');
     await tester.pumpAndSettle();
+    await _ensureLoadItemVisible(tester, find.text('Pacote 07'));
     expect(find.text('Pacote 07'), findsOneWidget);
     expect(find.text('P17'), findsNothing);
 
+    await _ensureLoadItemVisible(tester, find.byType(TextField));
     await tester.enterText(find.byType(TextField), 'P17');
     await tester.pumpAndSettle();
+    await _ensureLoadItemVisible(tester, find.text('P17'));
     expect(find.text('Pacote 07'), findsNothing);
     expect(find.text('P17'), findsOneWidget);
     expect(find.text('1/1'), findsOneWidget);
