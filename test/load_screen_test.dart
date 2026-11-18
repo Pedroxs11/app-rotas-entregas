@@ -132,6 +132,17 @@ void main(){
     expect(find.text('TRASEIRA D'),findsOneWidget);
     expect(find.text('PORTA-MALAS'),findsOneWidget);
 
+    final frontLeft = tester.getTopLeft(find.text('FRENTE E'));
+    final frontRight = tester.getTopLeft(find.text('FRENTE D'));
+    final rearLeft = tester.getTopLeft(find.text('TRASEIRA E'));
+    final rearRight = tester.getTopLeft(find.text('TRASEIRA D'));
+    final trunk = tester.getTopLeft(find.text('PORTA-MALAS'));
+    expect((frontLeft.dy - frontRight.dy).abs(), lessThan(1));
+    expect(frontLeft.dx, lessThan(frontRight.dx));
+    expect((rearLeft.dy - rearRight.dy).abs(), lessThan(1));
+    expect(rearLeft.dx, lessThan(rearRight.dx));
+    expect(trunk.dy, greaterThan(rearLeft.dy));
+
     await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
     await tester.tap(find.text('Pacote 01'));
     await tester.pump();
