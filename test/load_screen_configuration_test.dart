@@ -106,4 +106,68 @@ void main() {
     expect(find.text('Frente esquerda'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('car and motorcycle keep independent compartment preferences',
+      (tester) async {
+    final state = AppState(
+      store: _ConfigurationStore([_package(8)]),
+    );
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    Future<void> keepOnly(List<String> zones, String retainedZone) async {
+      await tester.tap(find.byTooltip('Configurar compartimentos'));
+      await tester.pumpAndSettle();
+      for (final zone in zones.where((zone) => zone != retainedZone)) {
+        await tester.tap(find.widgetWithText(CheckboxListTile, zone));
+        await tester.pump();
+      }
+      await tester.tap(find.text('Salvar'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> selectVehicle(VehicleType vehicle) async {
+      await tester.tap(find.byTooltip('Veículo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(
+        vehicle == VehicleType.car ? '🚗 Carro' : '🏍️ Moto',
+      ));
+      await tester.pumpAndSettle();
+      expect(state.vehicleType, vehicle);
+    }
+
+    await keepOnly(AppState.carPhysicalZones, 'Frente esquerda');
+    expect(state.activePhysicalZones, ['Frente esquerda']);
+
+    await selectVehicle(VehicleType.motorcycle);
+    await keepOnly(AppState.motorcyclePhysicalZones, 'Baú traseiro');
+    expect(state.activePhysicalZones, ['Baú traseiro']);
+
+    await selectVehicle(VehicleType.car);
+    expect(state.activePhysicalZones, ['Frente esquerda']);
+    await tester.tap(find.byTooltip('Configurar compartimentos'));
+    await tester.pumpAndSettle();
+    for (final zone in AppState.carPhysicalZones) {
+      final tile = tester.widget<CheckboxListTile>(
+        find.widgetWithText(CheckboxListTile, zone),
+      );
+      expect(tile.value, zone == 'Frente esquerda', reason: zone);
+    }
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    await selectVehicle(VehicleType.motorcycle);
+    expect(state.activePhysicalZones, ['Baú traseiro']);
+    await tester.tap(find.byTooltip('Configurar compartimentos'));
+    await tester.pumpAndSettle();
+    for (final zone in AppState.motorcyclePhysicalZones) {
+      final tile = tester.widget<CheckboxListTile>(
+        find.widgetWithText(CheckboxListTile, zone),
+      );
+      expect(tile.value, zone == 'Baú traseiro', reason: zone);
+    }
+    expect(tester.takeException(), isNull);
+  });
 }
