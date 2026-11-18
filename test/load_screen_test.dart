@@ -909,6 +909,83 @@ void main(){
   });
 
 
+  testWidgets('configuring car and motorcycle compartments clears only active packages in removed zones', (tester) async {
+    for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+      final zone = vehicle == VehicleType.car ? 'Porta-malas' : 'Baú traseiro';
+      SharedPreferences.setMockInitialValues(
+        vehicle == VehicleType.motorcycle
+            ? {'load_vehicle_type': 'motorcycle'}
+            : {'load_vehicle_type': 'car'},
+      );
+      final active = _package(1, physicalZone: zone);
+      final delivered = _package(2, physicalZone: zone).copyWith(
+        status: DeliveryStatus.delivered,
+      );
+      final state = AppState(store: _LoadStore([active, delivered]));
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Configurar compartimentos'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(vehicle == VehicleType.car
+            ? 'Compartimentos do carro'
+            : 'Compartimentos da moto'),
+        findsOneWidget,
+      );
+
+      final zoneTitle = find.text(zone);
+      final zoneTile = find.ancestor(
+        of: zoneTitle,
+        matching: find.byType(CheckboxListTile),
+      );
+      expect(zoneTile, findsOneWidget);
+      expect(tester.widget<CheckboxListTile>(zoneTile).value, isTrue);
+      await tester.tap(zoneTitle);
+      await tester.pump();
+
+      final save = find.widgetWithText(FilledButton, 'Salvar');
+      expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(state.activePhysicalZones, isNot(contains(zone)));
+      expect(state.packages.first.physicalZone, isNull);
+      expect(
+        state.packages.last.physicalZone,
+        zone,
+        reason: 'Delivered package history must remain unchanged ($vehicle).',
+      );
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('compartment settings cannot be saved with every area disabled', (tester) async {
+    SharedPreferences.setMockInitialValues({'load_vehicle_type': 'car'});
+    final state = AppState(store: _LoadStore([_package(1)]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Configurar compartimentos'));
+    await tester.pumpAndSettle();
+
+    for (final zone in AppState.carPhysicalZones) {
+      await tester.tap(find.text(zone));
+      await tester.pump();
+    }
+
+    final save = find.widgetWithText(FilledButton, 'Salvar');
+    expect(tester.widget<FilledButton>(save).onPressed, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+
   testWidgets('car package row separates load status and address with a line break', (tester) async {
     // Keep this UI assertion independent from vehicle preferences written by
     // previous tests in the same SharedPreferences test environment.
