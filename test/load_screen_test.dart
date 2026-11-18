@@ -155,6 +155,7 @@ void main(){
     await tester.pumpWidget(MaterialApp(home:LoadScreen(state:state)));
     await tester.pumpAndSettle();
 
+    await _ensureLoadItemVisible(tester, find.text('Pacote 07'));
     expect(find.text('Pacote 07'),findsOneWidget);
     expect(find.text('Frente esquerda'),findsNothing);
     expect(find.text('BAÚ TRASEIRO'),findsOneWidget);
@@ -601,6 +602,7 @@ void main(){
     expect(state.packages[1].physicalZone, 'Porta-malas');
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
     expect(find.text('Organizar a moto'), findsOneWidget);
+    await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
     expect(find.text('Pacote 01'), findsOneWidget);
     expect(find.text('P01'), findsNothing);
     expect(tester.takeException(), isNull);
