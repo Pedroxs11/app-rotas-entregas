@@ -309,7 +309,8 @@ class _LoadScreenState extends State<LoadScreen>{
                           onChanged: (value) => setState(() => search = value),
                         ),
                         const SizedBox(height: 10),
-                        if (visibleRoute.isEmpty && missing > 0)
+                        if (search.trim().isNotEmpty &&
+                            !route.any(_matchesSearch))
                           Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: Column(
