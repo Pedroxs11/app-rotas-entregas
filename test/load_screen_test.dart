@@ -391,6 +391,8 @@ void main(){
     await gesture.down(first, timeStamp: Duration.zero);
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+    // Showing the bulk-action button must not move the rows under the finger.
+    expect(tester.getCenter(find.text('Pacote 04')), fourth);
 
     // Pin the pointer-down event to zero, then advance pointer and scheduler
     // timestamps together so no move is discarded as an out-of-order event.
