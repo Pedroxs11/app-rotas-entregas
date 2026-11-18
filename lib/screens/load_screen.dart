@@ -49,7 +49,19 @@ class _LoadScreenState extends State<LoadScreen>{
   bool _hasActiveZone(DeliveryPackage p)=>p.physicalZone?.trim().isNotEmpty==true&&widget.state.activePhysicalZones.contains(p.physicalZone);
   bool get _organized=>_route.isNotEmpty&&_route.every(_hasActiveZone);
 
-  bool _matchesSearch(DeliveryPackage p){final q=search.trim().toLowerCase();return q.isEmpty||p.label.toLowerCase().contains(q)||p.address.formatted.toLowerCase().contains(q)||p.address.raw.toLowerCase().contains(q)||p.scanNumber.toString().contains(q);}
+  bool _matchesSearch(DeliveryPackage p){
+    final q=search.trim().toLowerCase();
+    if(q.isEmpty)return true;
+    final number=p.scanNumber.toString();
+    final paddedNumber=number.padLeft(2,'0');
+    final packageCode='p$paddedNumber';
+    return p.label.toLowerCase().contains(q)||
+        packageCode.contains(q)||
+        number.contains(q)||
+        paddedNumber.contains(q)||
+        p.address.formatted.toLowerCase().contains(q)||
+        p.address.raw.toLowerCase().contains(q);
+  }
   List<DeliveryPackage> get _visibleRoute=>_route.where((p)=>!_hasActiveZone(p)&&_matchesSearch(p)).toList();
   DeliveryPackage? _selected(){
     final id=selectedId;
