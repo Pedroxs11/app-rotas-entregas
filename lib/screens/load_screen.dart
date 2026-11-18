@@ -62,21 +62,24 @@ class _LoadScreenState extends State<LoadScreen>{
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
   void _selectAll(){setState(()=>selectedIds.addAll(_route.where(_matchesSearch).map((p)=>p.id)));}
-  void _selectionPointerDown(Offset pos){if(!multiSelect)return;_selectionPointerStart=pos;_selectionPointerLast=pos;_lastSelectionPointer=pos;_dragSelecting=false;}
-  void _selectionPointerMove(Offset pos){
-    if(!multiSelect||_selectionPointerStart==null)return;
-    _lastSelectionPointer=pos;
-    final start=_selectionPointerStart!;
-    final previous=_selectionPointerLast??start;
-    if(!_dragSelecting&&(pos-start).distance>10){
-      _dragSelecting=true;
-      _selectAt(start);
-    }
-    if(_dragSelecting){
-      _selectAlong(previous,pos);
+  void _selectionPointerDown(Offset pos) {
+    if (!multiSelect) return;
+    _selectionPointerStart = pos;
+    _selectionPointerLast = pos;
+    _lastSelectionPointer = pos;
+    _dragSelecting = true;
+    _selectAt(pos);
+  }
+
+  void _selectionPointerMove(Offset pos) {
+    if (!multiSelect || _selectionPointerStart == null) return;
+    _lastSelectionPointer = pos;
+    final previous = _selectionPointerLast ?? _selectionPointerStart!;
+    if (_dragSelecting) {
+      _selectAlong(previous, pos);
       _updateSelectionAutoScroll();
     }
-    _selectionPointerLast=pos;
+    _selectionPointerLast = pos;
   }
 
   void _updateSelectionAutoScroll(){
@@ -210,12 +213,7 @@ class _LoadScreenState extends State<LoadScreen>{
           LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
         ])))),
         Expanded(
-          child: Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerMove: (event) => _selectionPointerMove(event.position),
-            onPointerUp: (_) => _selectionPointerUp(),
-            onPointerCancel: (_) => _selectionPointerUp(),
-            child: CustomScrollView(
+          child: CustomScrollView(
               key: _scrollViewportKey,
               controller: _scrollController,
               slivers: [
@@ -316,7 +314,6 @@ class _LoadScreenState extends State<LoadScreen>{
                     ),
                   ),
               ],
-            ),
           ),
         ),
         SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>DeliveryScreen(state:widget.state))):null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
@@ -577,9 +574,16 @@ class _LoadScreenState extends State<LoadScreen>{
     final address = p.address.formatted.isEmpty ? p.address.raw : p.address.formatted;
     final cs = Theme.of(context).colorScheme;
 
-    return Listener(
+    return GestureDetector(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: (event) => _selectionPointerDown(event.position),
+      onLongPressStart: multiSelect
+          ? (details) => _selectionPointerDown(details.globalPosition)
+          : null,
+      onLongPressMoveUpdate: multiSelect
+          ? (details) => _selectionPointerMove(details.globalPosition)
+          : null,
+      onLongPressEnd: multiSelect ? (_) => _selectionPointerUp() : null,
+      onLongPressCancel: multiSelect ? _selectionPointerUp : null,
       child: Card(
         key: _tileKeys.putIfAbsent(p.id, () => GlobalKey()),
         margin: const EdgeInsets.only(bottom: 6),
@@ -600,7 +604,7 @@ class _LoadScreenState extends State<LoadScreen>{
           subtitle: Text(
             _isMoto
                 ? address
-                : (_hasActiveZone(p) ? '$zone\n$address' : 'Sem posição no carro\n$address'),
+                : (_hasActiveZone(p) ? '$zone\\n$address' : 'Sem posição no carro\\n$address'),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
