@@ -297,4 +297,37 @@ void main(){
     expect(tester.takeException(), isNull);
   });
 
+
+  testWidgets('select all respects the active package search filter', (tester) async {
+    final store = _LoadStore([
+      _package(1),
+      _package(2),
+      _package(3),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'Rua Teste, 2');
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('Selecionar todos'));
+    await tester.tap(find.text('Selecionar todos'));
+    await tester.pump();
+
+    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('FRENTE E'));
+    await tester.tap(find.text('FRENTE E'));
+    await tester.pumpAndSettle();
+
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, 'Frente esquerda');
+    expect(state.packages[2].physicalZone, isNull);
+  });
+
 }
