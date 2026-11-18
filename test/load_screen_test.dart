@@ -260,7 +260,7 @@ void main(){
 
     await tester.ensureVisible(find.text('Pacote 01'));
     final first = tester.getCenter(find.text('Pacote 01'));
-    final viewport = tester.getRect(find.byType(SingleChildScrollView));
+    final viewport = tester.getRect(find.byType(CustomScrollView));
     final bottomEdge = Offset(viewport.center.dx, viewport.bottom - 8);
     final gesture = await tester.startGesture(first);
     await gesture.moveTo(bottomEdge, timeStamp: const Duration(milliseconds: 100));
@@ -276,6 +276,49 @@ void main(){
     final selectedCount = int.parse(selectionLabel.data!.split(' ').first);
     expect(selectedCount, greaterThan(10));
     expect(tester.takeException(), isNull);
+  });
+
+
+  testWidgets('car and motorcycle large loads build package rows lazily', (tester) async {
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final vehicle in VehicleType.values) {
+      final state = AppState(
+        store: _LoadStore(
+          List.generate(600, (index) => _package(index + 1)),
+        ),
+      );
+      await state.init();
+      if (vehicle != VehicleType.car) {
+        await state.setVehicleType(vehicle);
+      }
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Pacote 600'),
+        findsNothing,
+        reason: 'The last package should not be built before scrolling ($vehicle).',
+      );
+      expect(
+        find.byType(ListTile).evaluate().length,
+        lessThan(30),
+        reason: 'Only nearby package rows should be built ($vehicle).',
+      );
+
+      await tester.drag(
+        find.byType(CustomScrollView),
+        const Offset(0, -50000),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pacote 600'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
   });
 
 
