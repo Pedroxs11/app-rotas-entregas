@@ -349,6 +349,15 @@ void main(){
     expect(find.text('P01'), findsNothing);
     expect(find.text('P03'), findsNothing);
     expect(find.text('1/3'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Limpar busca'));
+    await tester.pump();
+
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+    expect(find.text('P01'), findsOneWidget);
+    expect(find.text('P02'), findsOneWidget);
+    expect(find.text('P03'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
   });
 
   testWidgets('large compartments collapse after eight package chips', (tester) async {
@@ -450,6 +459,37 @@ void main(){
 
     expect(find.text('P12'), findsOneWidget);
     expect(find.text('Mostrar menos'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('switching vehicle clears stale cargo search and preserves delivered history', (tester) async {
+    final state = AppState(store: _LoadStore([
+      _package(1, physicalZone: 'Porta-malas'),
+      _package(2, physicalZone: 'Porta-malas').copyWith(
+        status: DeliveryStatus.delivered,
+      ),
+    ]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Rua Teste, 1');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'Rua Teste, 1');
+
+    await tester.tap(find.byTooltip('Veículo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('🏍️ Moto'));
+    await tester.pumpAndSettle();
+
+    expect(state.vehicleType, VehicleType.motorcycle);
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, 'Porta-malas');
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+    expect(find.text('Organizar a moto'), findsOneWidget);
+    expect(find.text('Pacote 01'), findsOneWidget);
+    expect(find.text('P01'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
