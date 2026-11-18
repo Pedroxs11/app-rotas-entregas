@@ -264,7 +264,9 @@ void main(){
     final bottomEdge = Offset(viewport.center.dx, viewport.bottom - 8);
     final gesture = await tester.startGesture(first);
     await gesture.moveTo(bottomEdge, timeStamp: const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 900));
+    for (var frame = 0; frame < 60; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
     await gesture.up();
     await tester.pumpAndSettle();
 
