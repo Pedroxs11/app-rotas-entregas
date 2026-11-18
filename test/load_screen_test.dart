@@ -387,7 +387,7 @@ void main(){
     final second = tester.getCenter(find.text('Pacote 02'));
     final fourth = tester.getCenter(find.text('Pacote 04'));
     final sixth = tester.getCenter(find.text('Pacote 06'));
-    final gesture = tester.createGesture();
+    final gesture = await tester.createGesture();
     await gesture.down(first, timeStamp: Duration.zero);
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
