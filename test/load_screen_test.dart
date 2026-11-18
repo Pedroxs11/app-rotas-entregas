@@ -784,7 +784,7 @@ void main(){
     await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sem posição no carro\nRua Teste, 1'), findsOneWidget);
+    expect(find.text('Sem posição no carro\nRua Teste, 1, São Paulo, SP'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
