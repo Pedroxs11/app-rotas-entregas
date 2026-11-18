@@ -1039,4 +1039,35 @@ void main(){
     expect(find.text('1/1'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('starting deliveries clears the temporary load selection',
+      (tester) async {
+    final state = AppState(
+      store: _LoadStore([
+        _package(1, physicalZone: 'Porta-malas'),
+      ]),
+    );
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+    await tester.tap(find.text('P01'));
+    await tester.pump();
+
+    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await tester.tap(find.text('INICIAR ENTREGAS'));
+    await tester.pumpAndSettle();
+    expect(find.text('PEGUE ESTE PACOTE'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 pacote(s) selecionado(s)'), findsNothing);
+    expect(find.byIcon(Icons.library_add_check), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
