@@ -1015,4 +1015,28 @@ void main(){
   });
 
 
+
+  testWidgets('search accepts the visible P-number code for assigned and unassigned packages',
+      (tester) async {
+    final state = AppState(store: _LoadStore([
+      _package(7),
+      _package(17, physicalZone: 'Porta-malas'),
+    ]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'P07');
+    await tester.pumpAndSettle();
+    expect(find.text('Pacote 07'), findsOneWidget);
+    expect(find.text('P17'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), 'P17');
+    await tester.pumpAndSettle();
+    expect(find.text('Pacote 07'), findsNothing);
+    expect(find.text('P17'), findsOneWidget);
+    expect(find.text('1/1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
