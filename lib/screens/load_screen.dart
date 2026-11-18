@@ -64,22 +64,17 @@ class _LoadScreenState extends State<LoadScreen>{
   void _selectAll(){setState(()=>selectedIds.addAll(_route.where(_matchesSearch).map((p)=>p.id)));}
   void _selectionPointerDown(Offset pos) {
     if (!multiSelect) return;
-    _selectionPointerStart = pos;
-    _selectionPointerLast = pos;
+    _selectionStartPackageId = _packageIdAt(pos);
     _lastSelectionPointer = pos;
-    _dragSelecting = true;
-    _selectAt(pos);
+    _dragSelecting = _selectionStartPackageId != null;
+    if (_dragSelecting) _selectAt(pos);
   }
 
   void _selectionPointerMove(Offset pos) {
-    if (!multiSelect || _selectionPointerStart == null) return;
+    if (!multiSelect || !_dragSelecting) return;
     _lastSelectionPointer = pos;
-    final previous = _selectionPointerLast ?? _selectionPointerStart!;
-    if (_dragSelecting) {
-      _selectAlong(previous, pos);
-      _updateSelectionAutoScroll();
-    }
-    _selectionPointerLast = pos;
+    _selectAt(pos);
+    _updateSelectionAutoScroll();
   }
 
   void _updateSelectionAutoScroll(){
@@ -134,48 +129,7 @@ class _LoadScreenState extends State<LoadScreen>{
     _autoScrollDirection=0;
     _autoScrollSpeed=0;
   }
-  void _selectAlong(Offset from,Offset to){
-    // Test the pointer segment against each card instead of sampling a fixed
-    // number of points. A fixed cap can skip cards when a driver selects a
-    // very large load in one long drag.
-    final matches=<String>[];
-    for(final p in _visibleRoute){
-      if(selectedIds.contains(p.id))continue;
-      final ctx=_tileKeys[p.id]?.currentContext;
-      if(ctx==null)continue;
-      final object=ctx.findRenderObject();
-      if(object is! RenderBox||!object.hasSize)continue;
-      final rect=object.localToGlobal(Offset.zero)&object.size;
-      if(_segmentIntersectsRect(from,to,rect))matches.add(p.id);
-    }
-    if(matches.isNotEmpty)setState(()=>selectedIds.addAll(matches));
-  }
 
-  bool _segmentIntersectsRect(Offset from,Offset to,Rect rect){
-    if(rect.contains(from)||rect.contains(to))return true;
-    final dx=to.dx-from.dx;
-    final dy=to.dy-from.dy;
-    var minT=0.0;
-    var maxT=1.0;
-
-    bool clip(double p,double q){
-      if(p==0)return q>=0;
-      final ratio=q/p;
-      if(p<0){
-        if(ratio>maxT)return false;
-        if(ratio>minT)minT=ratio;
-      }else{
-        if(ratio<minT)return false;
-        if(ratio<maxT)maxT=ratio;
-      }
-      return true;
-    }
-
-    return clip(-dx,from.dx-rect.left)&&
-        clip(dx,rect.right-from.dx)&&
-        clip(-dy,from.dy-rect.top)&&
-        clip(dy,rect.bottom-from.dy);
-  }
   void _selectionPointerUp() {
     final wasDragging = _dragSelecting;
     if (wasDragging) {
@@ -185,12 +139,41 @@ class _LoadScreenState extends State<LoadScreen>{
       });
     }
     _stopSelectionAutoScroll();
-    _selectionPointerStart = null;
-    _selectionPointerLast = null;
+    _selectionStartPackageId = null;
     _lastSelectionPointer = null;
     _dragSelecting = false;
   }
-  void _selectAt(Offset pos){for(final p in _visibleRoute){final ctx=_tileKeys[p.id]?.currentContext;if(ctx==null)continue;final object=ctx.findRenderObject();if(object is! RenderBox||!object.hasSize)continue;final rect=object.localToGlobal(Offset.zero)&object.size;if(rect.contains(pos)&&!selectedIds.contains(p.id)){setState(()=>selectedIds.add(p.id));break;}}}
+  String? _packageIdAt(Offset pos) {
+    for (final package in _visibleRoute) {
+      final context = _tileKeys[package.id]?.currentContext;
+      if (context == null) continue;
+      final object = context.findRenderObject();
+      if (object is! RenderBox || !object.hasSize) continue;
+      final rect = object.localToGlobal(Offset.zero) & object.size;
+      if (rect.contains(pos)) return package.id;
+    }
+    return null;
+  }
+
+  void _selectAt(Offset pos) {
+    final currentId = _packageIdAt(pos);
+    final startId = _selectionStartPackageId ?? currentId;
+    if (currentId == null || startId == null) return;
+
+    final visible = _visibleRoute;
+    final startIndex = visible.indexWhere((package) => package.id == startId);
+    final currentIndex = visible.indexWhere((package) => package.id == currentId);
+    if (startIndex < 0 || currentIndex < 0) return;
+
+    final first = startIndex < currentIndex ? startIndex : currentIndex;
+    final last = startIndex > currentIndex ? startIndex : currentIndex;
+    final matches = visible
+        .sublist(first, last + 1)
+        .map((package) => package.id)
+        .where((id) => !selectedIds.contains(id))
+        .toSet();
+    if (matches.isNotEmpty) setState(() => selectedIds.addAll(matches));
+  }
 
   Future<void> _clearSelected()async{
     final ids=selectedIds.isNotEmpty?selectedIds.toList():(_selected()==null?<String>[]:[_selected()!.id]);
