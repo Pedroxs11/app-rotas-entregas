@@ -588,6 +588,9 @@ class _LoadScreenState extends State<LoadScreen>{
       onLongPressStart: multiSelect
           ? (details) => _selectionPointerDown(details.globalPosition)
           : null,
+      onLongPressMoveUpdate: multiSelect
+          ? (details) => _selectionPointerMove(details.globalPosition)
+          : null,
       onLongPressEnd: multiSelect ? (_) => _selectionPointerUp() : null,
       onLongPressCancel: multiSelect ? _selectionPointerUp : null,
       child: Card(
