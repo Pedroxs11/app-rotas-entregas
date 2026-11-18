@@ -138,7 +138,7 @@ void main(){
 
     expect(state.packages.single.physicalZone,'Baú traseiro');
     expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,isNotNull);
-    expect(find.text('P07 • Baú traseiro'),findsOneWidget);
+    expect(find.text('P07'),findsOneWidget);
   });
 
 
@@ -170,8 +170,8 @@ void main(){
     expect(state.packages[0].physicalZone, 'Baú traseiro');
     expect(state.packages[1].physicalZone, 'Baú traseiro');
     expect(state.packages[2].physicalZone, isNull);
-    expect(find.text('P07 • Baú traseiro'), findsOneWidget);
-    expect(find.text('P12 • Baú traseiro'), findsOneWidget);
+    expect(find.text('P07'), findsOneWidget);
+    expect(find.text('P12'), findsOneWidget);
     // The third package is intentionally left unassigned, so starting the
     // delivery route must remain disabled until the full load is organized.
     expect(
@@ -403,6 +403,54 @@ void main(){
     expect(state.packages[0].physicalZone, 'Frente esquerda');
     expect(state.packages[1].physicalZone, 'Frente direita');
     expect(find.text('P01'), findsOneWidget);
+  });
+
+
+  testWidgets('moto can move a positioned package between compartments', (tester) async {
+    SharedPreferences.setMockInitialValues({'load_vehicle_type':'motorcycle'});
+    final state = AppState(store: _LoadStore([
+      _package(7, physicalZone: 'Baú traseiro'),
+    ]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('P07'));
+    await tester.tap(find.text('P07'));
+    await tester.pump();
+    expect(find.text('Pacote 07 selecionado.'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('MOCHILA DE ENTREGA'));
+    await tester.tap(find.text('MOCHILA DE ENTREGA'));
+    await tester.pumpAndSettle();
+
+    expect(state.packages.single.physicalZone, 'Mochila de entrega');
+    expect(find.text('P07'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('large motorcycle compartments collapse after eight package chips', (tester) async {
+    SharedPreferences.setMockInitialValues({'load_vehicle_type':'motorcycle'});
+    final state = AppState(store: _LoadStore(
+      List.generate(12, (index) => _package(index + 1, physicalZone: 'Baú traseiro')),
+    ));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('P08'), findsOneWidget);
+    expect(find.text('P09'), findsNothing);
+    expect(find.text('Ver todos (12)'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Ver todos (12)'));
+    await tester.tap(find.text('Ver todos (12)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('P12'), findsOneWidget);
+    expect(find.text('Mostrar menos'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
 }
