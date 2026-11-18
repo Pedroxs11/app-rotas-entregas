@@ -134,6 +134,43 @@ void main() {
   });
 
 
+  test('vehicle and compartment preferences survive app restart independently', () async {
+    final store = LoadStore([_p(1)]);
+    final firstSession = AppState(store: store);
+    await firstSession.init();
+
+    await firstSession.setActivePhysicalZones([
+      'Frente esquerda',
+      'Porta-malas',
+    ]);
+    await firstSession.setVehicleType(VehicleType.motorcycle);
+    await firstSession.setActivePhysicalZones([
+      'Baú traseiro',
+      'Mochila de entrega',
+    ]);
+
+    final resumedSession = AppState(store: store);
+    await resumedSession.init();
+
+    expect(resumedSession.vehicleType, VehicleType.motorcycle);
+    expect(
+      resumedSession.activePhysicalZones,
+      ['Baú traseiro', 'Mochila de entrega'],
+    );
+
+    await resumedSession.setVehicleType(VehicleType.car);
+    expect(
+      resumedSession.activePhysicalZones,
+      ['Frente esquerda', 'Porta-malas'],
+    );
+
+    await resumedSession.setVehicleType(VehicleType.motorcycle);
+    expect(
+      resumedSession.activePhysicalZones,
+      ['Baú traseiro', 'Mochila de entrega'],
+    );
+  });
+
   test('switching vehicle clears active positions but preserves delivered load history', () async {
     final store = LoadStore([
       _p(1, zone: 'Porta-malas'),
