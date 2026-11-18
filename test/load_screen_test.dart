@@ -1098,4 +1098,36 @@ void main(){
     expect(find.byIcon(Icons.library_add_check), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+
+  testWidgets('bulk selection can be cleared with one tap', (tester) async {
+    final state = AppState(
+      store: _LoadStore(
+        List.generate(3, (index) => _package(index + 1)),
+      ),
+    );
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+    await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
+    await tester.tap(find.text('Selecionar todos'));
+    await tester.pump();
+
+    expect(find.text('3 pacote(s) selecionado(s)'), findsOneWidget);
+    expect(find.text('Desmarcar todos'), findsOneWidget);
+
+    await tester.tap(find.text('Desmarcar todos'));
+    await tester.pump();
+
+    expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
+    expect(find.text('Selecionar todos'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
 }
