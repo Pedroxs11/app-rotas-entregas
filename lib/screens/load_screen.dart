@@ -78,10 +78,10 @@ class _LoadScreenState extends State<LoadScreen>{
   void _selectionPointerDown(Offset pos, String packageId) {
     if (!multiSelect) return;
     _dragSelectionPackages = _visibleRoute;
-    _dragSelectionIndexById = {
-      for (var index = 0; index < _dragSelectionPackages.length; index++)
-        _dragSelectionPackages[index].id: index,
-    };
+    _dragSelectionIndexById.clear();
+    for (var index = 0; index < _dragSelectionPackages.length; index++) {
+      _dragSelectionIndexById[_dragSelectionPackages[index].id] = index;
+    }
     _selectionStartPackageId =
         _dragSelectionIndexById.containsKey(packageId) ? packageId : null;
     _lastSelectionPointer = pos;
