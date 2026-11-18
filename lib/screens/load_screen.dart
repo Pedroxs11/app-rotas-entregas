@@ -258,23 +258,20 @@ class _LoadScreenState extends State<LoadScreen>{
                         const SizedBox(height: 10),
                         if (_isMoto) _motoCard(context, route) else _carDiagram(context, route),
                         const SizedBox(height: 14),
-                        Visibility(
-                          visible: selected != null || selectedIds.isNotEmpty,
-                          maintainState: true,
-                          maintainAnimation: true,
-                          maintainSize: true,
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _clearSelected,
-                              icon: const Icon(Icons.remove_circle_outline),
-                              label: Text(
-                                selectedIds.length > 1
-                                    ? 'RETIRAR ${selectedIds.length} PACOTES'
-                                    : 'RETIRAR PACOTE SELECIONADO',
-                              ),
-                            ),
-                          ),
+                        SizedBox(
+                          height: 48,
+                          width: double.infinity,
+                          child: selected != null || selectedIds.isNotEmpty
+                              ? OutlinedButton.icon(
+                                  onPressed: _clearSelected,
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                  label: Text(
+                                    selectedIds.length > 1
+                                        ? 'RETIRAR ${selectedIds.length} PACOTES'
+                                        : 'RETIRAR PACOTE SELECIONADO',
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
                         const SizedBox(height: 8),
                         Row(
