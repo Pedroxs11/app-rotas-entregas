@@ -78,6 +78,41 @@ Future<void> _ensureLoadItemVisible(WidgetTester tester, Finder finder) async {
   expect(target.bottom, lessThanOrEqualTo(viewport.bottom));
 }
 
+Future<int> _dragSelectToBottom(
+  WidgetTester tester, {
+  required Duration autoScrollDuration,
+}) async {
+  await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
+  final first = tester.getCenter(find.text('Pacote 01'));
+  final viewport = tester.getRect(find.byType(CustomScrollView));
+  final gesture = await tester.startGesture(first);
+  await tester.pump(const Duration(milliseconds: 600));
+  expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+  // Keep the finger near the bottom edge so the real auto-scroll behavior
+  // moves the lazy list underneath it, just as it does on a phone.
+  final edge = Offset(first.dx, viewport.bottom - 30);
+  await gesture.moveTo(edge, timeStamp: const Duration(milliseconds: 700));
+  await tester.pump();
+
+  final frames = (autoScrollDuration.inMilliseconds / 16).ceil();
+  for (var frame = 0; frame < frames; frame++) {
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+
+  await gesture.up();
+  await tester.pumpAndSettle();
+
+  final selectedCountFinder = find.byWidgetPredicate(
+    (widget) =>
+        widget is Text &&
+        (widget.data?.endsWith('pacote(s) selecionado(s)') ?? false),
+  );
+  expect(selectedCountFinder, findsOneWidget);
+  final selectedText = tester.widget<Text>(selectedCountFinder).data!;
+  return int.parse(selectedText.split(' ').first);
+}
+
 void main(){
   setUp((){SharedPreferences.setMockInitialValues({});});
   testWidgets('car diagram lets driver manually place a package', (tester) async {
@@ -377,8 +412,8 @@ void main(){
   });
 
 
-  testWidgets('drag selection crosses an 80-package load without skipping cards', (tester) async {
-    tester.view.physicalSize = const Size(400, 10000);
+  testWidgets('drag selection auto-scrolls through an 80-package load', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -393,22 +428,18 @@ void main(){
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
 
-    final first = tester.getCenter(find.text('Pacote 01'));
-    final last = tester.getCenter(find.text('Pacote 80'));
-    final gesture = await tester.startGesture(first);
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
-    await gesture.moveTo(last, timeStamp: const Duration(milliseconds: 700));
-    await gesture.up();
-    await tester.pumpAndSettle();
+    final selectedCount = await _dragSelectToBottom(
+      tester,
+      autoScrollDuration: const Duration(seconds: 8),
+    );
 
-    expect(find.text('80 pacote(s) selecionado(s)'), findsOneWidget);
+    expect(selectedCount, 80);
     expect(tester.takeException(), isNull);
   });
 
 
-  testWidgets('drag selection crosses a 600-package load without skipping cards', (tester) async {
-    tester.view.physicalSize = const Size(400, 100000);
+  testWidgets('drag selection advances through a lazy 600-package load', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -423,16 +454,13 @@ void main(){
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
 
-    final first = tester.getCenter(find.text('Pacote 01'));
-    final last = tester.getCenter(find.text('Pacote 600'));
-    final gesture = await tester.startGesture(first);
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
-    await gesture.moveTo(last, timeStamp: const Duration(milliseconds: 700));
-    await gesture.up();
-    await tester.pumpAndSettle();
+    final selectedCount = await _dragSelectToBottom(
+      tester,
+      autoScrollDuration: const Duration(seconds: 3),
+    );
 
-    expect(find.text('600 pacote(s) selecionado(s)'), findsOneWidget);
+    expect(selectedCount, greaterThan(20));
+    expect(selectedCount, lessThan(600));
     expect(tester.takeException(), isNull);
   });
 
