@@ -245,12 +245,7 @@ class _LoadScreenState extends State<LoadScreen>{
           LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
         ])))),
         Expanded(
-          child: Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerMove: (event) => _selectionPointerMove(event.position),
-            onPointerUp: (_) => _selectionPointerUp(),
-            onPointerCancel: (_) => _selectionPointerUp(),
-            child: CustomScrollView(
+          child: CustomScrollView(
               key: _scrollViewportKey,
               controller: _scrollController,
               slivers: [
@@ -351,7 +346,6 @@ class _LoadScreenState extends State<LoadScreen>{
                     ),
                   ),
               ],
-            ),
           ),
         ),
         SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>DeliveryScreen(state:widget.state))):null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
@@ -615,6 +609,9 @@ class _LoadScreenState extends State<LoadScreen>{
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (event) => _beginPendingSelection(event.position),
+      onPointerMove: (event) => _selectionPointerMove(event.position),
+      onPointerUp: (_) => _selectionPointerUp(),
+      onPointerCancel: (_) => _selectionPointerUp(),
       child: Card(
         key: _tileKeys.putIfAbsent(p.id, () => GlobalKey()),
         margin: const EdgeInsets.only(bottom: 6),
