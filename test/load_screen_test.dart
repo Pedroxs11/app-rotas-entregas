@@ -391,21 +391,14 @@ void main(){
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
 
-    // TestGesture.moveTo defaults to a timestamp near zero. Capture the
-    // scheduler timestamp from the next frame instead of reading
-    // currentFrameTimeStamp after pump(), when Flutter has already left the
-    // frame and that getter is no longer available.
+    // Advance pointer events and the fake scheduler clock together. The
+    // long-press starts at 600 ms, so each move uses the next monotonic
+    // timestamp and then pumps the matching frame before the next move.
+    var pointerTimestamp = const Duration(milliseconds: 600);
     Future<void> moveToNextFrame(Offset position) async {
-      late Duration frameTimestamp;
-      tester.binding.addPostFrameCallback((timestamp) {
-        frameTimestamp = timestamp;
-      });
+      pointerTimestamp += const Duration(milliseconds: 16);
+      await gesture.moveTo(position, timeStamp: pointerTimestamp);
       await tester.pump(const Duration(milliseconds: 16));
-      await gesture.moveTo(
-        position,
-        timeStamp: frameTimestamp + const Duration(milliseconds: 16),
-      );
-      await tester.pump();
     }
 
     await moveToNextFrame(fourth);
