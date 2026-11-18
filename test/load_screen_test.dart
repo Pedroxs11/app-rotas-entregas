@@ -33,6 +33,18 @@ DeliveryPackage _package(int n,{String? physicalZone})=>DeliveryPackage(
   scannedAt:DateTime.utc(2026,10,5,10,n),
 );
 
+Future<void> _ensureLoadItemVisible(WidgetTester tester, Finder finder) async {
+  final scrollable = find.descendant(
+    of: find.byType(CustomScrollView),
+    matching: find.byType(Scrollable),
+  ).first;
+  await tester.scrollUntilVisible(
+    finder,
+    250,
+    scrollable: scrollable,
+  );
+}
+
 void main(){
   setUp((){SharedPreferences.setMockInitialValues({});});
   testWidgets('car diagram lets driver manually place a package', (tester) async {
@@ -50,12 +62,12 @@ void main(){
     expect(find.text('TRASEIRA D'),findsOneWidget);
     expect(find.text('PORTA-MALAS'),findsOneWidget);
 
-    await tester.ensureVisible(find.text('Pacote 01'));
+    await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
     await tester.tap(find.text('Pacote 01'));
     await tester.pump();
     expect(find.textContaining('Pacote 01 selecionado'),findsOneWidget);
 
-    await tester.ensureVisible(find.text('FRENTE E'));
+    await _ensureLoadItemVisible(tester, find.text('FRENTE E'));
     await tester.tap(find.text('FRENTE E'));
     await tester.pumpAndSettle();
 
@@ -74,13 +86,13 @@ void main(){
 
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
-    await tester.ensureVisible(find.text('Pacote 01'));
+    await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
     await tester.tap(find.text('Pacote 01'));
-    await tester.ensureVisible(find.text('Pacote 02'));
+    await _ensureLoadItemVisible(tester, find.text('Pacote 02'));
     await tester.tap(find.text('Pacote 02'));
     await tester.pump();
 
-    await tester.ensureVisible(find.text('FRENTE E'));
+    await _ensureLoadItemVisible(tester, find.text('FRENTE E'));
     await tester.tap(find.text('FRENTE E'));
     await tester.pumpAndSettle();
 
@@ -129,10 +141,10 @@ void main(){
     expect(find.text('BAÚ TRASEIRO'),findsOneWidget);
     expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,isNull);
 
-    await tester.ensureVisible(find.text('Pacote 07'));
+    await _ensureLoadItemVisible(tester, find.text('Pacote 07'));
     await tester.tap(find.text('Pacote 07'));
     await tester.pump();
-    await tester.ensureVisible(find.text('BAÚ TRASEIRO'));
+    await _ensureLoadItemVisible(tester, find.text('BAÚ TRASEIRO'));
     await tester.tap(find.text('BAÚ TRASEIRO'));
     await tester.pumpAndSettle();
 
@@ -156,14 +168,14 @@ void main(){
 
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
-    await tester.ensureVisible(find.text('Pacote 07'));
+    await _ensureLoadItemVisible(tester, find.text('Pacote 07'));
     await tester.tap(find.text('Pacote 07'));
-    await tester.ensureVisible(find.text('Pacote 12'));
+    await _ensureLoadItemVisible(tester, find.text('Pacote 12'));
     await tester.tap(find.text('Pacote 12'));
     await tester.pump();
 
     expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
-    await tester.ensureVisible(find.text('BAÚ TRASEIRO'));
+    await _ensureLoadItemVisible(tester, find.text('BAÚ TRASEIRO'));
     await tester.tap(find.text('BAÚ TRASEIRO'));
     await tester.pumpAndSettle();
 
@@ -194,7 +206,7 @@ void main(){
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
 
-    await tester.ensureVisible(find.text('P01'));
+    await _ensureLoadItemVisible(tester, find.text('P01'));
     await tester.tap(find.text('P01'));
     await tester.pump();
     final selectedChip=tester.widget<InputChip>(
@@ -202,11 +214,11 @@ void main(){
     );
     expect(selectedChip.selected,isTrue);
 
-    await tester.ensureVisible(find.text('Pacote 02'));
+    await _ensureLoadItemVisible(tester, find.text('Pacote 02'));
     await tester.tap(find.text('Pacote 02'));
     await tester.pump();
 
-    await tester.ensureVisible(find.text('FRENTE E'));
+    await _ensureLoadItemVisible(tester, find.text('FRENTE E'));
     await tester.tap(find.text('FRENTE E'));
     await tester.pumpAndSettle();
 
@@ -228,13 +240,13 @@ void main(){
 
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
-    await tester.ensureVisible(find.text('Selecionar todos'));
+    await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
     await tester.tap(find.text('Selecionar todos'));
     await tester.pump();
 
     expect(find.text('3 pacote(s) selecionado(s)'),findsOneWidget);
 
-    await tester.ensureVisible(find.text('FRENTE D'));
+    await _ensureLoadItemVisible(tester, find.text('FRENTE D'));
     await tester.tap(find.text('FRENTE D'));
     await tester.pumpAndSettle();
 
@@ -258,7 +270,7 @@ void main(){
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
 
-    await tester.ensureVisible(find.text('Pacote 01'));
+    await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
     final first = tester.getCenter(find.text('Pacote 01'));
     final viewport = tester.getRect(find.byType(CustomScrollView));
     final bottomEdge = Offset(viewport.center.dx, viewport.bottom - 8);
@@ -395,13 +407,13 @@ void main(){
     await tester.enterText(find.byType(TextField), 'Rua Teste, 2');
     await tester.pump();
 
-    await tester.ensureVisible(find.text('Selecionar todos'));
+    await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
     await tester.tap(find.text('Selecionar todos'));
     await tester.pump();
 
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('FRENTE E'));
+    await _ensureLoadItemVisible(tester, find.text('FRENTE E'));
     await tester.tap(find.text('FRENTE E'));
     await tester.pumpAndSettle();
 
@@ -453,14 +465,14 @@ void main(){
     expect(find.text('P09'), findsNothing);
     expect(find.text('Ver todos (12)'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Ver todos (12)'));
+    await _ensureLoadItemVisible(tester, find.text('Ver todos (12)'));
     await tester.tap(find.text('Ver todos (12)'));
     await tester.pumpAndSettle();
 
     expect(find.text('P12'), findsOneWidget);
     expect(find.text('Mostrar menos'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Mostrar menos'));
+    await _ensureLoadItemVisible(tester, find.text('Mostrar menos'));
     await tester.tap(find.text('Mostrar menos'));
     await tester.pumpAndSettle();
 
@@ -479,13 +491,13 @@ void main(){
     await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('P01'));
+    await _ensureLoadItemVisible(tester, find.text('P01'));
     await tester.tap(find.text('P01'));
     await tester.pump();
 
     expect(find.textContaining('Pacote 01 selecionado'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('FRENTE E'));
+    await _ensureLoadItemVisible(tester, find.text('FRENTE E'));
     await tester.tap(find.text('FRENTE E'));
     await tester.pumpAndSettle();
 
@@ -505,12 +517,12 @@ void main(){
     await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('P07'));
+    await _ensureLoadItemVisible(tester, find.text('P07'));
     await tester.tap(find.text('P07'));
     await tester.pump();
     expect(find.textContaining('Pacote 07 selecionado'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('MOCHILA DE ENTREGA'));
+    await _ensureLoadItemVisible(tester, find.text('MOCHILA DE ENTREGA'));
     await tester.tap(find.text('MOCHILA DE ENTREGA'));
     await tester.pumpAndSettle();
 
@@ -533,7 +545,7 @@ void main(){
     expect(find.text('P09'), findsNothing);
     expect(find.text('Ver todos (12)'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Ver todos (12)'));
+    await _ensureLoadItemVisible(tester, find.text('Ver todos (12)'));
     await tester.tap(find.text('Ver todos (12)'));
     await tester.pumpAndSettle();
 
