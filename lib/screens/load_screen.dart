@@ -270,6 +270,28 @@ class _LoadScreenState extends State<LoadScreen>{
                           onChanged: (value) => setState(() => search = value),
                         ),
                         const SizedBox(height: 10),
+                        if (visibleRoute.isEmpty && missing > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.search_off, size: 36),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Nenhum pacote encontrado para essa busca.',
+                                  textAlign: TextAlign.center,
+                                ),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => search = '');
+                                  },
+                                  icon: const Icon(Icons.clear),
+                                  label: const Text('Limpar busca'),
+                                ),
+                              ],
+                            ),
+                          ),
                         if (_isMoto) _motoCard(context, route) else _carDiagram(context, route),
                         const SizedBox(height: 14),
                         SizedBox(
@@ -310,30 +332,6 @@ class _LoadScreenState extends State<LoadScreen>{
                     ),
                   ),
                 ),
-                if (visibleRoute.isEmpty && missing > 0)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                    sliver: SliverToBoxAdapter(
-                      child: Column(
-                        children: [
-                          const Icon(Icons.search_off, size: 36),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Nenhum pacote encontrado para essa busca.',
-                            textAlign: TextAlign.center,
-                          ),
-                          TextButton.icon(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => search = '');
-                            },
-                            icon: const Icon(Icons.clear),
-                            label: const Text('Limpar busca'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                   sliver: SliverList(
