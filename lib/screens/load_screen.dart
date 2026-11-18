@@ -19,8 +19,6 @@ class _LoadScreenState extends State<LoadScreen>{
   final ScrollController _scrollController=ScrollController();
   final GlobalKey _scrollViewportKey=GlobalKey();
   Timer? _autoScrollTimer;
-  Timer? _selectionHoldTimer;
-  Offset? _pendingSelectionPointer;
   Offset? _lastSelectionPointer;
   double _autoScrollDirection=0;
   double _autoScrollSpeed=0;
@@ -36,7 +34,6 @@ class _LoadScreenState extends State<LoadScreen>{
   @override
   void dispose(){
     _autoScrollTimer?.cancel();
-    _selectionHoldTimer?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -65,25 +62,6 @@ class _LoadScreenState extends State<LoadScreen>{
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
   void _selectAll(){setState(()=>selectedIds.addAll(_route.where(_matchesSearch).map((p)=>p.id)));}
-  void _beginPendingSelection(Offset pos) {
-    if (!multiSelect) return;
-    _cancelPendingSelection();
-    _pendingSelectionPointer = pos;
-    _selectionHoldTimer = Timer(const Duration(milliseconds: 450), () {
-      final pointer = _pendingSelectionPointer;
-      _selectionHoldTimer = null;
-      if (!mounted || pointer == null || !multiSelect) return;
-      _pendingSelectionPointer = null;
-      _selectionPointerDown(pointer);
-    });
-  }
-
-  void _cancelPendingSelection() {
-    _selectionHoldTimer?.cancel();
-    _selectionHoldTimer = null;
-    _pendingSelectionPointer = null;
-  }
-
   void _selectionPointerDown(Offset pos) {
     if (!multiSelect) return;
     _selectionPointerStart = pos;
@@ -91,18 +69,10 @@ class _LoadScreenState extends State<LoadScreen>{
     _lastSelectionPointer = pos;
     _dragSelecting = true;
     _selectAt(pos);
-    if (mounted) setState(() {});
   }
 
   void _selectionPointerMove(Offset pos) {
-    if (!multiSelect) return;
-    if (_selectionPointerStart == null) {
-      final pending = _pendingSelectionPointer;
-      if (pending != null && (pos - pending).distance > 10) {
-        _cancelPendingSelection();
-      }
-      return;
-    }
+    if (!multiSelect || _selectionPointerStart == null) return;
     _lastSelectionPointer = pos;
     final previous = _selectionPointerLast ?? _selectionPointerStart!;
     if (_dragSelecting) {
@@ -207,7 +177,6 @@ class _LoadScreenState extends State<LoadScreen>{
         clip(dy,rect.bottom-from.dy);
   }
   void _selectionPointerUp() {
-    _cancelPendingSelection();
     final wasDragging = _dragSelecting;
     if (wasDragging) {
       _suppressNextTap = true;
@@ -220,7 +189,6 @@ class _LoadScreenState extends State<LoadScreen>{
     _selectionPointerLast = null;
     _lastSelectionPointer = null;
     _dragSelecting = false;
-    if (wasDragging && mounted) setState(() {});
   }
   void _selectAt(Offset pos){for(final p in _visibleRoute){final ctx=_tileKeys[p.id]?.currentContext;if(ctx==null)continue;final object=ctx.findRenderObject();if(object is! RenderBox||!object.hasSize)continue;final rect=object.localToGlobal(Offset.zero)&object.size;if(rect.contains(pos)&&!selectedIds.contains(p.id)){setState(()=>selectedIds.add(p.id));break;}}}
 
@@ -256,7 +224,6 @@ class _LoadScreenState extends State<LoadScreen>{
             child: CustomScrollView(
               key: _scrollViewportKey,
               controller: _scrollController,
-              physics: _dragSelecting ? const NeverScrollableScrollPhysics() : null,
               slivers: [
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -616,9 +583,13 @@ class _LoadScreenState extends State<LoadScreen>{
     final address = p.address.formatted.isEmpty ? p.address.raw : p.address.formatted;
     final cs = Theme.of(context).colorScheme;
 
-    return Listener(
+    return GestureDetector(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: (event) => _beginPendingSelection(event.position),
+      onLongPressStart: multiSelect
+          ? (details) => _selectionPointerDown(details.globalPosition)
+          : null,
+      onLongPressEnd: multiSelect ? (_) => _selectionPointerUp() : null,
+      onLongPressCancel: multiSelect ? _selectionPointerUp : null,
       child: Card(
         key: _tileKeys.putIfAbsent(p.id, () => GlobalKey()),
         margin: const EdgeInsets.only(bottom: 6),
