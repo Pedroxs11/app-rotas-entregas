@@ -62,7 +62,9 @@ Future<void> _ensureLoadItemVisible(WidgetTester tester, Finder finder) async {
       if ((next - position.pixels).abs() < 0.5) break;
       position.jumpTo(next);
     } else {
-      final next = (position.pixels + 500)
+      // Small increments avoid skipping a first row that starts just
+      // below the viewport after the organizer reserves its action area.
+      final next = (position.pixels + 100)
           .clamp(position.minScrollExtent, position.maxScrollExtent)
           .toDouble();
       if (next <= position.pixels) break;
