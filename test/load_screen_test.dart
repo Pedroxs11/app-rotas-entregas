@@ -353,6 +353,9 @@ void main(){
 
       expect(find.text('Pacote 600'), findsOneWidget);
       expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
     }
   });
 
