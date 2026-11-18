@@ -202,6 +202,9 @@ class _LoadScreenState extends State<LoadScreen>{
 
   @override Widget build(BuildContext context){
     final route=_route;
+    // Build the filtered list once per frame. Recomputing this getter for every
+    // lazy SliverList child would repeatedly scan all packages on large loads.
+    final visibleRoute=route.where((p)=>!_hasActiveZone(p)&&_matchesSearch(p)).toList(growable:false);
     final selected=_selected();
     final assigned=route.where(_hasActiveZone).length;
     final missing=route.length-assigned;
@@ -296,7 +299,7 @@ class _LoadScreenState extends State<LoadScreen>{
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        final package = _visibleRoute[index];
+                        final package = visibleRoute[index];
                         return _packageTile(
                           context,
                           package,
@@ -305,7 +308,7 @@ class _LoadScreenState extends State<LoadScreen>{
                               : selected?.id == package.id,
                         );
                       },
-                      childCount: _visibleRoute.length,
+                      childCount: visibleRoute.length,
                     ),
                   ),
                 ),
