@@ -40,16 +40,8 @@ Future<void> _ensureLoadItemVisible(WidgetTester tester, Finder finder) async {
   ).first;
   final viewportFinder = find.byType(CustomScrollView);
 
-  await tester.scrollUntilVisible(
-    finder,
-    250,
-    scrollable: scrollable,
-  );
-
-  for (var attempt = 0; attempt < 20; attempt++) {
-    if (finder.evaluate().isEmpty) {
-      await tester.drag(scrollable, const Offset(0, -250));
-    } else {
+  for (var attempt = 0; attempt < 60; attempt++) {
+    if (finder.evaluate().isNotEmpty) {
       final target = tester.getRect(finder.first);
       final viewport = tester.getRect(viewportFinder);
       if (target.top >= viewport.top && target.bottom <= viewport.bottom) {
@@ -57,6 +49,8 @@ Future<void> _ensureLoadItemVisible(WidgetTester tester, Finder finder) async {
       }
       final delta = target.top < viewport.top ? 250.0 : -250.0;
       await tester.drag(scrollable, Offset(0, delta));
+    } else {
+      await tester.drag(scrollable, const Offset(0, -250));
     }
     await tester.pumpAndSettle();
   }
@@ -140,7 +134,9 @@ void main(){
     expect(find.text('FRENTE E'),findsNothing);
     expect(find.text('TRASEIRA E'),findsNothing);
     expect(find.text('PORTA-MALAS'),findsNothing);
+    await _ensureLoadItemVisible(tester, find.text('Pacote 07'));
     expect(find.text('07'),findsWidgets);
+    await _ensureLoadItemVisible(tester, find.text('Pacote 12'));
     expect(find.text('12'),findsWidgets);
     expect(find.text('INICIAR ENTREGAS'),findsOneWidget);
     expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,isNull);
@@ -345,15 +341,12 @@ void main(){
         reason: 'Only nearby package rows should be built ($vehicle).',
       );
 
-      await tester.scrollUntilVisible(
-        find.text('Pacote 600'),
-        1000,
-        scrollable: find.descendant(
-          of: find.byType(CustomScrollView),
-          matching: find.byType(Scrollable),
-        ).first,
-        maxScrolls: 100,
-      );
+      final scrollable = find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ).first;
+      final position = tester.state<ScrollableState>(scrollable).position;
+      position.jumpTo(position.maxScrollExtent);
       await tester.pumpAndSettle();
 
       expect(find.text('Pacote 600'), findsOneWidget);
@@ -391,7 +384,7 @@ void main(){
 
 
   testWidgets('drag selection crosses a 600-package load without skipping cards', (tester) async {
-    tester.view.physicalSize = const Size(400, 60000);
+    tester.view.physicalSize = const Size(400, 100000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
