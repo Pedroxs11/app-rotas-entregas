@@ -38,19 +38,35 @@ Future<void> _ensureLoadItemVisible(WidgetTester tester, Finder finder) async {
     of: find.byType(CustomScrollView),
     matching: find.byType(Scrollable),
   ).first;
+  final position = tester.state<ScrollableState>(scrollable).position;
   final viewportFinder = find.byType(CustomScrollView);
 
-  for (var attempt = 0; attempt < 60; attempt++) {
+  if (finder.evaluate().isEmpty && position.pixels > position.minScrollExtent) {
+    position.jumpTo(position.minScrollExtent);
+    await tester.pumpAndSettle();
+  }
+
+  for (var attempt = 0; attempt < 120; attempt++) {
     if (finder.evaluate().isNotEmpty) {
       final target = tester.getRect(finder.first);
       final viewport = tester.getRect(viewportFinder);
       if (target.top >= viewport.top && target.bottom <= viewport.bottom) {
         return;
       }
-      final delta = target.top < viewport.top ? 250.0 : -250.0;
-      await tester.drag(scrollable, Offset(0, delta));
+      final delta = target.top < viewport.top
+          ? target.top - viewport.top
+          : target.bottom - viewport.bottom;
+      final next = (position.pixels + delta)
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if ((next - position.pixels).abs() < 0.5) break;
+      position.jumpTo(next);
     } else {
-      await tester.drag(scrollable, const Offset(0, -250));
+      final next = (position.pixels + 500)
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if (next <= position.pixels) break;
+      position.jumpTo(next);
     }
     await tester.pumpAndSettle();
   }
