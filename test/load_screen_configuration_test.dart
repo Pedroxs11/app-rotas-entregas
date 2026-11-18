@@ -170,4 +170,43 @@ void main() {
     }
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('empty package search can be cleared in car and motorcycle modes',
+      (tester) async {
+    for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState(
+        store: _ConfigurationStore([_package(9)]),
+      );
+      await state.init();
+      if (vehicle == VehicleType.motorcycle) {
+        await state.setVehicleType(VehicleType.motorcycle);
+      }
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'pacote inexistente');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Nenhum pacote encontrado para essa busca.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byTooltip('Limpar busca'));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          isEmpty);
+      expect(
+        find.text('Nenhum pacote encontrado para essa busca.'),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
 }
