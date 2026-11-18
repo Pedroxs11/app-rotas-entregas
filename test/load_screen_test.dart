@@ -389,17 +389,21 @@ void main(){
     final sixth = tester.getCenter(find.text('Pacote 06'));
     final gesture = await tester.startGesture(first);
     await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
 
-    await gesture.moveTo(fourth, timeStamp: const Duration(milliseconds: 700));
-    await tester.pump();
+    // Let the test binding assign monotonically increasing event timestamps.
+    // Explicit timestamps here could be earlier than the binding clock after
+    // the long-press timeout, making the simulated move differ from a real drag.
+    await gesture.moveTo(fourth);
+    await tester.pump(const Duration(milliseconds: 16));
     expect(find.text('4 pacote(s) selecionado(s)'), findsOneWidget);
 
-    await gesture.moveTo(second, timeStamp: const Duration(milliseconds: 800));
-    await tester.pump();
+    await gesture.moveTo(second);
+    await tester.pump(const Duration(milliseconds: 16));
     expect(find.text('4 pacote(s) selecionado(s)'), findsOneWidget);
 
-    await gesture.moveTo(sixth, timeStamp: const Duration(milliseconds: 900));
-    await tester.pump();
+    await gesture.moveTo(sixth);
+    await tester.pump(const Duration(milliseconds: 16));
     expect(find.text('6 pacote(s) selecionado(s)'), findsOneWidget);
 
     await gesture.up();
