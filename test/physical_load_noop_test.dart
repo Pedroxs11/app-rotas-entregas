@@ -19,4 +19,17 @@ void main(){
   expect(state.packages.first.completedAt,done.completedAt);
   expect(store.saves,0);
  });
+ test('reassigning packages to the same compartment does not persist again',()async{
+  final store=NoopLoadStore([_p('one',1,DeliveryStatus.pending,'Porta-malas'),_p('two',2,DeliveryStatus.pending,'Porta-malas')]);final state=AppState(store:store);await state.init();
+  await state.setPhysicalZones({'one','two'},'Porta-malas');
+  expect(store.saves,0);
+  await state.setPhysicalZone('one','Porta-malas');
+  expect(store.saves,0);
+ });
+ test('clearing packages without a compartment does not persist again',()async{
+  final store=NoopLoadStore([_p('one',1,DeliveryStatus.pending,'')]);final state=AppState(store:store);await state.init();
+  await state.clearPhysicalZones({'one'});
+  expect(store.saves,0);
+ });
+
 }
