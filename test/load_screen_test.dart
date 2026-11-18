@@ -269,4 +269,32 @@ void main(){
     expect(tester.takeException(), isNull);
   });
 
+
+  testWidgets('drag selection crosses a 600-package load without skipping cards', (tester) async {
+    tester.view.physicalSize = const Size(400, 60000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = AppState(
+      store: _LoadStore(List.generate(600, (index) => _package(index + 1))),
+    );
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+
+    final first = tester.getCenter(find.text('Pacote 01'));
+    final last = tester.getCenter(find.text('Pacote 600'));
+    final gesture = await tester.startGesture(first);
+    await gesture.moveTo(last);
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(find.text('600 pacote(s) selecionado(s)'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
 }
