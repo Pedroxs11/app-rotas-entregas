@@ -209,28 +209,116 @@ class _LoadScreenState extends State<LoadScreen>{
           const SizedBox(height:10),
           LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
         ])))),
-        Expanded(child:SingleChildScrollView(key:_scrollViewportKey,controller:_scrollController,padding:const EdgeInsets.fromLTRB(16,0,16,12),child:Column(children:[
-          TextField(
-            controller:_searchController,
-            decoration:InputDecoration(
-              prefixIcon:const Icon(Icons.search),
-              suffixIcon:search.isEmpty?null:IconButton(tooltip:'Limpar busca',onPressed:(){_searchController.clear();setState(()=>search='');},icon:const Icon(Icons.close)),
-              hintText:'Buscar pacote ou endereço',
-              border:const OutlineInputBorder(),
-              isDense:true,
+        Expanded(
+          child: Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerMove: (event) => _selectionPointerMove(event.position),
+            onPointerUp: (_) => _selectionPointerUp(),
+            onPointerCancel: (_) => _selectionPointerUp(),
+            child: CustomScrollView(
+              key: _scrollViewportKey,
+              controller: _scrollController,
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: search.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Limpar busca',
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => search = '');
+                                    },
+                                    icon: const Icon(Icons.close),
+                                  ),
+                            hintText: 'Buscar pacote ou endereço',
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          onChanged: (value) => setState(() => search = value),
+                        ),
+                        const SizedBox(height: 10),
+                        if (_isMoto) _motoCard(context, route) else _carDiagram(context, route),
+                        const SizedBox(height: 14),
+                        if (selected != null || selectedIds.isNotEmpty)
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _clearSelected,
+                              icon: const Icon(Icons.remove_circle_outline),
+                              label: Text(
+                                selectedIds.length > 1
+                                    ? 'RETIRAR ${selectedIds.length} PACOTES'
+                                    : 'RETIRAR PACOTE SELECIONADO',
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _isMoto ? 'Pacotes' : 'Pacotes para posicionar',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                            ),
+                            if (multiSelect)
+                              TextButton(
+                                onPressed: _selectAll,
+                                child: const Text('Selecionar todos'),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final package = _visibleRoute[index];
+                        return _packageTile(
+                          context,
+                          package,
+                          multiSelect
+                              ? selectedIds.contains(package.id)
+                              : selected?.id == package.id,
+                        );
+                      },
+                      childCount: _visibleRoute.length,
+                    ),
+                  ),
+                ),
+                if (missing == 0)
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    sliver: SliverToBoxAdapter(
+                      child: Text(
+                        'Todos os pacotes estão posicionados. Confira a carga antes de sair.',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            onChanged:(v)=>setState(()=>search=v),
           ),
-          const SizedBox(height:10),
-          if(_isMoto)_motoCard(context,route) else _carDiagram(context,route),
-          const SizedBox(height:14),
-          if(selected!=null||selectedIds.isNotEmpty)SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:_clearSelected,icon:const Icon(Icons.remove_circle_outline),label:Text(selectedIds.length>1?'RETIRAR ${selectedIds.length} PACOTES':'RETIRAR PACOTE SELECIONADO'))),
-          const SizedBox(height:8),
-          Row(children:[Expanded(child:Text(_isMoto?'Pacotes':'Pacotes para posicionar',style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.bold))),if(multiSelect)TextButton(onPressed:_selectAll,child:const Text('Selecionar todos'))]),
-          const SizedBox(height:8),
-          Listener(behavior:HitTestBehavior.translucent,onPointerDown:(e)=>_selectionPointerDown(e.position),onPointerMove:(e)=>_selectionPointerMove(e.position),onPointerUp:(_)=>_selectionPointerUp(),onPointerCancel:(_)=>_selectionPointerUp(),child:Column(children:[for(final p in _visibleRoute)_packageTile(context,p,multiSelect?selectedIds.contains(p.id):selected?.id==p.id)])),
-          if(missing==0)Padding(padding:const EdgeInsets.only(top:8),child:Text('Todos os pacotes estão posicionados. Confira a carga antes de sair.',style:TextStyle(color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w600))),
-        ]))),
+        ),
         SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>DeliveryScreen(state:widget.state))):null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
       ]),
     );
@@ -484,10 +572,45 @@ class _LoadScreenState extends State<LoadScreen>{
     );
   }
 
-  Widget _packageTile(BuildContext context,DeliveryPackage p,bool selected){
-    final zone=p.physicalZone?.trim();
-    final address=p.address.formatted.isEmpty?p.address.raw:p.address.formatted;
-    final cs=Theme.of(context).colorScheme;return Card(key:_tileKeys.putIfAbsent(p.id,()=>GlobalKey()),margin:const EdgeInsets.only(bottom:6),color:selected?cs.inverseSurface:null,child:ListTile(selected:selected,selectedColor:selected?cs.onInverseSurface:null,leading:CircleAvatar(radius:24,backgroundColor:selected?cs.onInverseSurface:cs.primaryContainer,foregroundColor:selected?cs.inverseSurface:null,child:Text(p.scanNumber.toString().padLeft(2,'0'),style:const TextStyle(fontWeight:FontWeight.w900))),title:Text(p.label,style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text(_isMoto?address:(_hasActiveZone(p)?'$zone\n$address':'Sem posição no carro\n$address'),maxLines:2,overflow:TextOverflow.ellipsis),trailing:_isMoto?null:(_hasActiveZone(p)?const Chip(label:Text('OK')):const Chip(label:Text('Falta'))),onTap:()=>_togglePackage(p.id)));
+  Widget _packageTile(BuildContext context, DeliveryPackage p, bool selected) {
+    final zone = p.physicalZone?.trim();
+    final address = p.address.formatted.isEmpty ? p.address.raw : p.address.formatted;
+    final cs = Theme.of(context).colorScheme;
+
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (event) => _selectionPointerDown(event.position),
+      child: Card(
+        key: _tileKeys.putIfAbsent(p.id, () => GlobalKey()),
+        margin: const EdgeInsets.only(bottom: 6),
+        color: selected ? cs.inverseSurface : null,
+        child: ListTile(
+          selected: selected,
+          selectedColor: selected ? cs.onInverseSurface : null,
+          leading: CircleAvatar(
+            radius: 24,
+            backgroundColor: selected ? cs.onInverseSurface : cs.primaryContainer,
+            foregroundColor: selected ? cs.inverseSurface : null,
+            child: Text(
+              p.scanNumber.toString().padLeft(2, '0'),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+          title: Text(p.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(
+            _isMoto
+                ? address
+                : (_hasActiveZone(p) ? '$zone\\n$address' : 'Sem posição no carro\\n$address'),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: _isMoto
+              ? null
+              : (_hasActiveZone(p) ? const Chip(label: Text('OK')) : const Chip(label: Text('Falta'))),
+          onTap: () => _togglePackage(p.id),
+        ),
+      ),
+    );
   }
 }
 
