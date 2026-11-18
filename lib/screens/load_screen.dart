@@ -66,7 +66,7 @@ class _LoadScreenState extends State<LoadScreen>{
   }
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
-  void _selectAll(){setState(()=>selectedIds.addAll(_route.where(_matchesSearch).map((p)=>p.id)));}
+  void _selectAll(){setState(()=>selectedIds.addAll(_visibleRoute.map((p)=>p.id)));}
   void _registerTileBox(String id, RenderBox box, bool attached) {
     if (attached) {
       _mountedTileBoxes[id] = box;

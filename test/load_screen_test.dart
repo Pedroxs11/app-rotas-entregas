@@ -717,4 +717,61 @@ void main(){
     expect(tester.takeException(), isNull);
   });
 
+
+  testWidgets('select all only selects unassigned packages for each vehicle', (tester) async {
+    for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+      SharedPreferences.setMockInitialValues(
+        vehicle == VehicleType.motorcycle
+            ? {'load_vehicle_type': 'motorcycle'}
+            : {},
+      );
+      final assignedZone = vehicle == VehicleType.motorcycle
+          ? 'Baú traseiro'
+          : 'Porta-malas';
+      final targetZone = vehicle == VehicleType.motorcycle
+          ? 'MOCHILA DE ENTREGA'
+          : 'FRENTE E';
+      final targetPhysicalZone = vehicle == VehicleType.motorcycle
+          ? 'Mochila de entrega'
+          : 'Frente esquerda';
+      final state = AppState(store: _LoadStore([
+        _package(1, physicalZone: assignedZone),
+        _package(2),
+        _package(3),
+      ]));
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pump();
+
+      await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
+      await tester.tap(find.text('Selecionar todos'));
+      await tester.pump();
+
+      expect(
+        find.text('2 pacote(s) selecionado(s)'),
+        findsOneWidget,
+        reason: 'Select all should include only visible unassigned packages ($vehicle).',
+      );
+
+      await _ensureLoadItemVisible(tester, find.text(targetZone));
+      await tester.tap(find.text(targetZone));
+      await tester.pumpAndSettle();
+
+      expect(
+        state.packages[0].physicalZone,
+        assignedZone,
+        reason: 'A package already assigned to a compartment must not be moved ($vehicle).',
+      );
+      expect(state.packages[1].physicalZone, targetPhysicalZone);
+      expect(state.packages[2].physicalZone, targetPhysicalZone);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
 }
