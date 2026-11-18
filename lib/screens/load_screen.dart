@@ -226,6 +226,20 @@ class _LoadScreenState extends State<LoadScreen>{
     catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
   }
 
+  void _startDeliveries(){
+    _stopSelectionAutoScroll();
+    setState((){
+      selectedId=null;
+      selectedIds.clear();
+      multiSelect=false;
+      _dragSelecting=false;
+    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder:(_)=>DeliveryScreen(state:widget.state)),
+    );
+  }
+
   @override Widget build(BuildContext context){
     final route=_route;
     // Build the filtered list once per frame. Recomputing this getter for every
@@ -379,7 +393,7 @@ class _LoadScreenState extends State<LoadScreen>{
             ),
           ),
         ),
-        SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>DeliveryScreen(state:widget.state))):null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
+        SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?_startDeliveries:null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
       ]),
     );
   }
