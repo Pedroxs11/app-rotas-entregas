@@ -391,19 +391,23 @@ void main(){
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
 
-    // Let the test binding assign monotonically increasing event timestamps.
-    // Explicit timestamps here could be earlier than the binding clock after
-    // the long-press timeout, making the simulated move differ from a real drag.
-    await gesture.moveTo(fourth);
-    await tester.pump(const Duration(milliseconds: 16));
+    // TestGesture.moveTo defaults to a timestamp near zero. After pumpAndSettle
+    // and the long-press delay that can be older than the pointer's last event,
+    // so derive each timestamp from the test binding's current frame clock.
+    Future<void> moveToNextFrame(Offset position) async {
+      final timestamp = tester.binding.currentFrameTimeStamp +
+          const Duration(milliseconds: 16);
+      await gesture.moveTo(position, timeStamp: timestamp);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    await moveToNextFrame(fourth);
     expect(find.text('4 pacote(s) selecionado(s)'), findsOneWidget);
 
-    await gesture.moveTo(second);
-    await tester.pump(const Duration(milliseconds: 16));
+    await moveToNextFrame(second);
     expect(find.text('4 pacote(s) selecionado(s)'), findsOneWidget);
 
-    await gesture.moveTo(sixth);
-    await tester.pump(const Duration(milliseconds: 16));
+    await moveToNextFrame(sixth);
     expect(find.text('6 pacote(s) selecionado(s)'), findsOneWidget);
 
     await gesture.up();
