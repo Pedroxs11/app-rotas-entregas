@@ -359,7 +359,7 @@ class _LoadScreenState extends State<LoadScreen>{
           Row(children:[
             Expanded(child:Text(shortName,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12))),
             if(allPackages.isNotEmpty)Text(
-              hasSearch?' ${packages.length}/${allPackages.length}':'${allPackages.length}',
+              hasSearch?'${packages.length}/${allPackages.length}':'${allPackages.length}',
               style:const TextStyle(fontWeight:FontWeight.bold),
             ),
           ]),
