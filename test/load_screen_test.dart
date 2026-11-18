@@ -366,7 +366,9 @@ void main(){
 
 
   testWidgets('drag selection stays contiguous when the finger changes direction', (tester) async {
-    tester.view.physicalSize = const Size(400, 1200);
+    // Keep all six target rows mounted so this test isolates direction changes,
+    // rather than depending on lazy-list scrolling before the drag begins.
+    tester.view.physicalSize = const Size(400, 2400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
