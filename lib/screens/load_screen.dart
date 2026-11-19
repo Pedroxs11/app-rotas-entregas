@@ -55,8 +55,10 @@ class _LoadScreenState extends State<LoadScreen>{
     final number=p.scanNumber.toString();
     final paddedNumber=number.padLeft(2,'0');
     final normalizedQuery=q.replaceAll(RegExp(r'[^a-z0-9]'),'');
-    final normalizedCodes={'p$number','p$paddedNumber'};
-    final matchesCode=normalizedCodes.contains(normalizedQuery);
+    final codeNumber=normalizedQuery.startsWith('p')
+        ?normalizedQuery.substring(1)
+        :'';
+    final matchesCode=codeNumber==number||codeNumber==paddedNumber;
     return p.label.toLowerCase().contains(q)||
         matchesCode||
         number.contains(q)||
