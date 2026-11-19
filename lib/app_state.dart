@@ -30,7 +30,9 @@ class AppState extends ChangeNotifier {
    final prefs=await SharedPreferences.getInstance();
    await prefs.setString('load_vehicle_type',value.name);
    final saved=prefs.getStringList(_zonesPreferenceKey);
-   activePhysicalZones=(saved??defaults).where(defaults.contains).toList();
+   // Older or manually edited preferences may have a different order.
+   // Always restore the canonical physical order used by the vehicle diagram.
+   activePhysicalZones=defaults.where((zone)=>saved?.contains(zone)??true).toList();
    if(activePhysicalZones.isEmpty)activePhysicalZones=[...defaults];
    await prefs.setStringList(_zonesPreferenceKey,activePhysicalZones);
   }catch(e){
