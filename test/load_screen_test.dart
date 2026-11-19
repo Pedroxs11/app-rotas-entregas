@@ -324,8 +324,8 @@ void main(){
 
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
-    await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
-    await tester.tap(find.text('Selecionar todos'));
+    await _ensureLoadItemVisible(tester, find.text('Selecionar lista'));
+    await tester.tap(find.text('Selecionar lista'));
     await tester.pump();
 
     expect(find.text('1 pacote(s) selecionado(s)'),findsOneWidget);
@@ -505,8 +505,8 @@ void main(){
 
       await tester.tap(find.byTooltip('Selecionar vários'));
       await tester.pump();
-      await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
-      await tester.tap(find.text('Selecionar todos'));
+      await _ensureLoadItemVisible(tester, find.text('Selecionar lista'));
+      await tester.tap(find.text('Selecionar lista'));
       await tester.pump();
 
       expect(find.text('200 pacote(s) selecionado(s)'), findsOneWidget);
@@ -571,8 +571,8 @@ void main(){
 
       await tester.tap(find.byTooltip('Selecionar vários'));
       await tester.pump();
-      await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
-      await tester.tap(find.text('Selecionar todos'));
+      await _ensureLoadItemVisible(tester, find.text('Selecionar lista'));
+      await tester.tap(find.text('Selecionar lista'));
       await tester.pump();
 
       expect(find.text('600 pacote(s) selecionado(s)'), findsOneWidget);
@@ -683,8 +683,8 @@ void main(){
     await tester.enterText(find.byType(TextField), 'Rua Teste, 2');
     await tester.pump();
 
-    await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
-    await tester.tap(find.text('Selecionar todos'));
+    await _ensureLoadItemVisible(tester, find.text('Selecionar resultados'));
+    await tester.tap(find.text('Selecionar lista'));
     await tester.pump();
 
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
@@ -891,8 +891,8 @@ void main(){
       await tester.tap(find.byTooltip('Selecionar vários'));
       await tester.pump();
 
-      await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
-      await tester.tap(find.text('Selecionar todos'));
+      await _ensureLoadItemVisible(tester, find.text('Selecionar lista'));
+      await tester.tap(find.text('Selecionar lista'));
       await tester.pump();
 
       expect(
@@ -1032,8 +1032,8 @@ void main(){
     await tester.pump();
     await tester.enterText(find.byType(TextField), 'P07');
     await tester.pumpAndSettle();
-    await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
-    await tester.tap(find.text('Selecionar todos'));
+    await _ensureLoadItemVisible(tester, find.text('Selecionar resultados'));
+    await tester.tap(find.text('Selecionar lista'));
     await tester.pump();
 
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
@@ -1113,24 +1113,66 @@ void main(){
 
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
-    await _ensureLoadItemVisible(tester, find.text('Selecionar todos'));
-    await tester.tap(find.text('Selecionar todos'));
+    await _ensureLoadItemVisible(tester, find.text('Selecionar lista'));
+    await tester.tap(find.text('Selecionar lista'));
     await tester.pump();
 
     expect(find.text('3 pacote(s) selecionado(s)'), findsOneWidget);
-    expect(find.text('Desmarcar todos'), findsOneWidget);
+    expect(find.text('Desmarcar lista'), findsOneWidget);
 
-    await tester.tap(find.text('Desmarcar todos'));
+    await tester.tap(find.text('Desmarcar lista'));
     await tester.pump();
 
     expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
-    expect(find.text('Selecionar todos'), findsOneWidget);
+    expect(find.text('Selecionar lista'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   });
 
+
+  testWidgets('deselecting the unassigned list keeps assigned compartment selections',
+      (tester) async {
+    final state = AppState(
+      store: _LoadStore([
+        _package(1, physicalZone: 'Porta-malas'),
+        _package(2),
+        _package(3),
+      ]),
+    );
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+
+    await tester.tap(find.widgetWithText(InputChip, 'P01'));
+    await tester.pump();
+    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await _ensureLoadItemVisible(tester, find.text('Selecionar lista'));
+    await tester.tap(find.text('Selecionar lista'));
+    await tester.pump();
+    expect(find.text('3 pacote(s) selecionado(s)'), findsOneWidget);
+    expect(find.text('Desmarcar lista'), findsOneWidget);
+
+    await tester.tap(find.text('Desmarcar lista'));
+    await tester.pump();
+
+    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+    expect(find.text('Selecionar lista'), findsOneWidget);
+    final assignedChip = tester.widget<InputChip>(
+      find.widgetWithText(InputChip, 'P01'),
+    );
+    expect(assignedChip.selected, isTrue);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('search does not report empty when a matching package is already assigned',
       (tester) async {
