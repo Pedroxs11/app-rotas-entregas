@@ -1282,4 +1282,71 @@ void main(){
       await tester.pumpAndSettle();
     },
   );
+
+  testWidgets('filtered bulk selection preserves packages selected outside the search',
+      (tester) async {
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = AppState(
+      store: _LoadStore([
+        _package(1),
+        _package(2),
+        _package(3),
+      ]),
+    );
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+
+    await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
+    await tester.tap(find.text('Pacote 01'));
+    await tester.pump();
+    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Rua Teste, 2');
+    await tester.pumpAndSettle();
+    expect(find.text('Pacote 01'), findsNothing);
+    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await _ensureLoadItemVisible(tester, find.text('Selecionar resultados'));
+    await tester.tap(find.text('Selecionar resultados'));
+    await tester.pump();
+    expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await tester.tap(find.text('Desmarcar resultados'));
+    await tester.pump();
+    expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Limpar busca'));
+    await tester.pumpAndSettle();
+    await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
+
+    final retainedRow = tester.widget<ListTile>(
+      find.ancestor(
+        of: find.text('Pacote 01'),
+        matching: find.byType(ListTile),
+      ).first,
+    );
+    expect(retainedRow.selected, isTrue);
+
+    await _ensureLoadItemVisible(tester, find.text('PORTA-MALAS'));
+    await tester.tap(find.text('PORTA-MALAS'));
+    await tester.pumpAndSettle();
+
+    expect(state.packages[0].physicalZone, 'Porta-malas');
+    expect(state.packages[1].physicalZone, isNull);
+    expect(state.packages[2].physicalZone, isNull);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
 }
