@@ -75,4 +75,49 @@ void main(){
   expect(store.saves,0);
  });
 
+
+ test('bulk clear rejects delivered packages atomically',()async{
+  final store=GuardStore([
+   _package('active',1,zone:'Frente esquerda'),
+   _package('done',2,zone:'Porta-malas',status:DeliveryStatus.delivered),
+  ],optimized:true);
+  final state=AppState(store:store);await state.init();
+
+  await expectLater(
+   state.clearPhysicalZones({'active','done'}),
+   throwsA(isA<StateError>()),
+  );
+  expect(state.packages[0].physicalZone,'Frente esquerda');
+  expect(state.packages[1].physicalZone,'Porta-malas');
+  expect(store.saves,0);
+ });
+
+ test('bulk clear rejects unknown package ids without partial changes',()async{
+  final store=GuardStore([
+   _package('active',1,zone:'Frente esquerda'),
+  ],optimized:true);
+  final state=AppState(store:store);await state.init();
+
+  await expectLater(
+   state.clearPhysicalZones({'active','missing'}),
+   throwsA(isA<StateError>()),
+  );
+  expect(state.packages.single.physicalZone,'Frente esquerda');
+  expect(store.saves,0);
+ });
+
+ test('bulk clear requires route optimization and preserves current positions',()async{
+  final store=GuardStore([
+   _package('active',1,zone:'Frente esquerda'),
+  ],optimized:false);
+  final state=AppState(store:store);await state.init();
+
+  await expectLater(
+   state.clearPhysicalZones({'active'}),
+   throwsA(isA<StateError>()),
+  );
+  expect(state.packages.single.physicalZone,'Frente esquerda');
+  expect(store.saves,0);
+ });
+
 }
