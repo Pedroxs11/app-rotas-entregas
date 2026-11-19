@@ -114,8 +114,8 @@ class _LoadScreenState extends State<LoadScreen>{
         ? null
         : _dragSelectionIndexById[_selectionStartPackageId!];
     _dragSelecting = _selectionStartPackageId != null;
-    if (_dragSelecting && selectedIds.add(_selectionStartPackageId!)) {
-      setState(() {});
+    if (_dragSelecting && !selectedIds.contains(_selectionStartPackageId)) {
+      setState(() => selectedIds.add(_selectionStartPackageId!));
     }
   }
 
@@ -710,9 +710,8 @@ class _LoadScreenState extends State<LoadScreen>{
       onLongPressStart: multiSelect
           ? (details) => _selectionPointerDown(details.globalPosition, p.id)
           : null,
-      onLongPressMoveUpdate: multiSelect
-          ? (details) => _selectionPointerMove(details.globalPosition)
-          : null,
+      // Pointer movement is handled once by the ancestor Listener so long
+      // drags do not run the same hit-test twice for every movement event.
       child: _TrackedPackageTile(
         packageId: p.id,
         onChanged: _registerTileBox,
