@@ -45,4 +45,47 @@ void main(){
   expect(state.packages.every((p)=>p.physicalZone=='Baú traseiro'),isTrue);
   expect(store.saves,greaterThan(0));
  });
+
+ test('bulk assigned compartments survive a fresh app state for car and motorcycle',()async{
+  for(final vehicle in [VehicleType.car,VehicleType.motorcycle]){
+   SharedPreferences.setMockInitialValues({});
+   final isMotorcycle=vehicle==VehicleType.motorcycle;
+   final customZones=isMotorcycle
+       ?['Baú traseiro','Bolsa lateral esquerda']
+       :['Frente direita','Porta-malas'];
+   final assignedZone=isMotorcycle
+       ?'Bolsa lateral esquerda'
+       :'Porta-malas';
+   final historicalZone=isMotorcycle?'Porta-malas':'Baú traseiro';
+   final store=VolumeStore([
+    _p(1),
+    _p(2),
+    _p(3),
+    _p(4).copyWith(
+     status:DeliveryStatus.delivered,
+     physicalZone:historicalZone,
+    ),
+   ]);
+   final firstSession=AppState(store:store);
+   await firstSession.init();
+   if(isMotorcycle)await firstSession.setVehicleType(VehicleType.motorcycle);
+   await firstSession.setActivePhysicalZones(customZones);
+   await firstSession.setPhysicalZones({'p1','p2','p3'},assignedZone);
+   final savesBeforeRestart=store.saves;
+
+   final resumedSession=AppState(store:store);
+   await resumedSession.init();
+
+   expect(resumedSession.vehicleType,vehicle);
+   expect(resumedSession.activePhysicalZones,customZones);
+   expect(
+    resumedSession.packages.take(3).every((p)=>p.physicalZone==assignedZone),
+    isTrue,
+   );
+   expect(resumedSession.packages.last.status,DeliveryStatus.delivered);
+   expect(resumedSession.packages.last.physicalZone,historicalZone);
+   expect(store.saves,savesBeforeRestart);
+  }
+ });
+
 }
