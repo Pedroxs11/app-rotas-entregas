@@ -320,6 +320,25 @@ void main() {
     expect(store.saves, 1);
   });
 
+
+  test('disabling known compartments preserves normalized custom and delivered labels', () async {
+    final store = LoadStore([
+      _p(1, zone: 'Porta-malas'),
+      _p(2, zone: ' A-01 '),
+      _p(3, status: DeliveryStatus.delivered, zone: 'Porta-malas'),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.setActivePhysicalZones(['Frente esquerda']);
+
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, 'A-01');
+    expect(state.packages[2].physicalZone, 'Porta-malas');
+    expect(state.activePhysicalZones, ['Frente esquerda']);
+    expect(store.saves, 1);
+  });
+
   test('saving unchanged compartments repairs stale active package positions but preserves delivered history', () async {
     SharedPreferences.setMockInitialValues({
       'load_vehicle_type': 'car',
