@@ -56,15 +56,7 @@ class _LoadScreenState extends State<LoadScreen>{
     final paddedNumber=number.padLeft(2,'0');
     final normalizedQuery=q.replaceAll(RegExp(r'[^a-z0-9]'),'');
     final normalizedCodes={'p$number','p$paddedNumber'};
-    final matchesCode=RegExp(r'^p\d+$').hasMatch(normalizedQuery)&&
-        normalizedCodes.any((code)=>code.contains(normalizedQuery));
-    return p.label.toLowerCase().contains(q)||
-        matchesCode||
-        number.contains(q)||
-        paddedNumber.contains(q)||
-        p.address.formatted.toLowerCase().contains(q)||
-        p.address.raw.toLowerCase().contains(q);
-  }
+    final matchesCode=RegExp(r'^p\\d+
   List<DeliveryPackage> get _visibleRoute=>_route.where((p)=>!_hasActiveZone(p)&&_matchesSearch(p)).toList();
   DeliveryPackage? _selected(){
     final id=selectedId;
@@ -856,7 +848,7 @@ class _TrackedPackageTileRenderBox extends RenderProxyBox {
   }
 }
 ).hasMatch(normalizedQuery)&&
-        normalizedCodes.any((code)=>code.contains(normalizedQuery));
+        normalizedCodes.contains(normalizedQuery);
     return p.label.toLowerCase().contains(q)||
         matchesCode||
         number.contains(q)||
