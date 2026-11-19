@@ -49,20 +49,25 @@ class AppState extends ChangeNotifier {
   final cleaned=defaults.where(requested.contains).toList();
   if(cleaned.isEmpty)throw ArgumentError('Ative pelo menos um compartimento.');
   if(cleaned.length==activePhysicalZones.length&&cleaned.every(activePhysicalZones.contains))return;
-  final removed=activePhysicalZones.where((z)=>!cleaned.contains(z)).toSet();
-  activePhysicalZones=cleaned;
-  if(removed.isNotEmpty){
-   final next=[...packages];
-   var changed=false;
-   for(var i=0;i<next.length;i++){
-    final p=next[i];
-    if(p.status!=DeliveryStatus.delivered&&removed.contains(p.physicalZone)){
-     next[i]=p.copyWith(clearPhysicalZone:true);
-     changed=true;
-    }
+  final zonesUnchanged=cleaned.length==activePhysicalZones.length&&cleaned.every(activePhysicalZones.contains);
+  final next=[...packages];
+  var packagesChanged=false;
+  for(var i=0;i<next.length;i++){
+   final p=next[i];
+   final rawZone=p.physicalZone;
+   if(p.status==DeliveryStatus.delivered||rawZone==null)continue;
+   final normalizedZone=rawZone.trim();
+   if(normalizedZone.isEmpty||!cleaned.contains(normalizedZone)){
+    next[i]=p.copyWith(clearPhysicalZone:true);
+    packagesChanged=true;
+   }else if(normalizedZone!=rawZone){
+    next[i]=p.copyWith(physicalZone:normalizedZone);
+    packagesChanged=true;
    }
-   if(changed)packages=next;
   }
+  if(zonesUnchanged&&!packagesChanged)return;
+  activePhysicalZones=cleaned;
+  if(packagesChanged)packages=next;
   final prefs=await SharedPreferences.getInstance();
   await prefs.setStringList(_zonesPreferenceKey,cleaned);
   await _persist();
