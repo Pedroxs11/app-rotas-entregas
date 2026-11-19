@@ -26,10 +26,15 @@ class _ConfigurationStore implements PackageStore {
   }
 }
 
-DeliveryPackage _package(int number, {String? zone}) => DeliveryPackage(
+DeliveryPackage _package(
+  int number, {
+  String? zone,
+  DeliveryStatus status = DeliveryStatus.pending,
+}) => DeliveryPackage(
       id: 'p$number',
       scanNumber: number,
       physicalZone: zone,
+      status: status,
       address: AddressData(
         raw: 'Rua Teste, $number',
         street: 'Rua Teste',
@@ -257,4 +262,35 @@ void main() {
       isLeft: false,
     );
   });
+  test('switching vehicles clears active positions but preserves delivered history',
+      () async {
+    final state = AppState(
+      store: _ConfigurationStore([
+        _package(11, zone: 'Porta-malas'),
+        _package(
+          12,
+          zone: 'Porta-malas',
+          status: DeliveryStatus.delivered,
+        ),
+      ]),
+    );
+    await state.init();
+
+    await state.setVehicleType(VehicleType.motorcycle);
+
+    expect(state.packages, hasLength(2));
+    expect(state.packages[0].status, DeliveryStatus.pending);
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].status, DeliveryStatus.delivered);
+    expect(state.packages[1].physicalZone, 'Porta-malas');
+    expect(state.activePhysicalZones, AppState.motorcyclePhysicalZones);
+
+    await state.setVehicleType(VehicleType.car);
+
+    expect(state.packages, hasLength(2));
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, 'Porta-malas');
+    expect(state.activePhysicalZones, AppState.carPhysicalZones);
+  });
+
 }
