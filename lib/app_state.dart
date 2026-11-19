@@ -163,7 +163,22 @@ class AppState extends ChangeNotifier {
  Future<AddressData> _enrichCep(AddressData a)async{if(a.cep==null||a.cep!.replaceAll(RegExp(r'\D'),'').length!=8)return a;try{final c=await cepService.lookup(a.cep!);if(c==null)return a;final number=a.number?.trim();final hasNumber=number?.isNotEmpty==true;return AddressData(raw:a.raw,street:c.street.isNotEmpty?c.street:a.street,number:number,complement:a.complement,neighborhood:c.neighborhood.isNotEmpty?c.neighborhood:a.neighborhood,city:c.city.isNotEmpty?c.city:a.city,state:c.state.isNotEmpty?c.state:a.state,cep:c.cep,latitude:a.latitude,longitude:a.longitude,confidence:hasNumber?1.0:.70,validation:hasNumber?ValidationStatus.confirmed:ValidationStatus.needsReview);}catch(_){return a;}}
  Future<void> addStructured(AddressData address)async{final p=packageService.fromOcr(address.raw,packages);packages=_clearLoadLabels([...packages,p.copyWith(address:address)]);routeOptimized=false;await _persist();if(address.validation==ValidationStatus.confirmed)await locateConfirmed();}
  Future<void> updateAddress(int index,AddressData address)async{final p=packages[index];packages=[...packages]..[index]=p.copyWith(address:address);packages=_clearLoadLabels(packages);routeOptimized=false;await _persist();if(address.validation==ValidationStatus.confirmed)await locateConfirmed();}
- Future<void> update(int index,DeliveryPackage value)async{packages=[...packages]..[index]=value;await _persist();}
+ Future<void> update(int index,DeliveryPackage value)async{
+  // Keep active load labels canonical even when a package is updated by a
+  // workflow that does not go through the physical-load assignment methods.
+  // Delivered labels are historical data and must remain untouched.
+  final rawZone=value.physicalZone;
+  if(value.status!=DeliveryStatus.delivered&&rawZone!=null){
+   final normalizedZone=rawZone.trim();
+   if(normalizedZone.isEmpty){
+    value=value.copyWith(clearPhysicalZone:true);
+   }else if(normalizedZone!=rawZone){
+    value=value.copyWith(physicalZone:normalizedZone);
+   }
+  }
+  packages=[...packages]..[index]=value;
+  await _persist();
+ }
  Future<void> removePackage(String packageId)async=>removePackages({packageId});
  Future<void> removePackages(Set<String> packageIds)async{if(packageIds.isEmpty)return;final next=packages.where((p)=>!packageIds.contains(p.id)).toList();if(next.length==packages.length)return;packages=next;routeOptimized=false;await _persist();}
  Future<void> reorder(int oldIndex,int newIndex)async{if(newIndex>oldIndex)newIndex--;if(newIndex==oldIndex)return;final x=[...packages];final p=x.removeAt(oldIndex);x.insert(newIndex,p);packages=_clearLoadLabels(x);routeOptimized=false;await _persist();}
