@@ -354,7 +354,7 @@ class _LoadScreenState extends State<LoadScreen>{
                           children: [
                             Expanded(
                               child: Text(
-                                _isMoto ? 'Pacotes' : 'Pacotes para posicionar',
+                                'Pacotes sem posição',
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -366,9 +366,11 @@ class _LoadScreenState extends State<LoadScreen>{
                                 child: Text(
                                   _allVisiblePackagesSelected(visibleRoute)
                                       ? (search.trim().isEmpty
-                                          ? 'Desmarcar todos'
+                                          ? 'Desmarcar lista'
                                           : 'Desmarcar resultados')
-                                      : 'Selecionar todos',
+                                      : (search.trim().isEmpty
+                                          ? 'Selecionar lista'
+                                          : 'Selecionar resultados'),
                                 ),
                               ),
                           ],
