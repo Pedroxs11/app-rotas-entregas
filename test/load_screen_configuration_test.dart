@@ -390,6 +390,63 @@ void main() {
       isLeft: false,
     );
   });
+  testWidgets('car seats stay on their configured physical sides when only one is enabled',
+      (tester) async {
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Future<void> verifySide({
+      required String zone,
+      required String label,
+      required bool isLeft,
+    }) async {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState(
+        store: _ConfigurationStore([_package(10)]),
+      );
+      await state.init();
+      await state.setActivePhysicalZones([zone]);
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      final seatCenter = tester.getCenter(find.text(label));
+      final vehicleCenter = tester.getCenter(find.text('FRENTE'));
+      if (isLeft) {
+        expect(seatCenter.dx, lessThan(vehicleCenter.dx));
+      } else {
+        expect(seatCenter.dx, greaterThan(vehicleCenter.dx));
+      }
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+
+    await verifySide(
+      zone: 'Frente esquerda',
+      label: 'FRENTE E',
+      isLeft: true,
+    );
+    await verifySide(
+      zone: 'Frente direita',
+      label: 'FRENTE D',
+      isLeft: false,
+    );
+    await verifySide(
+      zone: 'Traseira esquerda',
+      label: 'TRASEIRA E',
+      isLeft: true,
+    );
+    await verifySide(
+      zone: 'Traseira direita',
+      label: 'TRASEIRA D',
+      isLeft: false,
+    );
+  });
+
   test('switching vehicles clears active positions but preserves delivered history',
       () async {
     final state = AppState(
