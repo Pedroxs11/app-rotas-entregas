@@ -114,6 +114,36 @@ void main() {
     );
     expect(store.saves, 1);
   });
+  test('startup repairs an incorrectly typed vehicle preference and preserves car compartments', () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 42,
+      'load_zones_car': ['Porta-malas'],
+    });
+    final store = LoadStore([_p(1)]);
+    final state = AppState(store: store);
+
+    await state.init();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(state.vehicleType, VehicleType.car);
+    expect(state.activePhysicalZones, ['Porta-malas']);
+    expect(prefs.getString('load_vehicle_type'), 'car');
+    expect(store.saves, 0);
+  });
+
+  test('startup repairs an unknown vehicle preference to the car default', () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'truck',
+    });
+    final state = AppState(store: LoadStore([_p(1)]));
+
+    await state.init();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(state.vehicleType, VehicleType.car);
+    expect(prefs.getString('load_vehicle_type'), 'car');
+  });
+
   test('vehicle changes restore each vehicle compartment setup and clear pending positions', () async {
     final store = LoadStore([_p(1, zone: 'Frente esquerda')]);
     final state = AppState(store: store);
