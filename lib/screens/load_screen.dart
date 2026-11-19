@@ -531,25 +531,26 @@ class _LoadScreenState extends State<LoadScreen>{
   Widget _carDiagram(BuildContext context,List<DeliveryPackage> route){
     final selected=_selected();
     final zones=widget.state.activePhysicalZones;
-    final frontZones=zones.where((zone)=>zone=='Frente esquerda'||zone=='Frente direita').toList();
-    final rearZones=zones.where((zone)=>zone=='Traseira esquerda'||zone=='Traseira direita').toList();
+    final hasFrontZones=zones.contains('Frente esquerda')||zones.contains('Frente direita');
+    final hasRearZones=zones.contains('Traseira esquerda')||zones.contains('Traseira direita');
     final hasTrunk=zones.contains('Porta-malas');
     final colors=Theme.of(context).colorScheme;
 
-    Widget zoneRow(List<String> rowZones)=>Row(
+    // Keep fixed left/right slots even when only one seat is enabled.
+    // Otherwise the remaining compartment shifts to the left in the diagram.
+    Widget zoneRow(String leftZone,String rightZone)=>Row(
       children:[
-        for(var index=0;index<rowZones.length;index++)...[
-          if(index>0)const SizedBox(width:8),
-          Expanded(
-            child:_zone(
-              context,
-              rowZones[index],
-              _carZoneLabel(rowZones[index]),
-              route,
-              selected,
-            ),
-          ),
-        ],
+        Expanded(
+          child:zones.contains(leftZone)
+              ?_zone(context,leftZone,_carZoneLabel(leftZone),route,selected)
+              :const SizedBox.shrink(),
+        ),
+        const SizedBox(width:8),
+        Expanded(
+          child:zones.contains(rightZone)
+              ?_zone(context,rightZone,_carZoneLabel(rightZone),route,selected)
+              :const SizedBox.shrink(),
+        ),
       ],
     );
 
@@ -578,13 +579,13 @@ class _LoadScreenState extends State<LoadScreen>{
               ),
               child:Center(child:Text('PARA-BRISA',style:Theme.of(context).textTheme.labelSmall)),
             ),
-            if(frontZones.isNotEmpty)...[
+            if(hasFrontZones)...[
               const SizedBox(height:12),
-              zoneRow(frontZones),
+              zoneRow('Frente esquerda','Frente direita'),
             ],
-            if(rearZones.isNotEmpty)...[
+            if(hasRearZones)...[
               const SizedBox(height:8),
-              zoneRow(rearZones),
+              zoneRow('Traseira esquerda','Traseira direita'),
             ],
             if(hasTrunk)...[
               const SizedBox(height:8),
