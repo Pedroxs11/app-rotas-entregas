@@ -88,6 +88,7 @@ class AppState extends ChangeNotifier {
   final cleaned=defaults.where(requested.contains).toList();
   if(cleaned.isEmpty)throw ArgumentError('Ative pelo menos um compartimento.');
   final zonesUnchanged=cleaned.length==activePhysicalZones.length&&cleaned.every(activePhysicalZones.contains);
+  final knownZones=<String>{...carPhysicalZones,...motorcyclePhysicalZones};
   final next=[...packages];
   var packagesChanged=false;
   for(var i=0;i<next.length;i++){
@@ -95,7 +96,9 @@ class AppState extends ChangeNotifier {
    final rawZone=p.physicalZone;
    if(p.status==DeliveryStatus.delivered||rawZone==null)continue;
    final normalizedZone=rawZone.trim();
-   if(normalizedZone.isEmpty||!cleaned.contains(normalizedZone)){
+   final belongsToDisabledZone=knownZones.contains(normalizedZone)&&
+       !cleaned.contains(normalizedZone);
+   if(normalizedZone.isEmpty||belongsToDisabledZone){
     next[i]=p.copyWith(clearPhysicalZone:true);
     packagesChanged=true;
    }else if(normalizedZone!=rawZone){
