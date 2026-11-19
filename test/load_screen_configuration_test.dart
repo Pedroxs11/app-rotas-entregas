@@ -278,6 +278,30 @@ void main() {
     expect(state.activePhysicalZones, AppState.motorcyclePhysicalZones);
     expect(state.packages.single.physicalZone, isNull);
     expect(store.saves, 1);
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getStringList('load_zones_motorcycle'),
+      AppState.motorcyclePhysicalZones,
+      reason: 'Invalidly typed compartment preferences should be repaired.',
+    );
+  });
+
+  test('switching vehicles repairs an incorrectly typed compartment preference', () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'car',
+      'load_zones_motorcycle': 'invalid preference value',
+    });
+    final state = AppState(store: _ConfigurationStore([_package(21)]));
+    await state.init();
+
+    await state.setVehicleType(VehicleType.motorcycle);
+
+    expect(state.activePhysicalZones, AppState.motorcyclePhysicalZones);
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getStringList('load_zones_motorcycle'),
+      AppState.motorcyclePhysicalZones,
+    );
   });
 
   testWidgets('empty package search can be cleared in car and motorcycle modes',
