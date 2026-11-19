@@ -242,6 +242,26 @@ void main() {
     expect(store.saves, 0);
   });
 
+  test('startup clears empty active load labels but preserves delivered history', () async {
+    final store = _ConfigurationStore([
+      _package(18, zone: '   '),
+      _package(19, zone: '  Frente esquerda  '),
+      _package(
+        20,
+        zone: '   ',
+        status: DeliveryStatus.delivered,
+      ),
+    ]);
+    final state = AppState(store: store);
+
+    await state.init();
+
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, 'Frente esquerda');
+    expect(state.packages[2].physicalZone, '   ');
+    expect(store.saves, 1);
+  });
+
   test('corrupt saved compartments fall back to the selected vehicle defaults', () async {
     SharedPreferences.setMockInitialValues({
       'load_vehicle_type': 'motorcycle',
