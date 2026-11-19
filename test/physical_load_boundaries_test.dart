@@ -330,13 +330,18 @@ void main() {
     final state = AppState(store: store);
     await state.init();
 
+    // Startup trims the legacy custom label and persists that repair once.
+    expect(store.saves, 1);
+    expect(store.packages[1].physicalZone, 'A-01');
+
     await state.setActivePhysicalZones(['Frente esquerda']);
 
     expect(state.packages[0].physicalZone, isNull);
     expect(state.packages[1].physicalZone, 'A-01');
     expect(state.packages[2].physicalZone, 'Porta-malas');
     expect(state.activePhysicalZones, ['Frente esquerda']);
-    expect(store.saves, 1);
+    // Changing compartments performs exactly one additional persistence.
+    expect(store.saves, 2);
   });
 
   test('saving unchanged compartments repairs stale active package positions but preserves delivered history', () async {
