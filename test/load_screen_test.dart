@@ -639,15 +639,19 @@ void main(){
   });
 
 
-  testWidgets('drag selection advances through a lazy 600-package load', (tester) async {
+  testWidgets('drag selection can bulk assign packages in a lazy 600-package load', (tester) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final state = AppState(
-      store: _LoadStore(List.generate(600, (index) => _package(index + 1))),
-    );
+    final store = _LoadStore([
+      for (var index = 0; index < 600; index++) _package(index + 1),
+      _package(601, physicalZone: 'Porta-malas').copyWith(
+        status: DeliveryStatus.delivered,
+      ),
+    ]);
+    final state = AppState(store: store);
     await state.init();
 
     await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
@@ -662,6 +666,25 @@ void main(){
 
     expect(selectedCount, greaterThan(20));
     expect(selectedCount, lessThan(600));
+
+    await _ensureLoadItemVisible(tester, find.text('PORTA-MALAS'));
+    await tester.tap(find.text('PORTA-MALAS'));
+    await tester.pumpAndSettle();
+
+    expect(
+      state.packages.where((package) => package.physicalZone == 'Porta-malas' &&
+          package.status != DeliveryStatus.delivered),
+      hasLength(selectedCount),
+    );
+    expect(
+      state.packages.where((package) => package.physicalZone == null),
+      hasLength(600 - selectedCount),
+    );
+    expect(state.packages, hasLength(601));
+    expect(state.packages.last.status, DeliveryStatus.delivered);
+    expect(state.packages.last.physicalZone, 'Porta-malas');
+    expect(store.saves, 1);
+    expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
