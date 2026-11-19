@@ -20,7 +20,10 @@ class AppState extends ChangeNotifier {
    // saved in a different order after toggling compartments.
    activePhysicalZones=defaults.where(savedZones.contains).toList();
    if(activePhysicalZones.isEmpty)activePhysicalZones=[...defaults];
-  }catch(e){debugPrint('Could not load vehicle settings: $e');}
+  }catch(e){
+   activePhysicalZones=[...(vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones)];
+   debugPrint('Could not load vehicle settings: $e');
+  }
  }
  Future<void> setVehicleType(VehicleType value)async{
   if(vehicleType==value)return;
