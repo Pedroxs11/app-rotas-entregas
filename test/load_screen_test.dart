@@ -1199,4 +1199,44 @@ void main(){
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    'car diagram keeps enabled compartments on their physical sides when opposite sides are disabled',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 850);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final state = AppState(store: _LoadStore([_package(1)]));
+      await state.init();
+      await state.setActivePhysicalZones([
+        'Frente direita',
+        'Traseira esquerda',
+      ]);
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      final frontRightCenter = tester.getCenter(find.text('FRENTE D'));
+      final rearLeftCenter = tester.getCenter(find.text('TRASEIRA E'));
+
+      expect(
+        frontRightCenter.dx,
+        greaterThan(200),
+        reason: 'The only enabled front seat must remain on the right side.',
+      );
+      expect(
+        rearLeftCenter.dx,
+        lessThan(200),
+        reason: 'The only enabled rear seat must remain on the left side.',
+      );
+      expect(find.text('FRENTE E'), findsNothing);
+      expect(find.text('TRASEIRA D'), findsNothing);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
 }
