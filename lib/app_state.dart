@@ -11,9 +11,14 @@ class AppState extends ChangeNotifier {
  List<String> activePhysicalZones=[...carPhysicalZones];
  String get _zonesPreferenceKey=>vehicleType==VehicleType.car?'load_zones_car':'load_zones_motorcycle';
  List<String> _restorePhysicalZones(List<String>? savedZones,List<String> defaults){
-  final restored=savedZones==null
-      ?<String>[...defaults]
-      :defaults.where(savedZones.contains).toList();
+  if(savedZones==null)return <String>[...defaults];
+  // Preferences can outlive app versions or be edited externally. Normalize
+  // whitespace before filtering so a valid compartment is not discarded.
+  final normalizedZones=savedZones
+      .map((zone)=>zone.trim())
+      .where((zone)=>zone.isNotEmpty)
+      .toSet();
+  final restored=defaults.where(normalizedZones.contains).toList();
   return restored.isEmpty?<String>[...defaults]:restored;
  }
  Future<void> _loadVehicleSettings()async{
