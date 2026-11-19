@@ -88,4 +88,44 @@ void main(){
   }
  });
 
+ test('car and motorcycle compartment preferences remain independent across repeated vehicle switches',()async{
+  SharedPreferences.setMockInitialValues({});
+  final historicalPackage=_p(3).copyWith(
+   status:DeliveryStatus.delivered,
+   physicalZone:'Baú traseiro',
+  );
+  final store=VolumeStore([_p(1),_p(2),historicalPackage]);
+  final state=AppState(store:store);
+  await state.init();
+
+  const carZones=['Frente direita','Porta-malas'];
+  const motorcycleZones=['Baú traseiro','Bolsa lateral esquerda'];
+
+  await state.setActivePhysicalZones(carZones);
+  await state.setPhysicalZone('p1','Porta-malas');
+
+  await state.setVehicleType(VehicleType.motorcycle);
+  expect(state.activePhysicalZones,AppState.motorcyclePhysicalZones);
+  expect(state.packages[0].physicalZone,isNull);
+  await state.setActivePhysicalZones(motorcycleZones);
+  await state.setPhysicalZone('p2','Bolsa lateral esquerda');
+  expect(state.packages[1].physicalZone,'Bolsa lateral esquerda');
+
+  await state.setVehicleType(VehicleType.car);
+  expect(state.activePhysicalZones,carZones);
+  expect(state.packages[0].physicalZone,isNull);
+  expect(state.packages[1].physicalZone,isNull);
+  expect(state.packages.last.physicalZone,'Baú traseiro');
+
+  await state.setVehicleType(VehicleType.motorcycle);
+  expect(state.activePhysicalZones,motorcycleZones);
+  expect(state.packages.every((p)=>p.status==DeliveryStatus.delivered||p.physicalZone==null),isTrue);
+  expect(state.packages.last.physicalZone,'Baú traseiro');
+
+  final resumed=AppState(store:store);
+  await resumed.init();
+  expect(resumed.vehicleType,VehicleType.motorcycle);
+  expect(resumed.activePhysicalZones,motorcycleZones);
+  expect(resumed.packages.last.physicalZone,'Baú traseiro');
+ });
 }
