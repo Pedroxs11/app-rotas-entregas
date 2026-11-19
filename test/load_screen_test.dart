@@ -1149,6 +1149,7 @@ void main(){
     await tester.tap(find.byTooltip('Selecionar vários'));
     await tester.pump();
 
+    await _ensureLoadItemVisible(tester, find.text('P01'));
     await tester.tap(find.widgetWithText(InputChip, 'P01'));
     await tester.pump();
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
