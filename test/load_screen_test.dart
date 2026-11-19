@@ -524,6 +524,7 @@ void main(){
       await tester.pumpAndSettle();
 
       expect(state.packages, hasLength(200));
+      expect(store.saves, 1, reason: 'Bulk assignment must persist once in $vehicle mode.');
       expect(
         state.packages.every((p) => p.physicalZone == targetZone),
         isTrue,
@@ -590,6 +591,7 @@ void main(){
       await tester.pumpAndSettle();
 
       expect(state.packages, hasLength(600));
+      expect(store.saves, 1, reason: 'Bulk assignment must persist once in $vehicle mode.');
       expect(
         state.packages.every((p) => p.physicalZone == targetZone),
         isTrue,
