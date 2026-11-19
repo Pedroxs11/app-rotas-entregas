@@ -495,11 +495,10 @@ void main(){
             ? {'load_vehicle_type': 'motorcycle'}
             : {'load_vehicle_type': 'car'},
       );
-      final state = AppState(
-        store: _LoadStore(
-          List.generate(200, (index) => _package(index + 1)),
-        ),
+      final store = _LoadStore(
+        List.generate(200, (index) => _package(index + 1)),
       );
+      final state = AppState(store: store);
       await state.init();
 
       await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
@@ -562,11 +561,10 @@ void main(){
             ? {'load_vehicle_type': 'motorcycle'}
             : {'load_vehicle_type': 'car'},
       );
-      final state = AppState(
-        store: _LoadStore(
-          List.generate(600, (index) => _package(index + 1)),
-        ),
+      final store = _LoadStore(
+        List.generate(600, (index) => _package(index + 1)),
       );
+      final state = AppState(store: store);
       await state.init();
 
       await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
