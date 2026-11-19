@@ -230,6 +230,24 @@ void main() {
     );
   });
 
+  test('corrupt saved compartments fall back to the selected vehicle defaults', () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'motorcycle',
+      'load_zones_motorcycle': 'invalid preference value',
+    });
+
+    final store = _ConfigurationStore([
+      _package(16, zone: 'Porta-malas'),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    expect(state.vehicleType, VehicleType.motorcycle);
+    expect(state.activePhysicalZones, AppState.motorcyclePhysicalZones);
+    expect(state.packages.single.physicalZone, isNull);
+    expect(store.saves, 1);
+  });
+
   testWidgets('empty package search can be cleared in car and motorcycle modes',
       (tester) async {
     for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
