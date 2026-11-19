@@ -230,6 +230,18 @@ void main() {
     );
   });
 
+  test('startup preserves legacy custom load labels', () async {
+    final store = _ConfigurationStore([
+      _package(17, zone: 'A-01'),
+    ]);
+    final state = AppState(store: store);
+
+    await state.init();
+
+    expect(state.packages.single.physicalZone, 'A-01');
+    expect(store.saves, 0);
+  });
+
   test('corrupt saved compartments fall back to the selected vehicle defaults', () async {
     SharedPreferences.setMockInitialValues({
       'load_vehicle_type': 'motorcycle',
