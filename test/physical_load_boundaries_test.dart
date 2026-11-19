@@ -389,4 +389,58 @@ void main() {
       ],
     );
   });
+
+  test('startup trims saved compartment names and keeps only valid car areas', () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'car',
+      'load_zones_car': [
+        ' Porta-malas ',
+        '',
+        'Compartimento inválido',
+        'Porta-malas',
+      ],
+    });
+    final state = AppState(store: LoadStore([_p(1)]));
+
+    await state.init();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(state.activePhysicalZones, ['Porta-malas']);
+    expect(prefs.getStringList('load_zones_car'), ['Porta-malas']);
+  });
+
+  test('switching to motorcycle normalizes saved areas and preserves car setup', () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'car',
+      'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+      'load_zones_motorcycle': [
+        ' Mochila de entrega ',
+        '',
+        'Mochila de entrega',
+        'Compartimento inválido',
+      ],
+    });
+    final state = AppState(store: LoadStore([_p(1)]));
+
+    await state.init();
+    await state.setVehicleType(VehicleType.motorcycle);
+
+    expect(state.activePhysicalZones, ['Mochila de entrega']);
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      prefs.getStringList('load_zones_motorcycle'),
+      ['Mochila de entrega'],
+    );
+
+    await state.setVehicleType(VehicleType.car);
+    expect(
+      state.activePhysicalZones,
+      ['Frente esquerda', 'Porta-malas'],
+    );
+    expect(
+      prefs.getStringList('load_zones_car'),
+      ['Frente esquerda', 'Porta-malas'],
+    );
+  });
+
 }
