@@ -1364,6 +1364,11 @@ void main(){
     expect(find.text('Pacote 07'), findsOneWidget);
     expect(find.text('Pacote 17'), findsNothing);
 
+    await tester.enterText(find.byType(TextField), 'P07');
+    await tester.pumpAndSettle();
+    expect(find.text('Pacote 07'), findsOneWidget);
+    expect(find.text('Pacote 17'), findsNothing);
+
     await tester.enterText(find.byType(TextField), 'p-07');
     await tester.pumpAndSettle();
     expect(find.text('Pacote 07'), findsOneWidget);
