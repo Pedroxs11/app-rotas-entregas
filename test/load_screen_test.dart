@@ -684,7 +684,7 @@ void main(){
     await tester.pump();
 
     await _ensureLoadItemVisible(tester, find.text('Selecionar resultados'));
-    await tester.tap(find.text('Selecionar lista'));
+    await tester.tap(find.text('Selecionar resultados'));
     await tester.pump();
 
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
@@ -1033,7 +1033,7 @@ void main(){
     await tester.enterText(find.byType(TextField), 'P07');
     await tester.pumpAndSettle();
     await _ensureLoadItemVisible(tester, find.text('Selecionar resultados'));
-    await tester.tap(find.text('Selecionar lista'));
+    await tester.tap(find.text('Selecionar resultados'));
     await tester.pump();
 
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
