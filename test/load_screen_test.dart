@@ -1324,6 +1324,7 @@ void main(){
     await tester.pump();
     expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
 
+    await _ensureLoadItemVisible(tester, find.byTooltip('Limpar busca'));
     await tester.tap(find.byTooltip('Limpar busca'));
     await tester.pumpAndSettle();
     await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
