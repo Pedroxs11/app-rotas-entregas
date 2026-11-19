@@ -443,4 +443,30 @@ void main() {
     );
   });
 
+  test('package updates normalize active compartment labels and preserve delivered history', () async {
+    final store = LoadStore([
+      _p(1, zone: 'Porta-malas'),
+      _p(2, status: DeliveryStatus.delivered, zone: 'Porta-malas'),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.update(
+      0,
+      state.packages[0].copyWith(physicalZone: '  Porta-malas  '),
+    );
+    await state.update(
+      1,
+      state.packages[1].copyWith(physicalZone: '  Porta-malas  '),
+    );
+    await state.update(
+      0,
+      state.packages[0].copyWith(physicalZone: '   '),
+    );
+
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, '  Porta-malas  ');
+    expect(store.saves, 3);
+  });
+
 }
