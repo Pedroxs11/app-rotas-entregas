@@ -469,4 +469,35 @@ void main() {
     expect(store.saves, 3);
   });
 
+  test('package updates cannot restore disabled compartments and preserve custom and delivered labels', () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'car',
+      'load_zones_car': ['Frente esquerda'],
+    });
+    final store = LoadStore([
+      _p(1),
+      _p(2, zone: 'A-01'),
+      _p(3, status: DeliveryStatus.delivered, zone: 'Porta-malas'),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.update(
+      0,
+      state.packages[0].copyWith(physicalZone: ' Porta-malas '),
+    );
+    await state.update(
+      1,
+      state.packages[1].copyWith(physicalZone: ' A-01 '),
+    );
+    await state.update(
+      2,
+      state.packages[2].copyWith(physicalZone: ' Porta-malas '),
+    );
+
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, 'A-01');
+    expect(state.packages[2].physicalZone, ' Porta-malas ');
+  });
+
 }

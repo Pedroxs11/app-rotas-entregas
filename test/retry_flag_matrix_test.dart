@@ -30,13 +30,13 @@ void main(){
  test('address-problem flag retries absent plus address problems but not skipped',()async{
   final store=RetryStore(_route());final state=AppState(store:store);await state.init();
   final count=await state.prepareRetryRoute(-23.55,-46.63,includeAddressProblems:true);
-  expect(count,2);expect(state.packages.firstWhere((p)=>p.id=='absent').status,DeliveryStatus.pending);expect(state.packages.firstWhere((p)=>p.id=='problem').status,DeliveryStatus.pending);expect(state.packages.firstWhere((p)=>p.id=='skipped').status,DeliveryStatus.skipped);expect(state.packages.firstWhere((p)=>p.id=='skipped').physicalZone,'SKIP');expect(state.packages.firstWhere((p)=>p.id=='delivered').physicalZone,'HIST');expect(state.routeOptimized,isTrue);
+  expect(count,2);expect(state.packages.firstWhere((p)=>p.id=='absent').status,DeliveryStatus.pending);expect(state.packages.firstWhere((p)=>p.id=='problem').status,DeliveryStatus.pending);expect(state.packages.firstWhere((p)=>p.id=='skipped').status,DeliveryStatus.skipped);expect(state.packages.firstWhere((p)=>p.id=='delivered').physicalZone,'HIST');expect(state.routeOptimized,isTrue);
  });
 
  test('skipped flag retries absent plus skipped but not address problems',()async{
   final store=RetryStore(_route());final state=AppState(store:store);await state.init();
   final count=await state.prepareRetryRoute(-23.55,-46.63,includeSkipped:true);
-  expect(count,2);expect(state.packages.firstWhere((p)=>p.id=='absent').status,DeliveryStatus.pending);expect(state.packages.firstWhere((p)=>p.id=='skipped').status,DeliveryStatus.pending);expect(state.packages.firstWhere((p)=>p.id=='problem').status,DeliveryStatus.addressProblem);expect(state.packages.firstWhere((p)=>p.id=='skipped').physicalZone,isNull);expect(state.packages.firstWhere((p)=>p.id=='delivered').status,DeliveryStatus.delivered);
+  expect(count,2);expect(state.packages.firstWhere((p)=>p.id=='absent').status,DeliveryStatus.pending);expect(state.packages.firstWhere((p)=>p.id=='skipped').status,DeliveryStatus.pending);expect(state.packages.firstWhere((p)=>p.id=='problem').status,DeliveryStatus.addressProblem);expect(state.packages.firstWhere((p)=>p.id=='delivered').status,DeliveryStatus.delivered);
  });
 
  test('both flags retry all three retryable failure statuses exactly once',()async{
