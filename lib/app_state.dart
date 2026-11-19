@@ -19,11 +19,18 @@ class AppState extends ChangeNotifier {
  Future<void> _loadVehicleSettings()async{
   try{
    final prefs=await SharedPreferences.getInstance();
+   var repairVehiclePreference=false;
    try{
-    vehicleType=prefs.getString('load_vehicle_type')=='motorcycle'?VehicleType.motorcycle:VehicleType.car;
+    final savedVehicleType=prefs.getString('load_vehicle_type');
+    vehicleType=savedVehicleType=='motorcycle'?VehicleType.motorcycle:VehicleType.car;
+    repairVehiclePreference=savedVehicleType!=null&&savedVehicleType!='car'&&savedVehicleType!='motorcycle';
    }catch(e){
     vehicleType=VehicleType.car;
+    repairVehiclePreference=true;
     debugPrint('Could not read saved vehicle type: $e');
+   }
+   if(repairVehiclePreference){
+    await prefs.setString('load_vehicle_type',vehicleType.name);
    }
    final defaults=vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
    List<String>? savedZones;
