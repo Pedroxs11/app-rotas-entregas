@@ -10,6 +10,7 @@ class _ConfigurationStore implements PackageStore {
   _ConfigurationStore(this.items);
 
   List<DeliveryPackage> items;
+  int saves = 0;
 
   @override
   Future<void> clear() async {}
@@ -23,6 +24,7 @@ class _ConfigurationStore implements PackageStore {
   @override
   Future<void> save(List<DeliveryPackage> value, {bool? routeOptimized}) async {
     items = [...value];
+    saves++;
   }
 }
 
@@ -174,6 +176,58 @@ void main() {
       expect(tile.value, zone == 'Baú traseiro', reason: zone);
     }
     expect(tester.takeException(), isNull);
+  });
+
+  test('startup reconciles saved compartments for the selected vehicle', () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'motorcycle',
+      'load_zones_motorcycle': [
+        'Mochila de entrega',
+        'Baú traseiro',
+      ],
+      'load_zones_car': [
+        'Porta-malas',
+        'Frente direita',
+      ],
+    });
+
+    final store = _ConfigurationStore([
+      _package(13, zone: 'Porta-malas'),
+      _package(14, zone: ' Baú traseiro '),
+      _package(
+        15,
+        zone: 'Porta-malas',
+        status: DeliveryStatus.delivered,
+      ),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    expect(state.vehicleType, VehicleType.motorcycle);
+    expect(
+      state.activePhysicalZones,
+      ['Baú traseiro', 'Mochila de entrega'],
+    );
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, 'Baú traseiro');
+    expect(state.packages[2].physicalZone, 'Porta-malas');
+    expect(store.saves, 1);
+
+    await state.setVehicleType(VehicleType.car);
+
+    expect(
+      state.activePhysicalZones,
+      ['Frente direita', 'Porta-malas'],
+    );
+    expect(state.packages[0].physicalZone, isNull);
+    expect(state.packages[1].physicalZone, isNull);
+    expect(state.packages[2].physicalZone, 'Porta-malas');
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getStringList('load_zones_car'),
+      ['Frente direita', 'Porta-malas'],
+    );
   });
 
   testWidgets('empty package search can be cleared in car and motorcycle modes',
