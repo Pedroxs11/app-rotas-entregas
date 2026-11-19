@@ -10,16 +10,36 @@ class AppState extends ChangeNotifier {
  static const motorcyclePhysicalZones=<String>['Baú traseiro','Bolsa lateral esquerda','Bolsa lateral direita','Mochila de entrega'];
  List<String> activePhysicalZones=[...carPhysicalZones];
  String get _zonesPreferenceKey=>vehicleType==VehicleType.car?'load_zones_car':'load_zones_motorcycle';
+ List<String> _restorePhysicalZones(List<String>? savedZones,List<String> defaults){
+  final restored=savedZones==null
+      ?<String>[...defaults]
+      :defaults.where(savedZones.contains).toList();
+  return restored.isEmpty?<String>[...defaults]:restored;
+ }
  Future<void> _loadVehicleSettings()async{
   try{
    final prefs=await SharedPreferences.getInstance();
-   vehicleType=prefs.getString('load_vehicle_type')=='motorcycle'?VehicleType.motorcycle:VehicleType.car;
+   try{
+    vehicleType=prefs.getString('load_vehicle_type')=='motorcycle'?VehicleType.motorcycle:VehicleType.car;
+   }catch(e){
+    vehicleType=VehicleType.car;
+    debugPrint('Could not read saved vehicle type: $e');
+   }
    final defaults=vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
-   final savedZones=prefs.getStringList(_zonesPreferenceKey)??defaults;
-   // Keep the vehicle's canonical physical order even if preferences were
-   // saved in a different order after toggling compartments.
-   activePhysicalZones=defaults.where(savedZones.contains).toList();
-   if(activePhysicalZones.isEmpty)activePhysicalZones=[...defaults];
+   List<String>? savedZones;
+   var invalidPreferenceType=false;
+   try{
+    savedZones=prefs.getStringList(_zonesPreferenceKey);
+   }catch(e){
+    invalidPreferenceType=true;
+    debugPrint('Could not read saved vehicle compartments: $e');
+   }
+   // Restore the canonical physical order and repair stale, duplicate,
+   // unknown, empty, or incorrectly typed preference values.
+   activePhysicalZones=_restorePhysicalZones(savedZones,defaults);
+   if(invalidPreferenceType||(savedZones!=null&&!listEquals(savedZones,activePhysicalZones))){
+    await prefs.setStringList(_zonesPreferenceKey,activePhysicalZones);
+   }
   }catch(e){
    activePhysicalZones=[...(vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones)];
    debugPrint('Could not load vehicle settings: $e');
@@ -32,11 +52,14 @@ class AppState extends ChangeNotifier {
   try{
    final prefs=await SharedPreferences.getInstance();
    await prefs.setString('load_vehicle_type',value.name);
-   final saved=prefs.getStringList(_zonesPreferenceKey);
-   // Older or manually edited preferences may have a different order.
-   // Always restore the canonical physical order used by the vehicle diagram.
-   activePhysicalZones=defaults.where((zone)=>saved?.contains(zone)??true).toList();
-   if(activePhysicalZones.isEmpty)activePhysicalZones=[...defaults];
+   List<String>? saved;
+   try{
+    saved=prefs.getStringList(_zonesPreferenceKey);
+   }catch(e){
+    // A preference saved with the wrong type must not block switching vehicles.
+    debugPrint('Could not read saved vehicle compartments: $e');
+   }
+   activePhysicalZones=_restorePhysicalZones(saved,defaults);
    await prefs.setStringList(_zonesPreferenceKey,activePhysicalZones);
   }catch(e){
    activePhysicalZones=[...defaults];
