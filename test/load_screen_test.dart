@@ -1350,4 +1350,28 @@ void main(){
     await tester.pumpAndSettle();
   });
 
+
+  testWidgets('package search accepts code with or without leading zero and separators',
+      (tester) async {
+    final state = AppState(store: _LoadStore([_package(7), _package(17)]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'P7');
+    await tester.pumpAndSettle();
+    expect(find.text('Pacote 07'), findsOneWidget);
+    expect(find.text('Pacote 17'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), 'p-07');
+    await tester.pumpAndSettle();
+    expect(find.text('Pacote 07'), findsOneWidget);
+    expect(find.text('Pacote 17'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
 }
