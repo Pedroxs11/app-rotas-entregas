@@ -10,7 +10,7 @@ class NoopLoadStore implements PackageStore{
  @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized})async{packages=[...value];if(routeOptimized!=null)optimized=routeOptimized;saves++;}
  @override Future<void> clear()async{packages=[];optimized=false;}
 }
-DeliveryPackage _p(String id,int n,DeliveryStatus status,String zone)=>DeliveryPackage(id:id,scanNumber:n,status:status,physicalZone:zone,address:AddressData(raw:'Rua $n',street:'Rua',number:'$n',city:'São Paulo',state:'SP',confidence:1,validation:ValidationStatus.confirmed),scannedAt:DateTime.utc(2026,9,13,21,n),completedAt:status==DeliveryStatus.delivered?DateTime.utc(2026,9,13,21,40):null);
+DeliveryPackage _p(String id,int n,DeliveryStatus status,String? zone)=>DeliveryPackage(id:id,scanNumber:n,status:status,physicalZone:zone,address:AddressData(raw:'Rua $n',street:'Rua',number:'$n',city:'São Paulo',state:'SP',confidence:1,validation:ValidationStatus.confirmed),scannedAt:DateTime.utc(2026,9,13,21,n),completedAt:status==DeliveryStatus.delivered?DateTime.utc(2026,9,13,21,40):null);
 void main(){
  test('manual organization does not change delivered or skipped history',()async{
   final done=_p('done',1,DeliveryStatus.delivered,'Porta-malas');final skipped=_p('skip',2,DeliveryStatus.skipped,'Traseira direita');final store=NoopLoadStore([done,skipped]);final state=AppState(store:store);await state.init();
@@ -26,8 +26,15 @@ void main(){
   await state.setPhysicalZone('one','Porta-malas');
   expect(store.saves,0);
  });
- test('clearing packages without a compartment does not persist again',()async{
+ test('initialization repairs a blank compartment once and clearing it again is a no-op',()async{
   final store=NoopLoadStore([_p('one',1,DeliveryStatus.pending,'')]);final state=AppState(store:store);await state.init();
+  expect(state.packages.single.physicalZone,isNull);
+  expect(store.saves,1);
+  await state.clearPhysicalZones({'one'});
+  expect(store.saves,1);
+ });
+ test('clearing a package that already has no compartment is a no-op',()async{
+  final store=NoopLoadStore([_p('one',1,DeliveryStatus.pending,null)]);final state=AppState(store:store);await state.init();
   await state.clearPhysicalZones({'one'});
   expect(store.saves,0);
  });
