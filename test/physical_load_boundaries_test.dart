@@ -500,4 +500,32 @@ void main() {
     expect(state.packages[2].physicalZone, ' Porta-malas ');
   });
 
+  test('physical zone mutations normalize whitespace at the state boundary', () async {
+    final store = LoadStore([_p(1), _p(2)]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.setActivePhysicalZones([
+      ' Frente esquerda ',
+      ' Porta-malas ',
+    ]);
+    expect(
+      state.activePhysicalZones,
+      ['Frente esquerda', 'Porta-malas'],
+    );
+
+    await state.setPhysicalZones({'p1', 'p2'}, ' Porta-malas ');
+    expect(
+      state.packages.map((p) => p.physicalZone).toList(),
+      ['Porta-malas', 'Porta-malas'],
+    );
+
+    await state.setPhysicalZone('p1', ' Frente esquerda ');
+    expect(state.packages.first.physicalZone, 'Frente esquerda');
+
+    await state.setPhysicalZone('p1', '   ');
+    expect(state.packages.first.physicalZone, isNull);
+    expect(store.saves, 4);
+  });
+
 }
