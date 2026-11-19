@@ -1443,4 +1443,65 @@ void main(){
     }
   });
 
+
+  testWidgets('motorcycle drag selection can bulk assign packages in a lazy 600-package load', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'motorcycle',
+    });
+    final store = _LoadStore([
+      for (var index = 0; index < 600; index++) _package(index + 1),
+      _package(601, physicalZone: 'Baú traseiro').copyWith(
+        status: DeliveryStatus.delivered,
+      ),
+    ]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+    expect(find.text('Organizar a moto'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pump();
+
+    final selectedCount = await _dragSelectToBottom(
+      tester,
+      autoScrollDuration: const Duration(seconds: 3),
+    );
+
+    expect(selectedCount, greaterThan(20));
+    expect(selectedCount, lessThan(600));
+
+    await _ensureLoadItemVisible(tester, find.text('MOCHILA DE ENTREGA'));
+    await tester.tap(find.text('MOCHILA DE ENTREGA'));
+    await tester.pumpAndSettle();
+
+    expect(
+      state.packages.where((package) =>
+          package.status != DeliveryStatus.delivered &&
+          package.physicalZone == 'Mochila de entrega'),
+      hasLength(selectedCount),
+    );
+    expect(
+      state.packages.where((package) =>
+          package.status != DeliveryStatus.delivered &&
+          package.physicalZone == null),
+      hasLength(600 - selectedCount),
+    );
+    expect(state.packages, hasLength(601));
+    expect(state.packages.last.status, DeliveryStatus.delivered);
+    expect(state.packages.last.physicalZone, 'Baú traseiro');
+    expect(store.saves, 1);
+    expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
 }
