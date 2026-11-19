@@ -48,7 +48,6 @@ class AppState extends ChangeNotifier {
   // The visual diagram uses this order to preserve the real left/right sides.
   final cleaned=defaults.where(requested.contains).toList();
   if(cleaned.isEmpty)throw ArgumentError('Ative pelo menos um compartimento.');
-  if(cleaned.length==activePhysicalZones.length&&cleaned.every(activePhysicalZones.contains))return;
   final zonesUnchanged=cleaned.length==activePhysicalZones.length&&cleaned.every(activePhysicalZones.contains);
   final next=[...packages];
   var packagesChanged=false;
