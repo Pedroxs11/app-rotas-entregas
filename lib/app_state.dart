@@ -80,14 +80,22 @@ class AppState extends ChangeNotifier {
  bool _reconcileLoadedPhysicalZones(){
   var changed=false;
   final allowedZones=activePhysicalZones.toSet();
+  final knownZones=<String>{
+   ...carPhysicalZones,
+   ...motorcyclePhysicalZones,
+  };
   packages=packages.map((p){
-   if(p.status==DeliveryStatus.delivered||p.physicalZone==null)return p;
-   final normalizedZone=p.physicalZone!.trim();
-   if(normalizedZone.isEmpty||!allowedZones.contains(normalizedZone)){
+   final rawZone=p.physicalZone;
+   if(p.status==DeliveryStatus.delivered||rawZone==null)return p;
+   final normalizedZone=rawZone.trim();
+   if(normalizedZone.isEmpty)return p;
+   final belongsToOtherVehicle=knownZones.contains(normalizedZone)&&
+       !allowedZones.contains(normalizedZone);
+   if(belongsToOtherVehicle){
     changed=true;
     return p.copyWith(clearPhysicalZone:true);
    }
-   if(normalizedZone!=p.physicalZone){
+   if(normalizedZone!=rawZone){
     changed=true;
     return p.copyWith(physicalZone:normalizedZone);
    }
