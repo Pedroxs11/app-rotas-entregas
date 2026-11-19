@@ -74,7 +74,41 @@ class AppState extends ChangeNotifier {
  final PackageStore store;final geocoder=NominatimGeocodingService();final routeEngine=RouteEngine();final CepService cepService=ViaCepService();late final PackageService packageService=PackageService(AddressParser());List<DeliveryPackage> packages=[];bool loading=true,locating=false,routeOptimized=false;String? startupError;int lastLocateAttempted=0,lastLocateSucceeded=0,lastLocateFailed=0;
  AppState({PackageStore? store}):store=store??MigratingPackageStore(primary:SqlitePackageStore(),legacy:LocalStore());
  int get reviewCount=>packages.where((p)=>p.status!=DeliveryStatus.delivered&&p.address.validation!=ValidationStatus.confirmed).length;int get deliveredCount=>packages.where((p)=>p.status==DeliveryStatus.delivered).length;int get locatedCount=>packages.where((p)=>p.status!=DeliveryStatus.delivered&&p.address.latitude!=null&&p.address.longitude!=null).length;int get retryCount=>packages.where((p)=>p.status==DeliveryStatus.absent||p.status==DeliveryStatus.addressProblem||p.status==DeliveryStatus.skipped).length;
- Future<void> init()async{try{await _loadVehicleSettings();packages=await store.load();routeOptimized=await store.loadRouteOptimized();startupError=null;}catch(e,st){startupError=e.toString();debugPrint('Storage startup failed: $e\n$st');}finally{loading=false;notifyListeners();}}
+ bool _reconcileLoadedPhysicalZones(){
+  var changed=false;
+  final allowedZones=activePhysicalZones.toSet();
+  packages=packages.map((p){
+   if(p.status==DeliveryStatus.delivered||p.physicalZone==null)return p;
+   final normalizedZone=p.physicalZone!.trim();
+   if(normalizedZone.isEmpty||!allowedZones.contains(normalizedZone)){
+    changed=true;
+    return p.copyWith(clearPhysicalZone:true);
+   }
+   if(normalizedZone!=p.physicalZone){
+    changed=true;
+    return p.copyWith(physicalZone:normalizedZone);
+   }
+   return p;
+  }).toList();
+  return changed;
+ }
+ Future<void> init()async{
+  try{
+   await _loadVehicleSettings();
+   packages=await store.load();
+   routeOptimized=await store.loadRouteOptimized();
+   if(_reconcileLoadedPhysicalZones()){
+    await store.save(packages,routeOptimized:routeOptimized);
+   }
+   startupError=null;
+  }catch(e,st){
+   startupError=e.toString();
+   debugPrint('Storage startup failed: $e\n$st');
+  }finally{
+   loading=false;
+   notifyListeners();
+  }
+ }
  Future<void> addFromText(String text,{String? trackingCode})async{var p=packageService.fromOcr(text,packages,trackingCode:trackingCode);p=p.copyWith(address:await _enrichCep(p.address));packages=_clearLoadLabels([...packages,p]);routeOptimized=false;await _persist();if(p.address.validation==ValidationStatus.confirmed)await locateConfirmed();}
  Future<int> addManyFromText(String text)async{final lines=text.split(RegExp(r'\r?\n')).map((e)=>e.trim()).where((e)=>e.isNotEmpty).toList();final parsed=<DeliveryPackage>[];var known=[...packages];for(final line in lines){try{final p=packageService.fromOcr(line,[...known,...parsed]);parsed.add(p);}catch(_){}}final enriched=await mapBounded(parsed,(p)async=>p.copyWith(address:await _enrichCep(p.address)),concurrency:4);if(enriched.isEmpty)return 0;packages=_clearLoadLabels([...packages,...enriched]);routeOptimized=false;await _persist();if(packages.any((p)=>p.address.validation==ValidationStatus.confirmed&&p.address.latitude==null))await locateConfirmed();return enriched.length;}
  Future<AddressData> _enrichCep(AddressData a)async{if(a.cep==null||a.cep!.replaceAll(RegExp(r'\D'),'').length!=8)return a;try{final c=await cepService.lookup(a.cep!);if(c==null)return a;final number=a.number?.trim();final hasNumber=number?.isNotEmpty==true;return AddressData(raw:a.raw,street:c.street.isNotEmpty?c.street:a.street,number:number,complement:a.complement,neighborhood:c.neighborhood.isNotEmpty?c.neighborhood:a.neighborhood,city:c.city.isNotEmpty?c.city:a.city,state:c.state.isNotEmpty?c.state:a.state,cep:c.cep,latitude:a.latitude,longitude:a.longitude,confidence:hasNumber?1.0:.70,validation:hasNumber?ValidationStatus.confirmed:ValidationStatus.needsReview);}catch(_){return a;}}
