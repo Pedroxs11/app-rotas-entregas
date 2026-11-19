@@ -1361,16 +1361,19 @@ void main(){
 
     await tester.enterText(find.byType(TextField), 'P7');
     await tester.pumpAndSettle();
+    await _ensureLoadItemVisible(tester, find.text('Pacote 07'));
     expect(find.text('Pacote 07'), findsOneWidget);
     expect(find.text('Pacote 17'), findsNothing);
 
     await tester.enterText(find.byType(TextField), 'P07');
     await tester.pumpAndSettle();
+    await _ensureLoadItemVisible(tester, find.text('Pacote 07'));
     expect(find.text('Pacote 07'), findsOneWidget);
     expect(find.text('Pacote 17'), findsNothing);
 
     await tester.enterText(find.byType(TextField), 'p-07');
     await tester.pumpAndSettle();
+    await _ensureLoadItemVisible(tester, find.text('Pacote 07'));
     expect(find.text('Pacote 07'), findsOneWidget);
     expect(find.text('Pacote 17'), findsNothing);
     expect(tester.takeException(), isNull);
