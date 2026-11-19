@@ -9,11 +9,13 @@ import 'package:app_rotas_entregas/services/package_store.dart';
 class _LoadStore implements PackageStore {
   _LoadStore(this.items);
   List<DeliveryPackage> items;
+  int saves = 0;
   @override Future<void> clear() async {}
   @override Future<List<DeliveryPackage>> load() async => [...items];
   @override Future<bool> loadRouteOptimized() async => true;
   @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized}) async {
     items=[...value];
+    saves++;
   }
 }
 
