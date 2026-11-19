@@ -301,4 +301,40 @@ void main() {
     expect(store.saves, 0);
   });
 
+
+  test('switching to a vehicle restores saved compartments in canonical physical order', () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'car',
+      'load_zones_motorcycle': [
+        'Bolsa lateral direita',
+        'Baú traseiro',
+        'Bolsa lateral esquerda',
+        'Compartimento inválido',
+        'Bolsa lateral direita',
+      ],
+    });
+    final store = LoadStore([_p(1)]);
+    final state = AppState(store: store);
+    await state.init();
+
+    await state.setVehicleType(VehicleType.motorcycle);
+
+    expect(
+      state.activePhysicalZones,
+      [
+        'Baú traseiro',
+        'Bolsa lateral esquerda',
+        'Bolsa lateral direita',
+      ],
+    );
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      prefs.getStringList('load_zones_motorcycle'),
+      [
+        'Baú traseiro',
+        'Bolsa lateral esquerda',
+        'Bolsa lateral direita',
+      ],
+    );
+  });
 }
