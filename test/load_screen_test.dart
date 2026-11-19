@@ -1382,4 +1382,40 @@ void main(){
     await tester.pumpAndSettle();
   });
 
+
+  testWidgets('motorcycle side bags stay on their physical sides when the opposite bag is disabled',
+      (tester) async {
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final side in [
+      ('Bolsa lateral esquerda', 'BOLSA ESQUERDA', 'BOLSA DIREITA', true),
+      ('Bolsa lateral direita', 'BOLSA DIREITA', 'BOLSA ESQUERDA', false),
+    ]) {
+      final state = AppState(store: _LoadStore([_package(1)]));
+      await state.init();
+      await state.setVehicleType(VehicleType.motorcycle);
+      await state.setActivePhysicalZones([side.$1, 'Baú traseiro']);
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      final motorcycleCenter = tester.getCenter(find.text('MOTO'));
+      final enabledBagCenter = tester.getCenter(find.text(side.$2));
+      expect(find.text(side.$3), findsNothing);
+      if (side.$4) {
+        expect(enabledBagCenter.dx, lessThan(motorcycleCenter.dx));
+      } else {
+        expect(enabledBagCenter.dx, greaterThan(motorcycleCenter.dx));
+      }
+      expect(find.text('BAÚ TRASEIRO'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
 }
