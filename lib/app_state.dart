@@ -88,7 +88,10 @@ class AppState extends ChangeNotifier {
    final rawZone=p.physicalZone;
    if(p.status==DeliveryStatus.delivered||rawZone==null)return p;
    final normalizedZone=rawZone.trim();
-   if(normalizedZone.isEmpty)return p;
+   if(normalizedZone.isEmpty){
+    changed=true;
+    return p.copyWith(clearPhysicalZone:true);
+   }
    final belongsToOtherVehicle=knownZones.contains(normalizedZone)&&
        !allowedZones.contains(normalizedZone);
    if(belongsToOtherVehicle){
