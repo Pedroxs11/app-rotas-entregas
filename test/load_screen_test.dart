@@ -1444,64 +1444,74 @@ void main(){
   });
 
 
-  testWidgets('motorcycle drag selection can bulk assign packages in a lazy 600-package load', (tester) async {
+  testWidgets('car and motorcycle drag selection can bulk assign packages in a lazy 600-package load', (tester) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    SharedPreferences.setMockInitialValues({
-      'load_vehicle_type': 'motorcycle',
-    });
-    final store = _LoadStore([
-      for (var index = 0; index < 600; index++) _package(index + 1),
-      _package(601, physicalZone: 'Baú traseiro').copyWith(
-        status: DeliveryStatus.delivered,
-      ),
-    ]);
-    final state = AppState(store: store);
-    await state.init();
+    for (final vehicle in VehicleType.values) {
+      final isMotorcycle = vehicle == VehicleType.motorcycle;
+      final historicalZone = isMotorcycle ? 'Baú traseiro' : 'Porta-malas';
+      final targetZone = isMotorcycle ? 'Mochila de entrega' : 'Frente esquerda';
+      final targetLabel = isMotorcycle ? 'MOCHILA DE ENTREGA' : 'FRENTE E';
 
-    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
-    await tester.pumpAndSettle();
-    expect(find.text('Organizar a moto'), findsOneWidget);
+      SharedPreferences.setMockInitialValues(
+        isMotorcycle ? {'load_vehicle_type': 'motorcycle'} : {},
+      );
+      final store = _LoadStore([
+        for (var index = 0; index < 600; index++) _package(index + 1),
+        _package(601, physicalZone: historicalZone).copyWith(
+          status: DeliveryStatus.delivered,
+        ),
+      ]);
+      final state = AppState(store: store);
+      await state.init();
 
-    await tester.tap(find.byTooltip('Selecionar vários'));
-    await tester.pump();
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(isMotorcycle ? 'Organizar a moto' : 'Organizar o carro'),
+        findsOneWidget,
+      );
 
-    final selectedCount = await _dragSelectToBottom(
-      tester,
-      autoScrollDuration: const Duration(seconds: 3),
-    );
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pump();
 
-    expect(selectedCount, greaterThan(20));
-    expect(selectedCount, lessThan(600));
+      final selectedCount = await _dragSelectToBottom(
+        tester,
+        autoScrollDuration: const Duration(seconds: 3),
+      );
 
-    await _ensureLoadItemVisible(tester, find.text('MOCHILA DE ENTREGA'));
-    await tester.tap(find.text('MOCHILA DE ENTREGA'));
-    await tester.pumpAndSettle();
+      expect(selectedCount, greaterThan(20), reason: 'Selection should auto-scroll in $vehicle mode.');
+      expect(selectedCount, lessThan(600));
 
-    expect(
-      state.packages.where((package) =>
-          package.status != DeliveryStatus.delivered &&
-          package.physicalZone == 'Mochila de entrega'),
-      hasLength(selectedCount),
-    );
-    expect(
-      state.packages.where((package) =>
-          package.status != DeliveryStatus.delivered &&
-          package.physicalZone == null),
-      hasLength(600 - selectedCount),
-    );
-    expect(state.packages, hasLength(601));
-    expect(state.packages.last.status, DeliveryStatus.delivered);
-    expect(state.packages.last.physicalZone, 'Baú traseiro');
-    expect(store.saves, 1);
-    expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+      await _ensureLoadItemVisible(tester, find.text(targetLabel));
+      await tester.tap(find.text(targetLabel));
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pumpAndSettle();
+      expect(
+        state.packages.where((package) =>
+            package.status != DeliveryStatus.delivered &&
+            package.physicalZone == targetZone),
+        hasLength(selectedCount),
+      );
+      expect(
+        state.packages.where((package) =>
+            package.status != DeliveryStatus.delivered &&
+            package.physicalZone == null),
+        hasLength(600 - selectedCount),
+      );
+      expect(state.packages, hasLength(601));
+      expect(state.packages.last.status, DeliveryStatus.delivered);
+      expect(state.packages.last.physicalZone, historicalZone);
+      expect(store.saves, 1);
+      expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
   });
 
 }
