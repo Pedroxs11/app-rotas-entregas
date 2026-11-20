@@ -172,10 +172,13 @@ void main() {
         tester.state<ScrollableState>(scrollable).position.jumpTo(0);
         await tester.pumpAndSettle();
 
-        final targetZone = vehicle == VehicleType.car
+        final targetLabel = vehicle == VehicleType.car
             ? 'FRENTE E'
             : 'BAÚ TRASEIRO';
-        await tester.tap(find.text(targetZone));
+        final targetZone = vehicle == VehicleType.car
+            ? 'Frente esquerda'
+            : 'Baú traseiro';
+        await tester.tap(find.text(targetLabel));
         await tester.pumpAndSettle();
 
         expect(
@@ -188,9 +191,7 @@ void main() {
           hasLength(600 - selected),
         );
         expect(
-          state.packages.where((p) => p.physicalZone == targetZone ||
-              (vehicle == VehicleType.car &&
-                  p.physicalZone == 'Frente esquerda')),
+          state.packages.where((p) => p.physicalZone == targetZone),
           hasLength(selected),
         );
         expect(store.items.map((p) => p.id).toSet(), hasLength(600));
