@@ -248,10 +248,68 @@ class AppState extends ChangeNotifier {
    notifyListeners();
   }
  }
- Future<void> addFromText(String text,{String? trackingCode})async{var p=packageService.fromOcr(text,packages,trackingCode:trackingCode);p=p.copyWith(address:await _enrichCep(p.address));packages=_clearLoadLabels([...packages,p]);routeOptimized=false;await _persist();if(p.address.validation==ValidationStatus.confirmed)await locateConfirmed();}
- Future<int> addManyFromText(String text)async{final lines=text.split(RegExp(r'\r?\n')).map((e)=>e.trim()).where((e)=>e.isNotEmpty).toList();final parsed=<DeliveryPackage>[];var known=[...packages];for(final line in lines){try{final p=packageService.fromOcr(line,[...known,...parsed]);parsed.add(p);}catch(_){}}final enriched=await mapBounded(parsed,(p)async=>p.copyWith(address:await _enrichCep(p.address)),concurrency:4);if(enriched.isEmpty)return 0;packages=_clearLoadLabels([...packages,...enriched]);routeOptimized=false;await _persist();if(packages.any((p)=>p.address.validation==ValidationStatus.confirmed&&p.address.latitude==null))await locateConfirmed();return enriched.length;}
+ Future<void> addFromText(String text,{String? trackingCode})async{
+  // Parse and enrich outside the mutation queue; re-parse against the latest
+  // package list inside it so overlapping scans cannot reuse scan numbers or
+  // overwrite a compartment assignment made while CEP lookup was running.
+  final parsed=packageService.fromOcr(text,[...packages],trackingCode:trackingCode);
+  final enrichedAddress=await _enrichCep(parsed.address);
+  DeliveryPackage? added;
+  await _serializePackageMutation(()async{
+   final current=packageService.fromOcr(text,packages,trackingCode:trackingCode)
+       .copyWith(address:enrichedAddress);
+   await _persistPackageMutation([...packages,current],nextRouteOptimized:false);
+   added=current;
+  });
+  if(added!.address.validation==ValidationStatus.confirmed)await locateConfirmed();
+ }
+ Future<int> addManyFromText(String text)async{
+  final lines=text.split(RegExp(r'\r?\n')).map((e)=>e.trim()).where((e)=>e.isNotEmpty).toList();
+  final candidateLines=<String>[];
+  final candidateAddresses=<AddressData>[];
+  final provisional=[...packages];
+  for(final line in lines){
+   try{
+    final parsed=packageService.fromOcr(line,provisional);
+    provisional.add(parsed);
+    candidateLines.add(line);
+    candidateAddresses.add(parsed.address);
+   }catch(_){ }
+  }
+  if(candidateLines.isEmpty)return 0;
+  final enriched=await mapBounded(candidateAddresses,(address)=>_enrichCep(address),concurrency:4);
+  var addedCount=0;
+  await _serializePackageMutation(()async{
+   final next=[...packages];
+   for(var i=0;i<candidateLines.length;i++){
+    try{
+     final parsed=packageService.fromOcr(candidateLines[i],next)
+         .copyWith(address:enriched[i]);
+     next.add(parsed);
+     addedCount++;
+    }catch(_){ }
+   }
+   if(addedCount>0){
+    // A new stop invalidates optimization, but must not erase positions that
+    // the driver has already assigned to the other packages.
+    await _persistPackageMutation(next,nextRouteOptimized:false);
+   }
+  });
+  if(addedCount>0&&packages.any((p)=>p.status!=DeliveryStatus.delivered&&
+      p.address.validation==ValidationStatus.confirmed&&
+      (p.address.latitude==null||p.address.longitude==null))){
+   await locateConfirmed();
+  }
+  return addedCount;
+ }
  Future<AddressData> _enrichCep(AddressData a)async{if(a.cep==null||a.cep!.replaceAll(RegExp(r'\D'),'').length!=8)return a;try{final c=await cepService.lookup(a.cep!);if(c==null)return a;final number=a.number?.trim();final hasNumber=number?.isNotEmpty==true;return AddressData(raw:a.raw,street:c.street.isNotEmpty?c.street:a.street,number:number,complement:a.complement,neighborhood:c.neighborhood.isNotEmpty?c.neighborhood:a.neighborhood,city:c.city.isNotEmpty?c.city:a.city,state:c.state.isNotEmpty?c.state:a.state,cep:c.cep,latitude:a.latitude,longitude:a.longitude,confidence:hasNumber?1.0:.70,validation:hasNumber?ValidationStatus.confirmed:ValidationStatus.needsReview);}catch(_){return a;}}
- Future<void> addStructured(AddressData address)async{final p=packageService.fromOcr(address.raw,packages);packages=_clearLoadLabels([...packages,p.copyWith(address:address)]);routeOptimized=false;await _persist();if(address.validation==ValidationStatus.confirmed)await locateConfirmed();}
+ Future<void> addStructured(AddressData address)async{
+  await _serializePackageMutation(()async{
+   final parsed=packageService.fromOcr(address.raw,packages).copyWith(address:address);
+   await _persistPackageMutation([...packages,parsed],nextRouteOptimized:false);
+  });
+  if(address.validation==ValidationStatus.confirmed)await locateConfirmed();
+ }
  Future<void> updateAddress(int index,AddressData address) async {
   await _serializePackageMutation(() async {
    final p=packages[index];
@@ -312,7 +370,84 @@ class AppState extends ChangeNotifier {
   return _serializePackageMutation(() async {if(newIndex>oldIndex)newIndex--;if(newIndex==oldIndex)return;final x=[...packages];final p=x.removeAt(oldIndex);x.insert(newIndex,p);packages=_clearLoadLabels(x);routeOptimized=false;await _persist();
   });
  }
- Future<void> locateConfirmed()async{if(locating)return;lastLocateSucceeded=0;lastLocateFailed=0;final candidates=<int>[];for(var i=0;i<packages.length;i++){final p=packages[i];if(p.status!=DeliveryStatus.delivered&&p.address.validation==ValidationStatus.confirmed&&(p.address.latitude==null||p.address.longitude==null))candidates.add(i);}lastLocateAttempted=candidates.length;if(candidates.isEmpty){notifyListeners();return;}locating=true;notifyListeners();final out=[...packages];for(final i in candidates){final p=out[i];try{final a=await geocoder.locate(p.address);if(a.latitude!=null&&a.longitude!=null){out[i]=p.copyWith(address:a);lastLocateSucceeded++;}else{lastLocateFailed++;}}catch(_){lastLocateFailed++;}notifyListeners();}packages=out;locating=false;await _persist();}
+ bool _sameAddress(AddressData left,AddressData right)=>
+      left.raw==right.raw&&left.street==right.street&&left.number==right.number&&
+      left.complement==right.complement&&left.neighborhood==right.neighborhood&&
+      left.city==right.city&&left.state==right.state&&left.cep==right.cep&&
+      left.latitude==right.latitude&&left.longitude==right.longitude&&
+      left.confidence==right.confidence&&left.validation==right.validation;
+ bool _locateRequestedAgain=false;
+ Future<void> locateConfirmed()async{
+  if(locating){
+   _locateRequestedAgain=true;
+   return;
+  }
+  final candidates=packages.where((p)=>p.status!=DeliveryStatus.delivered&&
+      p.address.validation==ValidationStatus.confirmed&&
+      (p.address.latitude==null||p.address.longitude==null)).toList();
+  lastLocateAttempted=candidates.length;
+  lastLocateSucceeded=0;
+  lastLocateFailed=0;
+  if(candidates.isEmpty){notifyListeners();return;}
+  locating=true;
+  notifyListeners();
+  final locatedById=<String,AddressData>{};
+  try{
+   for(final candidate in candidates){
+    try{
+     final located=await geocoder.locate(candidate.address);
+     if(located.latitude!=null&&located.longitude!=null){
+      locatedById[candidate.id]=located;
+     }
+    }catch(error){
+     debugPrint('Could not locate package ${candidate.id}: $error');
+    }
+   }
+   var applied=0;
+   if(locatedById.isNotEmpty){
+    await _serializePackageMutation(()async{
+     final next=[...packages];
+     for(final candidate in candidates){
+      final result=locatedById[candidate.id];
+      if(result==null)continue;
+      final index=next.indexWhere((p)=>p.id==candidate.id);
+      if(index<0)continue;
+      final current=next[index];
+      // Do not revive a delivered/removed package or overwrite an address
+      // edited while the network geocoding request was in flight.
+      if(current.status==DeliveryStatus.delivered||
+         !_sameAddress(current.address,candidate.address))continue;
+      final original=current.address;
+      next[index]=current.copyWith(address:AddressData(
+       raw:original.raw,
+       street:original.street,
+       number:original.number,
+       complement:original.complement,
+       neighborhood:original.neighborhood,
+       city:original.city,
+       state:original.state,
+       cep:original.cep,
+       latitude:result.latitude??original.latitude,
+       longitude:result.longitude??original.longitude,
+       confidence:original.confidence,
+       validation:original.validation,
+      ));
+      applied++;
+     }
+     if(applied>0)await _persistPackageMutation(next);
+    });
+   }
+   lastLocateSucceeded=applied;
+   lastLocateFailed=lastLocateAttempted-applied;
+  }finally{
+   locating=false;
+   notifyListeners();
+   if(_locateRequestedAgain){
+    _locateRequestedAgain=false;
+    await locateConfirmed();
+   }
+  }
+ }
  Future<void> optimizeFrom(double lat,double lng) {
   return _serializePackageMutation(() async {final activeStatuses={DeliveryStatus.pending,DeliveryStatus.current,DeliveryStatus.absent,DeliveryStatus.addressProblem};final finished=packages.where((p)=>!activeStatuses.contains(p.status)).toList();final active=packages.where((p)=>activeStatuses.contains(p.status)).toList();packages=[...finished,..._optimize(active,lat,lng)];routeOptimized=true;await _persist();
   });
@@ -383,16 +518,23 @@ class AppState extends ChangeNotifier {
  }
  List<DeliveryPackage> _clearLoadLabels(List<DeliveryPackage> source)=>source.map((p)=>p.status==DeliveryStatus.delivered?p:p.copyWith(clearPhysicalZone:true)).toList();
  Future<void> clear() {
-  return _serializePackageMutation(() async {packages=[];routeOptimized=false;lastLocateAttempted=lastLocateSucceeded=lastLocateFailed=0;await store.clear();notifyListeners();
+  return _serializePackageMutation(() async {
+   await _persistPackageMutation(<DeliveryPackage>[],nextRouteOptimized:false);
+   lastLocateAttempted=lastLocateSucceeded=lastLocateFailed=0;
+   notifyListeners();
   });
- }Future<void> _persist()async{await store.save(packages,routeOptimized:routeOptimized);notifyListeners();}
- Future<void> _persistPackageMutation(List<DeliveryPackage> next)async{
-  final previous=packages;
+ }
+ Future<void> _persist()async{await store.save(packages,routeOptimized:routeOptimized);notifyListeners();}
+ Future<void> _persistPackageMutation(List<DeliveryPackage> next,{bool? nextRouteOptimized})async{
+  final previousPackages=packages;
+  final previousOptimized=routeOptimized;
   packages=next;
+  if(nextRouteOptimized!=null)routeOptimized=nextRouteOptimized;
   try{
    await _persist();
   }catch(_){
-   packages=previous;
+   packages=previousPackages;
+   routeOptimized=previousOptimized;
    notifyListeners();
    rethrow;
   }
