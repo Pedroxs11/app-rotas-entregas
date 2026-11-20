@@ -273,7 +273,7 @@ class AppState extends ChangeNotifier {
   }
   // Return the exact package created by this scan. The caller must not infer
   // it from packages.last: concurrent imports or route changes can reorder it.
-  return packages.where((p)=>p.id==saved.id).firstOrNull??saved;
+  return packages.firstWhere((p)=>p.id==saved.id,orElse:()=>saved);
  }
  Future<int> addManyFromText(String text)async{
   final lines=text.split(RegExp(r'\r?\n')).map((e)=>e.trim()).where((e)=>e.isNotEmpty).toList();
