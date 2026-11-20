@@ -539,4 +539,40 @@ void main() {
     expect(store.saves, 0);
   });
 
+
+  testWidgets(
+      'vehicle switch storage failure shows feedback and keeps the previous vehicle',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'car',
+      'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+      'load_zones_motorcycle': ['Baú traseiro', 'Mochila de entrega'],
+    });
+    final store = _ConfigurationStore([
+      _package(32, zone: 'Porta-malas'),
+    ])..failSaves = true;
+    final state = AppState(store: store);
+    await state.init();
+    final preferences = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Veículo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('🏍️ Moto'));
+    await tester.pumpAndSettle();
+
+    expect(state.vehicleType, VehicleType.car);
+    expect(state.activePhysicalZones, ['Frente esquerda', 'Porta-malas']);
+    expect(state.packages.single.physicalZone, 'Porta-malas');
+    expect(preferences.getString('load_vehicle_type'), 'car');
+    expect(find.text('Organizar o carro'), findsOneWidget);
+    expect(find.textContaining('Não foi possível trocar o veículo:'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
 }
