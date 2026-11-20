@@ -10,11 +10,11 @@ class AppState extends ChangeNotifier {
  static const carPhysicalZones=<String>['Frente esquerda','Frente direita','Traseira esquerda','Traseira direita','Porta-malas'];
  static const motorcyclePhysicalZones=<String>['Baú traseiro','Bolsa lateral esquerda','Bolsa lateral direita','Mochila de entrega'];
  List<String> activePhysicalZones=[...carPhysicalZones];
- Future<void> _physicalLoadMutationTail=Future<void>.value();
- Future<T> _serializePhysicalLoadMutation<T>(Future<T> Function() operation){
-  final previous=_physicalLoadMutationTail;
+ Future<void> _packageMutationTail=Future<void>.value();
+ Future<T> _serializePackageMutation<T>(Future<T> Function() operation){
+  final previous=_packageMutationTail;
   final release=Completer<void>();
-  _physicalLoadMutationTail=release.future;
+  _packageMutationTail=release.future;
   return ()async{
    await previous;
    try{
@@ -88,7 +88,7 @@ class AppState extends ChangeNotifier {
   }
  }
  Future<void> setVehicleType(VehicleType value) {
-  return _serializePhysicalLoadMutation(()async{
+  return _serializePackageMutation(()async{
   if(vehicleType==value)return;
   final previousVehicleType=vehicleType;
   final previousZones=[...activePhysicalZones];
@@ -144,7 +144,7 @@ class AppState extends ChangeNotifier {
   });
  }
  Future<void> setActivePhysicalZones(List<String> zones) {
-  return _serializePhysicalLoadMutation(()async{
+  return _serializePackageMutation(()async{
   final defaults=vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
   // Accept values restored from forms or integrations with harmless whitespace.
   final requested=zones.map((zone)=>zone.trim()).where((zone)=>zone.isNotEmpty).toSet();
@@ -252,37 +252,64 @@ class AppState extends ChangeNotifier {
  Future<int> addManyFromText(String text)async{final lines=text.split(RegExp(r'\r?\n')).map((e)=>e.trim()).where((e)=>e.isNotEmpty).toList();final parsed=<DeliveryPackage>[];var known=[...packages];for(final line in lines){try{final p=packageService.fromOcr(line,[...known,...parsed]);parsed.add(p);}catch(_){}}final enriched=await mapBounded(parsed,(p)async=>p.copyWith(address:await _enrichCep(p.address)),concurrency:4);if(enriched.isEmpty)return 0;packages=_clearLoadLabels([...packages,...enriched]);routeOptimized=false;await _persist();if(packages.any((p)=>p.address.validation==ValidationStatus.confirmed&&p.address.latitude==null))await locateConfirmed();return enriched.length;}
  Future<AddressData> _enrichCep(AddressData a)async{if(a.cep==null||a.cep!.replaceAll(RegExp(r'\D'),'').length!=8)return a;try{final c=await cepService.lookup(a.cep!);if(c==null)return a;final number=a.number?.trim();final hasNumber=number?.isNotEmpty==true;return AddressData(raw:a.raw,street:c.street.isNotEmpty?c.street:a.street,number:number,complement:a.complement,neighborhood:c.neighborhood.isNotEmpty?c.neighborhood:a.neighborhood,city:c.city.isNotEmpty?c.city:a.city,state:c.state.isNotEmpty?c.state:a.state,cep:c.cep,latitude:a.latitude,longitude:a.longitude,confidence:hasNumber?1.0:.70,validation:hasNumber?ValidationStatus.confirmed:ValidationStatus.needsReview);}catch(_){return a;}}
  Future<void> addStructured(AddressData address)async{final p=packageService.fromOcr(address.raw,packages);packages=_clearLoadLabels([...packages,p.copyWith(address:address)]);routeOptimized=false;await _persist();if(address.validation==ValidationStatus.confirmed)await locateConfirmed();}
- Future<void> updateAddress(int index,AddressData address)async{final p=packages[index];packages=[...packages]..[index]=p.copyWith(address:address);packages=_clearLoadLabels(packages);routeOptimized=false;await _persist();if(address.validation==ValidationStatus.confirmed)await locateConfirmed();}
- Future<void> update(int index,DeliveryPackage value)async{
-  // Keep active load labels canonical even when a package is updated by a
-  // workflow that does not go through the physical-load assignment methods.
-  // Delivered labels are historical data and must remain untouched.
-  final rawZone=value.physicalZone;
-  if(value.status!=DeliveryStatus.delivered&&rawZone!=null){
-   final normalizedZone=rawZone.trim();
-   final knownZones=<String>{...carPhysicalZones,...motorcyclePhysicalZones};
-   final belongsToDisabledZone=knownZones.contains(normalizedZone)&&
-       !activePhysicalZones.contains(normalizedZone);
-   if(normalizedZone.isEmpty||belongsToDisabledZone){
-    value=value.copyWith(clearPhysicalZone:true);
-   }else if(normalizedZone!=rawZone){
-    value=value.copyWith(physicalZone:normalizedZone);
+ Future<void> updateAddress(int index,AddressData address) {
+  return _serializePackageMutation(() async {final p=packages[index];packages=[...packages]..[index]=p.copyWith(address:address);packages=_clearLoadLabels(packages);routeOptimized=false;await _persist();if(address.validation==ValidationStatus.confirmed)await locateConfirmed();
+  });
+ }
+ Future<void> update(int index,DeliveryPackage value) {
+  return _serializePackageMutation(() async {
+   var targetIndex=index;
+   if(targetIndex<0||targetIndex>=packages.length||packages[targetIndex].id!=value.id){
+    targetIndex=packages.indexWhere((p)=>p.id==value.id);
    }
-  }
-  packages=[...packages]..[index]=value;
-  await _persist();
+   if(targetIndex<0)throw StateError('Pacote não encontrado.');
+   final current=packages[targetIndex];
+   // Generic delivery updates must not overwrite a compartment changed by a
+   // concurrent organizer action. Physical positions are changed only through
+   // setPhysicalZone(s), so the latest committed position always wins.
+   value=value.copyWith(
+    physicalZone:current.physicalZone,
+    clearPhysicalZone:current.physicalZone==null,
+   );
+   final rawZone=value.physicalZone;
+   if(value.status!=DeliveryStatus.delivered&&rawZone!=null){
+    final normalizedZone=rawZone.trim();
+    final knownZones=<String>{...carPhysicalZones,...motorcyclePhysicalZones};
+    final belongsToDisabledZone=knownZones.contains(normalizedZone)&&
+        !activePhysicalZones.contains(normalizedZone);
+    if(normalizedZone.isEmpty||belongsToDisabledZone){
+     value=value.copyWith(clearPhysicalZone:true);
+    }else if(normalizedZone!=rawZone){
+     value=value.copyWith(physicalZone:normalizedZone);
+    }
+   }
+   final next=[...packages]..[targetIndex]=value;
+   await _persistPackageMutation(next);
+  });
  }
  Future<void> removePackage(String packageId)async=>removePackages({packageId});
- Future<void> removePackages(Set<String> packageIds)async{if(packageIds.isEmpty)return;final next=packages.where((p)=>!packageIds.contains(p.id)).toList();if(next.length==packages.length)return;packages=next;routeOptimized=false;await _persist();}
- Future<void> reorder(int oldIndex,int newIndex)async{if(newIndex>oldIndex)newIndex--;if(newIndex==oldIndex)return;final x=[...packages];final p=x.removeAt(oldIndex);x.insert(newIndex,p);packages=_clearLoadLabels(x);routeOptimized=false;await _persist();}
+ Future<void> removePackages(Set<String> packageIds) {
+  return _serializePackageMutation(() async {if(packageIds.isEmpty)return;final next=packages.where((p)=>!packageIds.contains(p.id)).toList();if(next.length==packages.length)return;packages=next;routeOptimized=false;await _persist();
+  });
+ }
+ Future<void> reorder(int oldIndex,int newIndex) {
+  return _serializePackageMutation(() async {if(newIndex>oldIndex)newIndex--;if(newIndex==oldIndex)return;final x=[...packages];final p=x.removeAt(oldIndex);x.insert(newIndex,p);packages=_clearLoadLabels(x);routeOptimized=false;await _persist();
+  });
+ }
  Future<void> locateConfirmed()async{if(locating)return;lastLocateSucceeded=0;lastLocateFailed=0;final candidates=<int>[];for(var i=0;i<packages.length;i++){final p=packages[i];if(p.status!=DeliveryStatus.delivered&&p.address.validation==ValidationStatus.confirmed&&(p.address.latitude==null||p.address.longitude==null))candidates.add(i);}lastLocateAttempted=candidates.length;if(candidates.isEmpty){notifyListeners();return;}locating=true;notifyListeners();final out=[...packages];for(final i in candidates){final p=out[i];try{final a=await geocoder.locate(p.address);if(a.latitude!=null&&a.longitude!=null){out[i]=p.copyWith(address:a);lastLocateSucceeded++;}else{lastLocateFailed++;}}catch(_){lastLocateFailed++;}notifyListeners();}packages=out;locating=false;await _persist();}
- Future<void> optimizeFrom(double lat,double lng)async{final activeStatuses={DeliveryStatus.pending,DeliveryStatus.current,DeliveryStatus.absent,DeliveryStatus.addressProblem};final finished=packages.where((p)=>!activeStatuses.contains(p.status)).toList();final active=packages.where((p)=>activeStatuses.contains(p.status)).toList();packages=[...finished,..._optimize(active,lat,lng)];routeOptimized=true;await _persist();}
+ Future<void> optimizeFrom(double lat,double lng) {
+  return _serializePackageMutation(() async {final activeStatuses={DeliveryStatus.pending,DeliveryStatus.current,DeliveryStatus.absent,DeliveryStatus.addressProblem};final finished=packages.where((p)=>!activeStatuses.contains(p.status)).toList();final active=packages.where((p)=>activeStatuses.contains(p.status)).toList();packages=[...finished,..._optimize(active,lat,lng)];routeOptimized=true;await _persist();
+  });
+ }
  List<DeliveryPackage> _optimize(List<DeliveryPackage> active,double lat,double lng){final pinned=<int,DeliveryPackage>{};final free=<DeliveryPackage>[];for(var i=0;i<active.length;i++){if(active[i].pinned){pinned[i]=active[i];}else{free.add(active[i]);}}final optimized=routeEngine.optimize(free,startLat:lat,startLng:lng);for(final e in pinned.entries){final insertAt=e.key<0?0:(e.key>optimized.length?optimized.length:e.key);optimized.insert(insertAt,e.value);}return optimized;}
- Future<int> prepareRetryRoute(double lat,double lng,{bool includeAddressProblems=false,bool includeSkipped=false})async{final retry=packages.where((p)=>p.status==DeliveryStatus.absent||(includeAddressProblems&&p.status==DeliveryStatus.addressProblem)||(includeSkipped&&p.status==DeliveryStatus.skipped)).toList();if(retry.isEmpty)return 0;final ids=retry.map((p)=>p.id).toSet();final reset=retry.map((p)=>p.copyWith(status:DeliveryStatus.pending,clearCompletedAt:true)).toList();final optimized=_optimize(reset,lat,lng);final untouched=packages.where((p)=>!ids.contains(p.id)).toList();packages=_clearLoadLabels([...untouched,...optimized]);routeOptimized=true;await _persist();return optimized.length;}
+ Future<int> prepareRetryRoute(double lat,double lng, {
+  return _serializePackageMutation(() async {bool includeAddressProblems=false,bool includeSkipped=false
+  });
+ })async{final retry=packages.where((p)=>p.status==DeliveryStatus.absent||(includeAddressProblems&&p.status==DeliveryStatus.addressProblem)||(includeSkipped&&p.status==DeliveryStatus.skipped)).toList();if(retry.isEmpty)return 0;final ids=retry.map((p)=>p.id).toSet();final reset=retry.map((p)=>p.copyWith(status:DeliveryStatus.pending,clearCompletedAt:true)).toList();final optimized=_optimize(reset,lat,lng);final untouched=packages.where((p)=>!ids.contains(p.id)).toList();packages=_clearLoadLabels([...untouched,...optimized]);routeOptimized=true;await _persist();return optimized.length;}
  bool _isPhysicalLoadActive(DeliveryStatus status)=>status==DeliveryStatus.pending||status==DeliveryStatus.current||status==DeliveryStatus.absent||status==DeliveryStatus.addressProblem;
  void _validatePhysicalPackageIds(Set<String> packageIds){final byId={for(final p in packages)p.id:p};final missing=packageIds.where((id)=>!byId.containsKey(id)).toList();if(missing.isNotEmpty)throw StateError('Pacote(s) não encontrado(s): ${missing.join(', ')}');final inactive=packageIds.where((id)=>!_isPhysicalLoadActive(byId[id]!.status)).toList();if(inactive.isNotEmpty)throw StateError('Pacote fora da rota ativa não pode ser reorganizado: ${inactive.join(', ')}');}
  Future<void> setPhysicalZones(Set<String> packageIds,String zone){
-  return _serializePhysicalLoadMutation(()async{
+  return _serializePackageMutation(()async{
    if(!routeOptimized)throw StateError('Otimize a rota antes de organizar a carga.');
    final normalizedZone=zone.trim();
    if(!activePhysicalZones.contains(normalizedZone))throw ArgumentError.value(zone,'zone','posição física inválida');
@@ -299,7 +326,7 @@ class AppState extends ChangeNotifier {
   });
  }
  Future<void> clearPhysicalZones(Set<String> packageIds){
-  return _serializePhysicalLoadMutation(()async{
+  return _serializePackageMutation(()async{
    if(!routeOptimized)throw StateError('Otimize a rota antes de organizar a carga.');
    if(packageIds.isEmpty)return;
    _validatePhysicalPackageIds(packageIds);
@@ -314,7 +341,7 @@ class AppState extends ChangeNotifier {
   });
  }
  Future<void> setPhysicalZone(String packageId,String? zone){
-  return _serializePhysicalLoadMutation(()async{
+  return _serializePackageMutation(()async{
    if(!routeOptimized)throw StateError('Otimize a rota antes de organizar a carga.');
    final trimmedZone=zone?.trim();
    final normalizedZone=trimmedZone==null||trimmedZone.isEmpty?null:trimmedZone;
@@ -329,7 +356,10 @@ class AppState extends ChangeNotifier {
   });
  }
  List<DeliveryPackage> _clearLoadLabels(List<DeliveryPackage> source)=>source.map((p)=>p.status==DeliveryStatus.delivered?p:p.copyWith(clearPhysicalZone:true)).toList();
- Future<void> clear()async{packages=[];routeOptimized=false;lastLocateAttempted=lastLocateSucceeded=lastLocateFailed=0;await store.clear();notifyListeners();}Future<void> _persist()async{await store.save(packages,routeOptimized:routeOptimized);notifyListeners();}
+ Future<void> clear() {
+  return _serializePackageMutation(() async {packages=[];routeOptimized=false;lastLocateAttempted=lastLocateSucceeded=lastLocateFailed=0;await store.clear();notifyListeners();
+  });
+ }Future<void> _persist()async{await store.save(packages,routeOptimized:routeOptimized);notifyListeners();}
  Future<void> _persistPackageMutation(List<DeliveryPackage> next)async{
   final previous=packages;
   packages=next;
