@@ -616,4 +616,57 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+
+  testWidgets(
+      'configuration cannot save when every motorcycle compartment is disabled',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'motorcycle',
+      'load_zones_motorcycle': ['Baú traseiro', 'Mochila de entrega'],
+    });
+    final state = AppState(
+      store: _ConfigurationStore([
+        _package(34, zone: 'Baú traseiro'),
+      ]),
+    );
+    await state.init();
+    final originalZones = [...state.activePhysicalZones];
+    final preferences = await SharedPreferences.getInstance();
+
+    expect(state.vehicleType, VehicleType.motorcycle);
+    expect(originalZones, ['Baú traseiro', 'Mochila de entrega']);
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Configurar compartimentos'));
+    await tester.pumpAndSettle();
+
+    for (final zone in originalZones) {
+      await tester.tap(find.widgetWithText(CheckboxListTile, zone));
+      await tester.pump();
+    }
+
+    final saveButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Salvar'),
+    );
+    expect(saveButton.onPressed, isNull);
+    expect(state.activePhysicalZones, originalZones);
+    expect(state.packages.single.physicalZone, 'Baú traseiro');
+    expect(
+      preferences.getStringList('load_zones_motorcycle'),
+      originalZones,
+    );
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(state.activePhysicalZones, originalZones);
+    expect(state.packages.single.physicalZone, 'Baú traseiro');
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
 }
