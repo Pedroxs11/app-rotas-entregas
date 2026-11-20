@@ -168,4 +168,42 @@ void main(){
   expect(resumed.activePhysicalZones,motorcycleZones);
   expect(resumed.packages.last.physicalZone,'Baú traseiro');
  });
+
+ test('moving a subset between compartments preserves the remaining 600-package load after restart for both vehicles',()async{
+  for(final vehicle in [VehicleType.car,VehicleType.motorcycle]){
+   SharedPreferences.setMockInitialValues({'load_vehicle_type':vehicle.name});
+   final zones=vehicle==VehicleType.car
+       ?AppState.carPhysicalZones
+       :AppState.motorcyclePhysicalZones;
+   final store=VolumeStore(List.generate(600,(i)=>_p(i+1)));
+   final state=AppState(store:store);
+   await state.init();
+
+   final firstBatch=state.packages.take(137).map((p)=>p.id).toSet();
+   final movedBatch=state.packages.take(37).map((p)=>p.id).toSet();
+   await state.setPhysicalZones(firstBatch,zones[0]);
+   await state.setPhysicalZones(movedBatch,zones[1]);
+
+   expect(state.packages,hasLength(600));
+   expect(state.packages.map((p)=>p.id).toSet(),hasLength(600));
+   expect(state.packages.where((p)=>p.physicalZone==zones[0]),hasLength(100));
+   expect(state.packages.where((p)=>p.physicalZone==zones[1]),hasLength(37));
+   expect(state.packages.where((p)=>p.physicalZone==null),hasLength(463));
+   expect(store.saves,2);
+
+   final savesBeforeRestart=store.saves;
+   final resumed=AppState(store:store);
+   await resumed.init();
+
+   expect(resumed.vehicleType,vehicle);
+   expect(resumed.activePhysicalZones,zones);
+   expect(resumed.packages,hasLength(600));
+   expect(resumed.packages.map((p)=>p.id).toSet(),hasLength(600));
+   expect(resumed.packages.where((p)=>p.physicalZone==zones[0]),hasLength(100));
+   expect(resumed.packages.where((p)=>p.physicalZone==zones[1]),hasLength(37));
+   expect(resumed.packages.where((p)=>p.physicalZone==null),hasLength(463));
+   expect(store.saves,savesBeforeRestart);
+  }
+ });
+
 }
