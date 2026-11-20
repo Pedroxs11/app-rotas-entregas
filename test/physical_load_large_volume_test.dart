@@ -14,6 +14,8 @@ class VolumeStore implements PackageStore {
 DeliveryPackage _p(int n)=>DeliveryPackage(id:'p$n',scanNumber:n,address:AddressData(raw:'Rua $n',street:'Rua',number:'$n',city:'São Paulo',state:'SP',confidence:1,validation:ValidationStatus.confirmed),scannedAt:DateTime.utc(2026,9,13).add(Duration(minutes:n)));
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
  test('manual organization supports large routes without automatic assignment',()async{
   final store=VolumeStore(List.generate(600,(i)=>_p(i+1)));final state=AppState(store:store);await state.init();
   expect(state.packages,hasLength(600));
