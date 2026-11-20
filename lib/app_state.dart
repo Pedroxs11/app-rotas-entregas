@@ -255,14 +255,15 @@ class AppState extends ChangeNotifier {
  Future<void> updateAddress(int index,AddressData address) async {
   await _serializePackageMutation(() async {
    final p=packages[index];
-   final next=[...packages]..[index]=p.copyWith(address:address);
+   final previousPackages=packages;
    final previousOptimized=routeOptimized;
+   final next=[...packages]..[index]=p.copyWith(address:address);
    packages=_clearLoadLabels(next);
    routeOptimized=false;
    try{
     await _persist();
    }catch(error){
-    packages=[...next]..[index]=p;
+    packages=previousPackages;
     routeOptimized=previousOptimized;
     notifyListeners();
     rethrow;
