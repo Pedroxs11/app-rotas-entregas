@@ -21,6 +21,21 @@ class AppState extends ChangeNotifier {
   final restored=defaults.where(normalizedZones.contains).toList();
   return restored.isEmpty?<String>[...defaults]:restored;
  }
+ Future<void> _restorePreferenceValue(SharedPreferences prefs,String key,Object? value)async{
+  await prefs.remove(key);
+  if(value==null)return;
+  if(value is String){
+   await prefs.setString(key,value);
+  }else if(value is bool){
+   await prefs.setBool(key,value);
+  }else if(value is int){
+   await prefs.setInt(key,value);
+  }else if(value is double){
+   await prefs.setDouble(key,value);
+  }else if(value is List&&value.every((entry)=>entry is String)){
+   await prefs.setStringList(key,value.cast<String>());
+  }
+ }
  Future<void> _loadVehicleSettings()async{
   try{
    final prefs=await SharedPreferences.getInstance();
@@ -59,26 +74,56 @@ class AppState extends ChangeNotifier {
  }
  Future<void> setVehicleType(VehicleType value)async{
   if(vehicleType==value)return;
-  vehicleType=value;
+  final previousVehicleType=vehicleType;
+  final previousZones=[...activePhysicalZones];
+  final previousPackages=packages;
+  final prefs=await SharedPreferences.getInstance();
+  const vehiclePreferenceKey='load_vehicle_type';
+  final targetZonesKey=value==VehicleType.car?'load_zones_car':'load_zones_motorcycle';
+  final previousVehiclePreference=prefs.get(vehiclePreferenceKey);
+  final previousTargetZonesPreference=prefs.get(targetZonesKey);
   final defaults=value==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
+  List<String>? savedZones;
   try{
-   final prefs=await SharedPreferences.getInstance();
-   await prefs.setString('load_vehicle_type',value.name);
-   List<String>? saved;
-   try{
-    saved=prefs.getStringList(_zonesPreferenceKey);
-   }catch(e){
-    // A preference saved with the wrong type must not block switching vehicles.
-    debugPrint('Could not read saved vehicle compartments: $e');
-   }
-   activePhysicalZones=_restorePhysicalZones(saved,defaults);
-   await prefs.setStringList(_zonesPreferenceKey,activePhysicalZones);
+   savedZones=prefs.getStringList(targetZonesKey);
   }catch(e){
-   activePhysicalZones=[...defaults];
-   debugPrint('Could not load vehicle compartments: $e');
+   // A preference saved with the wrong type must not block switching vehicles.
+   debugPrint('Could not read saved vehicle compartments: $e');
   }
-  packages=packages.map((p)=>p.status==DeliveryStatus.delivered?p:p.copyWith(clearPhysicalZone:true)).toList();
-  await _persist();
+  final nextZones=_restorePhysicalZones(savedZones,defaults);
+  final nextPackages=packages.map((p)=>p.status==DeliveryStatus.delivered?p:p.copyWith(clearPhysicalZone:true)).toList();
+  final packagesChanged=packages.any((p)=>p.status!=DeliveryStatus.delivered&&p.physicalZone!=null);
+  try{
+   if(!await prefs.setString(vehiclePreferenceKey,value.name)){
+    throw StateError('Could not save selected vehicle.');
+   }
+   if(!await prefs.setStringList(targetZonesKey,nextZones)){
+    throw StateError('Could not save vehicle compartments.');
+   }
+   if(packagesChanged){
+    await store.save(nextPackages,routeOptimized:routeOptimized);
+   }
+   vehicleType=value;
+   activePhysicalZones=nextZones;
+   if(packagesChanged)packages=nextPackages;
+   notifyListeners();
+  }catch(error){
+   vehicleType=previousVehicleType;
+   activePhysicalZones=previousZones;
+   packages=previousPackages;
+   try{
+    await _restorePreferenceValue(prefs,vehiclePreferenceKey,previousVehiclePreference);
+   }catch(rollbackError){
+    debugPrint('Could not roll back vehicle preference: $rollbackError');
+   }
+   try{
+    await _restorePreferenceValue(prefs,targetZonesKey,previousTargetZonesPreference);
+   }catch(rollbackError){
+    debugPrint('Could not roll back compartment preference: $rollbackError');
+   }
+   notifyListeners();
+   rethrow;
+  }
  }
  Future<void> setActivePhysicalZones(List<String> zones)async{
   final defaults=vehicleType==VehicleType.car?carPhysicalZones:motorcyclePhysicalZones;
@@ -107,11 +152,31 @@ class AppState extends ChangeNotifier {
    }
   }
   if(zonesUnchanged&&!packagesChanged)return;
-  activePhysicalZones=cleaned;
-  if(packagesChanged)packages=next;
+  final previousZones=[...activePhysicalZones];
+  final previousPackages=packages;
   final prefs=await SharedPreferences.getInstance();
-  await prefs.setStringList(_zonesPreferenceKey,cleaned);
-  await _persist();
+  final previousPreference=prefs.get(_zonesPreferenceKey);
+  try{
+   if(!await prefs.setStringList(_zonesPreferenceKey,cleaned)){
+    throw StateError('Could not save vehicle compartments.');
+   }
+   if(packagesChanged){
+    await store.save(next,routeOptimized:routeOptimized);
+   }
+   activePhysicalZones=cleaned;
+   if(packagesChanged)packages=next;
+   notifyListeners();
+  }catch(error){
+   activePhysicalZones=previousZones;
+   packages=previousPackages;
+   try{
+    await _restorePreferenceValue(prefs,_zonesPreferenceKey,previousPreference);
+   }catch(rollbackError){
+    debugPrint('Could not roll back compartment preference: $rollbackError');
+   }
+   notifyListeners();
+   rethrow;
+  }
  }
  final PackageStore store;final geocoder=NominatimGeocodingService();final routeEngine=RouteEngine();final CepService cepService=ViaCepService();late final PackageService packageService=PackageService(AddressParser());List<DeliveryPackage> packages=[];bool loading=true,locating=false,routeOptimized=false;String? startupError;int lastLocateAttempted=0,lastLocateSucceeded=0,lastLocateFailed=0;
  AppState({PackageStore? store}):store=store??MigratingPackageStore(primary:SqlitePackageStore(),legacy:LocalStore());
