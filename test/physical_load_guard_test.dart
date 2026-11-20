@@ -425,4 +425,33 @@ void main(){
   }
  });
 
+
+ test('a failed package mutation does not block later load changes',()async{
+  final store=GuardStore(
+   [_package('a',1),_package('b',2)],
+   optimized:true,
+   failSaves:true,
+  );
+  final state=AppState(store:store);
+  await state.init();
+
+  await expectLater(
+   state.setPhysicalZone('a','Frente esquerda'),
+   throwsA(isA<StateError>()),
+  );
+  expect(state.packages.every((p)=>p.physicalZone==null),isTrue);
+  expect(store.saves,0);
+
+  // A failed write must not poison the serialized queue. Once storage
+  // recovers, the next operation should commit normally.
+  store.failSaves=false;
+  await state.setPhysicalZone('b','Porta-malas');
+
+  expect(state.packages[0].physicalZone,isNull);
+  expect(state.packages[1].physicalZone,'Porta-malas');
+  expect(store.packages[0].physicalZone,isNull);
+  expect(store.packages[1].physicalZone,'Porta-malas');
+  expect(store.saves,1);
+ });
+
 }
