@@ -58,6 +58,7 @@ void main(){
     final completed=DateTime.utc(2026,9,13,18);
     await state.update(0,state.packages.single.copyWith(status:DeliveryStatus.delivered,completedAt:completed));
     expect(state.routeOptimized,isTrue);expect(state.packages.single.status,DeliveryStatus.delivered);expect(state.packages.single.completedAt,completed);expect(state.packages.single.physicalZone,'A-01');expect(store.optimized,isTrue);expect(store.saves,1);
+  });
 
   test('remove rolls back packages and route metadata when persistence fails',() async {
     final original=[_p('a',1,zone:'A-01'),_p('b',2,zone:'A-02')];
@@ -146,6 +147,5 @@ void main(){
     expect(state.packages.map((p)=>p.physicalZone).toList(),['A-01','A-02']);
     expect(state.routeOptimized,isTrue);
     expect(store.packages.map((p)=>p.physicalZone).toList(),['A-01','A-02']);
-  });
   });
 }
