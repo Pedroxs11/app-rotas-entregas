@@ -21,12 +21,12 @@ DeliveryPackage _p(String id,int scan,{String? zone,DeliveryStatus status=Delive
 );
 
 void main(){
-  test('adding structured package invalidates route and clears stale active load labels',() async {
+  test('adding structured package invalidates route while preserving existing load positions',() async {
     final store=MutationStore([_p('old',1,zone:'A-01')],optimized:true);
     final state=AppState(store:store);await state.init();
     const address=AddressData(raw:'Rua Nova, 200',street:'Rua Nova',number:'200',city:'São Paulo',state:'SP',confidence:.5,validation:ValidationStatus.needsReview);
     await state.addStructured(address);
-    expect(state.packages,hasLength(2));expect(state.routeOptimized,isFalse);expect(state.packages[0].physicalZone,isNull);expect(state.packages[1].physicalZone,isNull);expect(store.optimized,isFalse);expect(store.saves,1);
+    expect(state.packages,hasLength(2));expect(state.routeOptimized,isFalse);expect(state.packages[0].physicalZone,'A-01');expect(state.packages[1].physicalZone,isNull);expect(store.optimized,isFalse);expect(store.saves,1);
   });
 
   test('adding structured package preserves delivered history label',() async {
