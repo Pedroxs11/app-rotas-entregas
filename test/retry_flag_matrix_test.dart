@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RetryStore implements PackageStore {
   RetryStore(this.packages,{this.optimized=true});
@@ -27,6 +28,8 @@ List<DeliveryPackage> _route()=>[
 ];
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
  test('address-problem flag retries absent plus address problems but not skipped',()async{
   final store=RetryStore(_route());final state=AppState(store:store);await state.init();
   final count=await state.prepareRetryRoute(-23.55,-46.63,includeAddressProblems:true);
