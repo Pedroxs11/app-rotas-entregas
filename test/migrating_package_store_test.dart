@@ -1,7 +1,9 @@
+import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/migrating_package_store.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeStore implements PackageStore {
   List<DeliveryPackage> packages;
@@ -72,6 +74,8 @@ DeliveryPackage pkg(String id,int scan)=>DeliveryPackage(
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('copies legacy packages in exact order with route metadata',() async {
     final primary=FakeStore();
     final legacy=FakeStore(packages:[pkg('a',1),pkg('b',2),pkg('c',3)],optimized:true);
@@ -158,6 +162,31 @@ void main(){
     // legacy data to be imported on the next app startup.
     expect((await store.load()).map((p)=>p.id),['current']);
     expect(await store.loadRouteOptimized(),isTrue);
+  });
+
+  test('AppState clear restores the visible route when legacy clear fails',() async {
+    SharedPreferences.setMockInitialValues({});
+    final primary=FakeStore(packages:[pkg('current',1)],optimized:true);
+    final legacy=FakeStore(
+      packages:[pkg('legacy',2)],
+      optimized:true,
+      failClearAfterMutation:true,
+    );
+    final store=MigratingPackageStore(primary:primary,legacy:legacy);
+    final state=AppState(store:store);
+    await state.init();
+
+    await expectLater(state.clear(),throwsStateError);
+
+    expect(state.packages.map((p)=>p.id),['current']);
+    expect(state.routeOptimized,isTrue);
+    expect(primary.packages.map((p)=>p.id),['current']);
+    expect(legacy.packages.map((p)=>p.id),['legacy']);
+
+    final reopened=AppState(store:store);
+    await reopened.init();
+    expect(reopened.packages.map((p)=>p.id),['current']);
+    expect(reopened.routeOptimized,isTrue);
   });
 
   test('failed legacy clear after partial mutation restores both package snapshots',() async {
