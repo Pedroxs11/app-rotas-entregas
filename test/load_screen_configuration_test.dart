@@ -575,4 +575,45 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+
+  testWidgets(
+      'configuration cannot save when every car compartment is disabled',
+      (tester) async {
+    final state = AppState(
+      store: _ConfigurationStore([
+        _package(33, zone: 'Porta-malas'),
+      ]),
+    );
+    await state.init();
+    final originalZones = [...state.activePhysicalZones];
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Configurar compartimentos'));
+    await tester.pumpAndSettle();
+
+    for (final zone in AppState.carPhysicalZones) {
+      await tester.tap(find.widgetWithText(CheckboxListTile, zone));
+      await tester.pump();
+    }
+
+    final saveButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Salvar'),
+    );
+    expect(saveButton.onPressed, isNull);
+    expect(state.activePhysicalZones, originalZones);
+    expect(state.packages.single.physicalZone, 'Porta-malas');
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(state.activePhysicalZones, originalZones);
+    expect(state.packages.single.physicalZone, 'Porta-malas');
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
 }
