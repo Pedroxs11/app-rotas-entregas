@@ -206,4 +206,53 @@ void main(){
   }
  });
 
+
+
+ test('queued vehicle switches and bulk assignments preserve call order and delivered history',()async{
+  // Assignment queued before a vehicle switch must finish first; the switch
+  // then clears only active packages whose compartments belong to the old vehicle.
+  SharedPreferences.setMockInitialValues({});
+  final delivered=_p(3).copyWith(
+   status:DeliveryStatus.delivered,
+   physicalZone:'Porta-malas',
+  );
+  final firstStore=VolumeStore([_p(1),_p(2),delivered]);
+  final firstState=AppState(store:firstStore);
+  await firstState.init();
+
+  final carAssignment=firstState.setPhysicalZones({'p1','p2'},'Porta-malas');
+  final switchToMotorcycle=firstState.setVehicleType(VehicleType.motorcycle);
+  await Future.wait([carAssignment,switchToMotorcycle]);
+
+  expect(firstState.vehicleType,VehicleType.motorcycle);
+  expect(firstState.packages[0].physicalZone,isNull);
+  expect(firstState.packages[1].physicalZone,isNull);
+  expect(firstState.packages[2].status,DeliveryStatus.delivered);
+  expect(firstState.packages[2].physicalZone,'Porta-malas');
+  expect(firstStore.packages[0].physicalZone,isNull);
+  expect(firstStore.packages[1].physicalZone,isNull);
+  expect(firstStore.packages[2].physicalZone,'Porta-malas');
+
+  // When the switch is queued first, the following assignment must validate
+  // against the motorcycle compartments and remain saved after both complete.
+  SharedPreferences.setMockInitialValues({});
+  final secondStore=VolumeStore([_p(1),_p(2),delivered]);
+  final secondState=AppState(store:secondStore);
+  await secondState.init();
+
+  final switchFirst=secondState.setVehicleType(VehicleType.motorcycle);
+  final motorcycleAssignment=secondState.setPhysicalZones({'p1','p2'},'Baú traseiro');
+  await Future.wait([switchFirst,motorcycleAssignment]);
+
+  expect(secondState.vehicleType,VehicleType.motorcycle);
+  expect(secondState.activePhysicalZones,AppState.motorcyclePhysicalZones);
+  expect(secondState.packages[0].physicalZone,'Baú traseiro');
+  expect(secondState.packages[1].physicalZone,'Baú traseiro');
+  expect(secondState.packages[2].status,DeliveryStatus.delivered);
+  expect(secondState.packages[2].physicalZone,'Porta-malas');
+  expect(secondStore.packages[0].physicalZone,'Baú traseiro');
+  expect(secondStore.packages[1].physicalZone,'Baú traseiro');
+  expect(secondStore.packages[2].physicalZone,'Porta-malas');
+ });
+
 }
