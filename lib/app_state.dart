@@ -268,7 +268,7 @@ class AppState extends ChangeNotifier {
    try{
     await locateConfirmed();
    }catch(error,stackTrace){
-    debugPrint('Package ${saved.id} was saved, but geocoding failed: $error\\n$stackTrace');
+    debugPrint('Package ${saved.id} was saved, but geocoding failed: $error\n$stackTrace');
    }
   }
   // Return the exact package created by this scan. The caller must not infer
