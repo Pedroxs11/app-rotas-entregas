@@ -3,6 +3,7 @@ import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:app_rotas_entregas/services/package_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BulkStore implements PackageStore {
   BulkStore(this.packages,{this.optimized=false});
@@ -22,6 +23,8 @@ DeliveryPackage _existing(String id,int scan,{DeliveryStatus status=DeliveryStat
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   test('bulk import ignores blank lines and imports each valid address once',() async {
     final store=BulkStore([]);final state=AppState(store:store);await state.init();
     final count=await state.addManyFromText('Rua Alfa, 10\n\n  Rua Beta, 20  \n\nRua Gama, 30');
