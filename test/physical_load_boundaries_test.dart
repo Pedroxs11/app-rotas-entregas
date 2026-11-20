@@ -549,7 +549,9 @@ void main() {
 
     await state.setPhysicalZone('p1', '   ');
     expect(state.packages.first.physicalZone, isNull);
-    expect(store.saves, 4);
+    // Only the three package-position mutations persist package data; changing
+    // the active compartment preference itself does not write the package store.
+    expect(store.saves, 3);
   });
 
 }
