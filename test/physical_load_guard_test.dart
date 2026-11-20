@@ -4,13 +4,14 @@ import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class GuardStore implements PackageStore {
-  GuardStore(this.packages,{this.optimized=false});
+  GuardStore(this.packages,{this.optimized=false,this.failSaves=false});
+  bool failSaves;
   List<DeliveryPackage> packages;
   bool optimized;
   int saves=0;
   @override Future<List<DeliveryPackage>> load()async=>[...packages];
   @override Future<bool> loadRouteOptimized()async=>optimized;
-  @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized})async{packages=[...value];if(routeOptimized!=null)optimized=routeOptimized;saves++;}
+  @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized})async{if(failSaves)throw StateError('simulated storage failure');packages=[...value];if(routeOptimized!=null)optimized=routeOptimized;saves++;}
   @override Future<void> clear()async{packages=[];optimized=false;}
 }
 
@@ -117,6 +118,35 @@ void main(){
    throwsA(isA<StateError>()),
   );
   expect(state.packages.single.physicalZone,'Frente esquerda');
+  expect(store.saves,0);
+ });
+
+
+ test('bulk assignment rolls back in-memory positions when persistence fails',()async{
+  final store=GuardStore([_package('a',1),_package('b',2)],optimized:true,failSaves:true);
+  final state=AppState(store:store);await state.init();
+
+  await expectLater(
+   state.setPhysicalZones({'a','b'},'Frente esquerda'),
+   throwsA(isA<StateError>()),
+  );
+  expect(state.packages.every((p)=>p.physicalZone==null),isTrue);
+  expect(store.saves,0);
+ });
+
+ test('bulk clear rolls back in-memory positions when persistence fails',()async{
+  final store=GuardStore([
+   _package('a',1,zone:'Frente esquerda'),
+   _package('b',2,zone:'Porta-malas'),
+  ],optimized:true,failSaves:true);
+  final state=AppState(store:store);await state.init();
+
+  await expectLater(
+   state.clearPhysicalZones({'a','b'}),
+   throwsA(isA<StateError>()),
+  );
+  expect(state.packages[0].physicalZone,'Frente esquerda');
+  expect(state.packages[1].physicalZone,'Porta-malas');
   expect(store.saves,0);
  });
 
