@@ -27,16 +27,16 @@ void main(){
     expect(count,3);expect(state.packages,hasLength(3));expect(state.packages.map((p)=>p.address.raw).toSet(),{'Rua Alfa, 10','Rua Beta, 20','Rua Gama, 30'});expect(state.routeOptimized,isFalse);expect(store.saves,1);
   });
 
-  test('bulk import invalidates optimized route and clears stale active load labels',() async {
+  test('bulk import invalidates optimized route while preserving existing active load positions',() async {
     final store=BulkStore([_existing('old',1,zone:'A-01')],optimized:true);final state=AppState(store:store);await state.init();
     final count=await state.addManyFromText('Rua Nova, 200\nRua Nova Dois, 300');
-    expect(count,2);expect(state.packages,hasLength(3));expect(state.routeOptimized,isFalse);expect(state.packages.every((p)=>p.physicalZone==null),isTrue);expect(store.optimized,isFalse);
+    expect(count,2);expect(state.packages,hasLength(3));expect(state.routeOptimized,isFalse);expect(state.packages.first.physicalZone,'A-01');expect(state.packages.skip(1).every((p)=>p.physicalZone==null),isTrue);expect(store.optimized,isFalse);
   });
 
-  test('bulk import preserves delivered history label while clearing active labels',() async {
+  test('bulk import preserves both delivered history and existing active load positions',() async {
     final store=BulkStore([_existing('done',1,status:DeliveryStatus.delivered,zone:'HIST'),_existing('active',2,zone:'A-02')],optimized:true);final state=AppState(store:store);await state.init();
     final count=await state.addManyFromText('Rua Nova, 400');
-    expect(count,1);expect(state.packages.firstWhere((p)=>p.id=='done').physicalZone,'HIST');expect(state.packages.firstWhere((p)=>p.id=='done').status,DeliveryStatus.delivered);expect(state.packages.firstWhere((p)=>p.id=='active').physicalZone,isNull);expect(state.packages.last.physicalZone,isNull);expect(state.routeOptimized,isFalse);
+    expect(count,1);expect(state.packages.firstWhere((p)=>p.id=='done').physicalZone,'HIST');expect(state.packages.firstWhere((p)=>p.id=='done').status,DeliveryStatus.delivered);expect(state.packages.firstWhere((p)=>p.id=='active').physicalZone,'A-02');expect(state.packages.last.physicalZone,isNull);expect(state.routeOptimized,isFalse);
   });
 
   test('empty bulk import is a true no-op and preserves optimized route and load labels',() async {
