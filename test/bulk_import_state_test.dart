@@ -1,6 +1,7 @@
 import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
+import 'package:app_rotas_entregas/services/package_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class BulkStore implements PackageStore {
@@ -64,4 +65,39 @@ void main(){
     final count=await state.addManyFromText('  \n\n   ');
     expect(count,0);expect(state.packages,hasLength(1));expect(state.packages.single.id,'old');expect(state.packages.single.physicalZone,'A-01');expect(state.routeOptimized,isTrue);expect(store.optimized,isTrue);expect(store.saves,0);
   });
+
+  test('parallel scanner captures with the same normalized tracking code save only once', () async {
+    final store = BulkStore([]);
+    final state = AppState(store: store);
+    await state.init();
+
+    Future<Object> capture(Future<DeliveryPackage> operation) async {
+      try {
+        return await operation;
+      } catch (error) {
+        return error;
+      }
+    }
+
+    final results = await Future.wait<Object>([
+      capture(
+        state.addFromText(
+          'etiqueta sem endereco alpha',
+          trackingCode: 'AB-123',
+        ),
+      ),
+      capture(
+        state.addFromText(
+          'etiqueta sem endereco beta',
+          trackingCode: 'ab 123',
+        ),
+      ),
+    ]);
+
+    expect(results.whereType<DeliveryPackage>(), hasLength(1));
+    expect(results.whereType<DuplicatePackageException>(), hasLength(1));
+    expect(state.packages, hasLength(1));
+    expect(store.saves, 1);
+  });
+
 }
