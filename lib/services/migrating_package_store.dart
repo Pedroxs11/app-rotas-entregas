@@ -69,6 +69,10 @@ class MigratingPackageStore implements PackageStore {
 
   @override
   Future<void> clear() async {
+    // Clear must observe the same migrated snapshot that load() would expose.
+    // Otherwise a failed legacy clear could restore data into an empty primary
+    // store and have that stale route imported again on the next startup.
+    await _ensureMigrated();
     // Clearing two independent stores is not a single atomic transaction.
     // Keep a snapshot of both before deleting either one: if the second clear
     // fails after the primary has already been emptied, the next startup must
