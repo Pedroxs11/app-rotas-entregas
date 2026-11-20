@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NoopLoadStore implements PackageStore{
  NoopLoadStore(this.packages);List<DeliveryPackage> packages;bool optimized=true;int saves=0;
@@ -12,6 +13,9 @@ class NoopLoadStore implements PackageStore{
 }
 DeliveryPackage _p(String id,int n,DeliveryStatus status,String? zone)=>DeliveryPackage(id:id,scanNumber:n,status:status,physicalZone:zone,address:AddressData(raw:'Rua $n',street:'Rua',number:'$n',city:'São Paulo',state:'SP',confidence:1,validation:ValidationStatus.confirmed),scannedAt:DateTime.utc(2026,9,13,21,n),completedAt:status==DeliveryStatus.delivered?DateTime.utc(2026,9,13,21,40):null);
 void main(){
+ TestWidgetsFlutterBinding.ensureInitialized();
+ setUp(()=>SharedPreferences.setMockInitialValues({}));
+
  test('manual organization does not change delivered or skipped history',()async{
   final done=_p('done',1,DeliveryStatus.delivered,'Porta-malas');final skipped=_p('skip',2,DeliveryStatus.skipped,'Traseira direita');final store=NoopLoadStore([done,skipped]);final state=AppState(store:store);await state.init();
   expect(()=>state.setPhysicalZone('done','Frente esquerda'),throwsA(isA<StateError>()));
