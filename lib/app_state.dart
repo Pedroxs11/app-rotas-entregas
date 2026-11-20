@@ -248,7 +248,7 @@ class AppState extends ChangeNotifier {
    notifyListeners();
   }
  }
- Future<void> addFromText(String text,{String? trackingCode})async{
+ Future<DeliveryPackage> addFromText(String text,{String? trackingCode})async{
   // Parse and enrich outside the mutation queue; re-parse against the latest
   // package list inside it so overlapping scans cannot reuse scan numbers or
   // overwrite a compartment assignment made while CEP lookup was running.
@@ -261,7 +261,19 @@ class AppState extends ChangeNotifier {
    await _persistPackageMutation([...packages,current],nextRouteOptimized:false);
    added=current;
   });
-  if(added!.address.validation==ValidationStatus.confirmed)await locateConfirmed();
+  final saved=added!;
+  if(saved.address.validation==ValidationStatus.confirmed){
+   // A successful scan must not be reported as failed just because a later
+   // optional geocoding/persistence refresh could not be completed.
+   try{
+    await locateConfirmed();
+   }catch(error,stackTrace){
+    debugPrint('Package ${saved.id} was saved, but geocoding failed: $error\\n$stackTrace');
+   }
+  }
+  // Return the exact package created by this scan. The caller must not infer
+  // it from packages.last: concurrent imports or route changes can reorder it.
+  return packages.where((p)=>p.id==saved.id).firstOrNull??saved;
  }
  Future<int> addManyFromText(String text)async{
   final lines=text.split(RegExp(r'\r?\n')).map((e)=>e.trim()).where((e)=>e.isNotEmpty).toList();
