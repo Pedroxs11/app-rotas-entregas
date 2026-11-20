@@ -279,4 +279,66 @@ void main(){
   expect(motorcycleStore.saves,0);
  });
 
+
+ test('delivery updates wait for an in-flight load assignment and preserve its compartment',()async{
+  SharedPreferences.setMockInitialValues({});
+  final store=BlockingGuardStore([_package('a',1)]);
+  final state=AppState(store:store);
+  await state.init();
+
+  // Capture the delivery-screen snapshot before the organizer assigns a zone.
+  final stalePackage=state.packages.single;
+  final assignment=state.setPhysicalZone('a','Frente esquerda');
+  await Future<void>.delayed(Duration.zero);
+  expect(store.pendingWrites,hasLength(1));
+
+  final deliveryUpdate=state.update(
+   0,
+   stalePackage.copyWith(status:DeliveryStatus.delivered),
+  );
+  await Future<void>.delayed(Duration.zero);
+
+  expect(store.pendingWrites,hasLength(1),
+   reason:'Delivery status changes must wait for the active load write.');
+  expect(state.packages.single.status,DeliveryStatus.pending);
+
+  store.pendingWrites[0].complete();
+  await assignment;
+  await Future<void>.delayed(Duration.zero);
+
+  expect(store.pendingWrites,hasLength(2));
+  expect(store.snapshots[1].single.status,DeliveryStatus.delivered);
+  expect(store.snapshots[1].single.physicalZone,'Frente esquerda');
+
+  store.pendingWrites[1].complete();
+  await deliveryUpdate;
+
+  expect(store.packages.single.status,DeliveryStatus.delivered);
+  expect(store.packages.single.physicalZone,'Frente esquerda');
+ });
+
+ test('clearing the route waits for a pending load save and cannot resurrect packages',()async{
+  SharedPreferences.setMockInitialValues({});
+  final store=BlockingGuardStore([_package('a',1)]);
+  final state=AppState(store:store);
+  await state.init();
+
+  final assignment=state.setPhysicalZone('a','Porta-malas');
+  await Future<void>.delayed(Duration.zero);
+  expect(store.pendingWrites,hasLength(1));
+
+  final clearing=state.clear();
+  await Future<void>.delayed(Duration.zero);
+  expect(store.pendingWrites,hasLength(1),
+   reason:'Clear must wait until the active load write has finished.');
+
+  store.pendingWrites[0].complete();
+  await assignment;
+  await clearing;
+
+  expect(state.packages,isEmpty);
+  expect(store.packages,isEmpty);
+  expect(state.routeOptimized,isFalse);
+ });
+
 }
