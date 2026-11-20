@@ -17,6 +17,7 @@ class GuardStore implements PackageStore {
   @override Future<void> clear()async{packages=[];optimized=false;}
 }
 
+
 class BlockingGuardStore implements PackageStore {
   BlockingGuardStore(this.packages, {this.optimized = true});
 
@@ -253,33 +254,6 @@ void main(){
  });
 
  test('car and motorcycle compartments cannot be mixed',()async{
-  SharedPreferences.setMockInitialValues({'load_vehicle_type':'car'});
-  final carStore=GuardStore([_package('car-package',1)],optimized:true);
-  final carState=AppState(store:carStore);
-  await carState.init();
-
-  await expectLater(
-   carState.setPhysicalZone('car-package','Baú traseiro'),
-   throwsA(isA<ArgumentError>()),
-  );
-  expect(carState.packages.single.physicalZone,isNull);
-  expect(carStore.saves,0);
-
-  SharedPreferences.setMockInitialValues({'load_vehicle_type':'motorcycle'});
-  final motorcycleStore=GuardStore([_package('motorcycle-package',1)],optimized:true);
-  final motorcycleState=AppState(store:motorcycleStore);
-  await motorcycleState.init();
-
-  await expectLater(
-   motorcycleState.setPhysicalZone('motorcycle-package','Porta-malas'),
-   throwsA(isA<ArgumentError>()),
-  );
-  expect(motorcycleState.packages.single.physicalZone,isNull);
-  expect(motorcycleStore.saves,0);
- });
-
-}
-
   SharedPreferences.setMockInitialValues({'load_vehicle_type':'car'});
   final carStore=GuardStore([_package('car-package',1)],optimized:true);
   final carState=AppState(store:carStore);
