@@ -341,4 +341,86 @@ void main(){
   expect(state.routeOptimized,isFalse);
  });
 
+
+ test('scanner addition waits for a pending load save and preserves existing compartment assignments',()async{
+  SharedPreferences.setMockInitialValues({});
+  final store=BlockingGuardStore([_package('a',1)]);
+  final state=AppState(store:store);
+  await state.init();
+
+  final assignment=state.setPhysicalZone('a','Frente esquerda');
+  await Future<void>.delayed(Duration.zero);
+  expect(store.pendingWrites,hasLength(1));
+
+  final scanning=state.addFromText('Rua Nova, 123');
+  await Future<void>.delayed(Duration.zero);
+  expect(store.pendingWrites,hasLength(1),
+   reason:'A scan must wait for the current package write.'); 
+
+  store.pendingWrites[0].complete();
+  await assignment;
+  await Future<void>.delayed(Duration.zero);
+
+  expect(store.pendingWrites,hasLength(2));
+  expect(store.snapshots[1][0].physicalZone,'Frente esquerda');
+  expect(store.snapshots[1][1].scanNumber,2);
+  expect(store.snapshots[1][1].physicalZone,isNull);
+
+  store.pendingWrites[1].complete();
+  await scanning;
+
+  expect(state.packages.first.physicalZone,'Frente esquerda');
+  expect(state.packages.last.scanNumber,2);
+  expect(state.routeOptimized,isFalse);
+ });
+
+ test('simultaneous scans receive distinct scan numbers after serialized insertion',()async{
+  SharedPreferences.setMockInitialValues({});
+  final store=BlockingGuardStore([_package('a',1)]);
+  final state=AppState(store:store);
+  await state.init();
+
+  final first=state.addFromText('Rua Nova, 123');
+  final second=state.addFromText('Avenida Brasil, 456');
+  await Future<void>.delayed(Duration.zero);
+  expect(store.pendingWrites,hasLength(1));
+
+  store.pendingWrites[0].complete();
+  await first;
+  await Future<void>.delayed(Duration.zero);
+  expect(store.pendingWrites,hasLength(2));
+  expect(store.snapshots[1].map((p)=>p.scanNumber),[1,2,3]);
+
+  store.pendingWrites[1].complete();
+  await second;
+
+  expect(state.packages.map((p)=>p.scanNumber),[1,2,3]);
+  expect(state.packages.map((p)=>p.id).toSet(),hasLength(3));
+ });
+
+ test('bulk scanner insertion preserves existing car and motorcycle load positions',()async{
+  for(final vehicle in [VehicleType.car,VehicleType.motorcycle]){
+   SharedPreferences.setMockInitialValues({'load_vehicle_type':vehicle.name});
+   final firstZone=vehicle==VehicleType.car?'Frente esquerda':'Bolsa lateral esquerda';
+   final secondZone=vehicle==VehicleType.car?'Porta-malas':'Baú traseiro';
+   final store=BlockingGuardStore([
+    _package('a',1,zone:firstZone),
+    _package('b',2,zone:secondZone),
+   ]);
+   final state=AppState(store:store);
+   await state.init();
+
+   final adding=state.addManyFromText('Rua Nova, 123\nAvenida Brasil, 456');
+   await Future<void>.delayed(Duration.zero);
+   expect(store.pendingWrites,hasLength(1));
+
+   store.pendingWrites[0].complete();
+   await adding;
+
+   expect(state.packages.take(2).map((p)=>p.physicalZone),[firstZone,secondZone]);
+   expect(state.packages.skip(2).map((p)=>p.scanNumber),[3,4]);
+   expect(state.routeOptimized,isFalse);
+  }
+ });
+
 }
