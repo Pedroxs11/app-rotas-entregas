@@ -252,9 +252,24 @@ class AppState extends ChangeNotifier {
  Future<int> addManyFromText(String text)async{final lines=text.split(RegExp(r'\r?\n')).map((e)=>e.trim()).where((e)=>e.isNotEmpty).toList();final parsed=<DeliveryPackage>[];var known=[...packages];for(final line in lines){try{final p=packageService.fromOcr(line,[...known,...parsed]);parsed.add(p);}catch(_){}}final enriched=await mapBounded(parsed,(p)async=>p.copyWith(address:await _enrichCep(p.address)),concurrency:4);if(enriched.isEmpty)return 0;packages=_clearLoadLabels([...packages,...enriched]);routeOptimized=false;await _persist();if(packages.any((p)=>p.address.validation==ValidationStatus.confirmed&&p.address.latitude==null))await locateConfirmed();return enriched.length;}
  Future<AddressData> _enrichCep(AddressData a)async{if(a.cep==null||a.cep!.replaceAll(RegExp(r'\D'),'').length!=8)return a;try{final c=await cepService.lookup(a.cep!);if(c==null)return a;final number=a.number?.trim();final hasNumber=number?.isNotEmpty==true;return AddressData(raw:a.raw,street:c.street.isNotEmpty?c.street:a.street,number:number,complement:a.complement,neighborhood:c.neighborhood.isNotEmpty?c.neighborhood:a.neighborhood,city:c.city.isNotEmpty?c.city:a.city,state:c.state.isNotEmpty?c.state:a.state,cep:c.cep,latitude:a.latitude,longitude:a.longitude,confidence:hasNumber?1.0:.70,validation:hasNumber?ValidationStatus.confirmed:ValidationStatus.needsReview);}catch(_){return a;}}
  Future<void> addStructured(AddressData address)async{final p=packageService.fromOcr(address.raw,packages);packages=_clearLoadLabels([...packages,p.copyWith(address:address)]);routeOptimized=false;await _persist();if(address.validation==ValidationStatus.confirmed)await locateConfirmed();}
- Future<void> updateAddress(int index,AddressData address) {
-  return _serializePackageMutation(() async {final p=packages[index];packages=[...packages]..[index]=p.copyWith(address:address);packages=_clearLoadLabels(packages);routeOptimized=false;await _persist();if(address.validation==ValidationStatus.confirmed)await locateConfirmed();
+ Future<void> updateAddress(int index,AddressData address) async {
+  await _serializePackageMutation(() async {
+   final p=packages[index];
+   final next=[...packages]..[index]=p.copyWith(address:address);
+   final previousOptimized=routeOptimized;
+   packages=_clearLoadLabels(next);
+   routeOptimized=false;
+   try{
+    await _persist();
+   }catch(error){
+    packages=[...next]..[index]=p;
+    routeOptimized=previousOptimized;
+    notifyListeners();
+    rethrow;
+   }
   });
+  // Network geocoding must not hold the package-mutation queue while it runs.
+  if(address.validation==ValidationStatus.confirmed)await locateConfirmed();
  }
  Future<void> update(int index,DeliveryPackage value) {
   return _serializePackageMutation(() async {
