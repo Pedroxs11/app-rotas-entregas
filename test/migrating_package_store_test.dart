@@ -75,6 +75,7 @@ DeliveryPackage pkg(String id,int scan)=>DeliveryPackage(
 
 void main(){
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test('copies legacy packages in exact order with route metadata',() async {
     final primary=FakeStore();
