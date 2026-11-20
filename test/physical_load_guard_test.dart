@@ -454,7 +454,6 @@ void main(){
   expect(store.saves,1);
  });
 
-}
 
  test('failed vehicle switch rolls back preferences and keeps the mutation queue usable',()async{
   SharedPreferences.setMockInitialValues({'load_vehicle_type':'car'});
@@ -526,3 +525,4 @@ void main(){
   expect(store.saves,1);
  });
 
+}
