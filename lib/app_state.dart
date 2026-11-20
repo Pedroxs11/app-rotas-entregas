@@ -302,10 +302,20 @@ class AppState extends ChangeNotifier {
   });
  }
  List<DeliveryPackage> _optimize(List<DeliveryPackage> active,double lat,double lng){final pinned=<int,DeliveryPackage>{};final free=<DeliveryPackage>[];for(var i=0;i<active.length;i++){if(active[i].pinned){pinned[i]=active[i];}else{free.add(active[i]);}}final optimized=routeEngine.optimize(free,startLat:lat,startLng:lng);for(final e in pinned.entries){final insertAt=e.key<0?0:(e.key>optimized.length?optimized.length:e.key);optimized.insert(insertAt,e.value);}return optimized;}
- Future<int> prepareRetryRoute(double lat,double lng, {
-  return _serializePackageMutation(() async {bool includeAddressProblems=false,bool includeSkipped=false
+ Future<int> prepareRetryRoute(double lat,double lng,{bool includeAddressProblems=false,bool includeSkipped=false}) {
+  return _serializePackageMutation(() async {
+   final retry=packages.where((p)=>p.status==DeliveryStatus.absent||(includeAddressProblems&&p.status==DeliveryStatus.addressProblem)||(includeSkipped&&p.status==DeliveryStatus.skipped)).toList();
+   if(retry.isEmpty)return 0;
+   final ids=retry.map((p)=>p.id).toSet();
+   final reset=retry.map((p)=>p.copyWith(status:DeliveryStatus.pending,clearCompletedAt:true)).toList();
+   final optimized=_optimize(reset,lat,lng);
+   final untouched=packages.where((p)=>!ids.contains(p.id)).toList();
+   packages=_clearLoadLabels([...untouched,...optimized]);
+   routeOptimized=true;
+   await _persist();
+   return optimized.length;
   });
- })async{final retry=packages.where((p)=>p.status==DeliveryStatus.absent||(includeAddressProblems&&p.status==DeliveryStatus.addressProblem)||(includeSkipped&&p.status==DeliveryStatus.skipped)).toList();if(retry.isEmpty)return 0;final ids=retry.map((p)=>p.id).toSet();final reset=retry.map((p)=>p.copyWith(status:DeliveryStatus.pending,clearCompletedAt:true)).toList();final optimized=_optimize(reset,lat,lng);final untouched=packages.where((p)=>!ids.contains(p.id)).toList();packages=_clearLoadLabels([...untouched,...optimized]);routeOptimized=true;await _persist();return optimized.length;}
+ }
  bool _isPhysicalLoadActive(DeliveryStatus status)=>status==DeliveryStatus.pending||status==DeliveryStatus.current||status==DeliveryStatus.absent||status==DeliveryStatus.addressProblem;
  void _validatePhysicalPackageIds(Set<String> packageIds){final byId={for(final p in packages)p.id:p};final missing=packageIds.where((id)=>!byId.containsKey(id)).toList();if(missing.isNotEmpty)throw StateError('Pacote(s) não encontrado(s): ${missing.join(', ')}');final inactive=packageIds.where((id)=>!_isPhysicalLoadActive(byId[id]!.status)).toList();if(inactive.isNotEmpty)throw StateError('Pacote fora da rota ativa não pode ser reorganizado: ${inactive.join(', ')}');}
  Future<void> setPhysicalZones(Set<String> packageIds,String zone){
