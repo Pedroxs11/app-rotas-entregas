@@ -416,7 +416,9 @@ class AppState extends ChangeNotifier {
       // Do not revive a delivered/removed package or overwrite an address
       // edited while the network geocoding request was in flight.
       if(current.status==DeliveryStatus.delivered||
-         !_sameAddress(current.address,candidate.address))continue;
+         !_sameAddress(current.address,candidate.address)){
+        continue;
+       }
       final original=current.address;
       next[index]=current.copyWith(address:AddressData(
        raw:original.raw,
@@ -519,9 +521,20 @@ class AppState extends ChangeNotifier {
  List<DeliveryPackage> _clearLoadLabels(List<DeliveryPackage> source)=>source.map((p)=>p.status==DeliveryStatus.delivered?p:p.copyWith(clearPhysicalZone:true)).toList();
  Future<void> clear() {
   return _serializePackageMutation(() async {
-   await _persistPackageMutation(<DeliveryPackage>[],nextRouteOptimized:false);
-   lastLocateAttempted=lastLocateSucceeded=lastLocateFailed=0;
-   notifyListeners();
+   final previousPackages=packages;
+   final previousOptimized=routeOptimized;
+   packages=[];
+   routeOptimized=false;
+   try{
+    await store.clear();
+    lastLocateAttempted=lastLocateSucceeded=lastLocateFailed=0;
+    notifyListeners();
+   }catch(error){
+    packages=previousPackages;
+    routeOptimized=previousOptimized;
+    notifyListeners();
+    rethrow;
+   }
   });
  }
  Future<void> _persist()async{await store.save(packages,routeOptimized:routeOptimized);notifyListeners();}
