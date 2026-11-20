@@ -142,6 +142,28 @@ void main(){
     expect(await store.loadRouteOptimized(),isFalse);
   });
 
+  test('clear migrates legacy data before snapshot so rollback cannot resurrect the route',() async {
+    final primary=FakeStore();
+    final legacy=FakeStore(
+      packages:[pkg('legacy-only',1)],
+      optimized:true,
+      failClearAfterMutation:true,
+    );
+    final store=MigratingPackageStore(primary:primary,legacy:legacy);
+
+    await expectLater(store.clear(),throwsStateError);
+
+    // clear() must snapshot the same logical state that load() would expose,
+    // even when the primary database had not been migrated yet.
+    expect(primary.packages.map((p)=>p.id),['legacy-only']);
+    expect(primary.optimized,isTrue);
+    expect(legacy.packages.map((p)=>p.id),['legacy-only']);
+    expect(legacy.optimized,isTrue);
+
+    expect((await store.load()).map((p)=>p.id),['legacy-only']);
+    expect(await store.loadRouteOptimized(),isTrue);
+  });
+
   test('failed legacy clear before mutation restores primary and does not resurrect stale legacy data',() async {
     final primary=FakeStore(packages:[pkg('current',1)],optimized:true);
     final legacy=FakeStore(
