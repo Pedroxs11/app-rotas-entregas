@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MutationStore implements PackageStore {
   MutationStore(this.packages,{this.optimized=false});
@@ -22,6 +23,8 @@ DeliveryPackage _p(String id,int scan,{String? zone,DeliveryStatus status=Delive
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   test('adding structured package invalidates route while preserving existing load positions',() async {
     final store=MutationStore([_p('old',1,zone:'A-01')],optimized:true);
     final state=AppState(store:store);await state.init();
