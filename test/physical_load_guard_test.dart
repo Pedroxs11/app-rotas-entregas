@@ -150,4 +150,25 @@ void main(){
   expect(store.saves,0);
  });
 
+ test('individual assignment and clearing roll back in-memory positions when persistence fails',()async{
+  final store=GuardStore([
+   _package('a',1,zone:'Porta-malas'),
+  ],optimized:true,failSaves:true);
+  final state=AppState(store:store);
+  await state.init();
+
+  await expectLater(
+   state.setPhysicalZone('a','Frente esquerda'),
+   throwsA(isA<StateError>()),
+  );
+  expect(state.packages.single.physicalZone,'Porta-malas');
+
+  await expectLater(
+   state.setPhysicalZone('a',null),
+   throwsA(isA<StateError>()),
+  );
+  expect(state.packages.single.physicalZone,'Porta-malas');
+  expect(store.saves,0);
+ });
+
 }
