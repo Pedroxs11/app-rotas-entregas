@@ -11,6 +11,7 @@ class _ConfigurationStore implements PackageStore {
 
   List<DeliveryPackage> items;
   int saves = 0;
+  bool failSaves = false;
 
   @override
   Future<void> clear() async {}
@@ -23,6 +24,7 @@ class _ConfigurationStore implements PackageStore {
 
   @override
   Future<void> save(List<DeliveryPackage> value, {bool? routeOptimized}) async {
+    if (failSaves) throw StateError('simulated package store failure');
     items = [...value];
     saves++;
   }
@@ -476,6 +478,65 @@ void main() {
     expect(state.packages[0].physicalZone, isNull);
     expect(state.packages[1].physicalZone, 'Porta-malas');
     expect(state.activePhysicalZones, AppState.carPhysicalZones);
+  });
+
+  test('compartment changes roll back in-memory state and preferences when package persistence fails',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'car',
+      'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+    });
+    final store = _ConfigurationStore([
+      _package(30, zone: 'Porta-malas'),
+    ])..failSaves = true;
+    final state = AppState(store: store);
+    await state.init();
+    final preferences = await SharedPreferences.getInstance();
+
+    await expectLater(
+      state.setActivePhysicalZones(['Frente esquerda']),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(state.activePhysicalZones, ['Frente esquerda', 'Porta-malas']);
+    expect(state.packages.single.physicalZone, 'Porta-malas');
+    expect(store.items.single.physicalZone, 'Porta-malas');
+    expect(
+      preferences.getStringList('load_zones_car'),
+      ['Frente esquerda', 'Porta-malas'],
+    );
+    expect(store.saves, 0);
+  });
+
+  test('vehicle switch rolls back vehicle, compartments and packages when persistence fails',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'load_vehicle_type': 'car',
+      'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+      'load_zones_motorcycle': ['Baú traseiro', 'Mochila de entrega'],
+    });
+    final store = _ConfigurationStore([
+      _package(31, zone: 'Porta-malas'),
+    ])..failSaves = true;
+    final state = AppState(store: store);
+    await state.init();
+    final preferences = await SharedPreferences.getInstance();
+
+    await expectLater(
+      state.setVehicleType(VehicleType.motorcycle),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(state.vehicleType, VehicleType.car);
+    expect(state.activePhysicalZones, ['Frente esquerda', 'Porta-malas']);
+    expect(state.packages.single.physicalZone, 'Porta-malas');
+    expect(store.items.single.physicalZone, 'Porta-malas');
+    expect(preferences.getString('load_vehicle_type'), 'car');
+    expect(
+      preferences.getStringList('load_zones_motorcycle'),
+      ['Baú traseiro', 'Mochila de entrega'],
+    );
+    expect(store.saves, 0);
   });
 
 }
