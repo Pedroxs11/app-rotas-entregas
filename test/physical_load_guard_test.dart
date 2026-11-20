@@ -455,3 +455,74 @@ void main(){
  });
 
 }
+
+ test('failed vehicle switch rolls back preferences and keeps the mutation queue usable',()async{
+  SharedPreferences.setMockInitialValues({'load_vehicle_type':'car'});
+  final store=GuardStore(
+   [_package('a',1,zone:'Porta-malas')],
+   optimized:true,
+   failSaves:true,
+  );
+  final state=AppState(store:store);
+  await state.init();
+  final prefs=await SharedPreferences.getInstance();
+
+  await expectLater(
+   state.setVehicleType(VehicleType.motorcycle),
+   throwsA(isA<StateError>()),
+  );
+
+  expect(state.vehicleType,VehicleType.car);
+  expect(state.activePhysicalZones,AppState.carPhysicalZones);
+  expect(state.packages.single.physicalZone,'Porta-malas');
+  expect(store.packages.single.physicalZone,'Porta-malas');
+  expect(prefs.getString('load_vehicle_type'),'car');
+  expect(prefs.getStringList('load_zones_motorcycle'),isNull);
+
+  store.failSaves=false;
+  await state.setPhysicalZone('a','Frente esquerda');
+
+  expect(state.vehicleType,VehicleType.car);
+  expect(state.packages.single.physicalZone,'Frente esquerda');
+  expect(store.packages.single.physicalZone,'Frente esquerda');
+  expect(prefs.getString('load_vehicle_type'),'car');
+  expect(store.saves,1);
+ });
+
+ test('failed compartment update restores saved zones and allows a successful retry',()async{
+  SharedPreferences.setMockInitialValues({
+   'load_vehicle_type':'car',
+   'load_zones_car':['Frente esquerda','Porta-malas'],
+  });
+  final store=GuardStore(
+   [_package('a',1,zone:'Porta-malas')],
+   optimized:true,
+   failSaves:true,
+  );
+  final state=AppState(store:store);
+  await state.init();
+  final prefs=await SharedPreferences.getInstance();
+  final originalZones=AppState.carPhysicalZones
+      .where((zone)=>zone=='Frente esquerda'||zone=='Porta-malas')
+      .toList();
+
+  await expectLater(
+   state.setActivePhysicalZones(['Frente esquerda']),
+   throwsA(isA<StateError>()),
+  );
+
+  expect(state.activePhysicalZones,originalZones);
+  expect(state.packages.single.physicalZone,'Porta-malas');
+  expect(store.packages.single.physicalZone,'Porta-malas');
+  expect(prefs.getStringList('load_zones_car'),originalZones);
+
+  store.failSaves=false;
+  await state.setActivePhysicalZones(['Frente esquerda']);
+
+  expect(state.activePhysicalZones,['Frente esquerda']);
+  expect(state.packages.single.physicalZone,isNull);
+  expect(store.packages.single.physicalZone,isNull);
+  expect(prefs.getStringList('load_zones_car'),['Frente esquerda']);
+  expect(store.saves,1);
+ });
+
