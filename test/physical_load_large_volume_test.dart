@@ -46,6 +46,46 @@ void main(){
   expect(store.saves,greaterThan(0));
  });
 
+ test('600 packages can be bulk-assigned across every car and motorcycle compartment',()async{
+  for(final vehicle in [VehicleType.car,VehicleType.motorcycle]){
+   SharedPreferences.setMockInitialValues({'load_vehicle_type':vehicle.name});
+   final zones=vehicle==VehicleType.car
+       ?AppState.carPhysicalZones
+       :AppState.motorcyclePhysicalZones;
+   final expectedPerZone=600~/zones.length;
+   final store=VolumeStore(List.generate(600,(i)=>_p(i+1)));
+   final state=AppState(store:store);
+   await state.init();
+
+   expect(state.vehicleType,vehicle);
+   expect(state.routeOptimized,isTrue);
+   expect(state.packages,hasLength(600));
+
+   for(var zoneIndex=0;zoneIndex<zones.length;zoneIndex++){
+    final ids=state.packages
+        .skip(zoneIndex*expectedPerZone)
+        .take(expectedPerZone)
+        .map((p)=>p.id)
+        .toSet();
+    expect(ids,hasLength(expectedPerZone));
+    await state.setPhysicalZones(ids,zones[zoneIndex]);
+   }
+
+   expect(state.packages,hasLength(600));
+   expect(state.packages.every((p)=>p.physicalZone!=null),isTrue);
+   for(final zone in zones){
+    expect(
+     state.packages.where((p)=>p.physicalZone==zone),
+     hasLength(expectedPerZone),
+     reason:'$vehicle must retain the expected package count in $zone',
+    );
+   }
+   expect(state.routeOptimized,isTrue);
+   expect(store.packages.map((p)=>p.id).toSet(),hasLength(600));
+   expect(store.saves,zones.length);
+  }
+ });
+
  test('bulk assigned compartments survive a fresh app state for car and motorcycle',()async{
   for(final vehicle in [VehicleType.car,VehicleType.motorcycle]){
    SharedPreferences.setMockInitialValues({});
