@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MemoryPackageStore implements PackageStore {
   List<DeliveryPackage> packages;
@@ -32,6 +33,8 @@ DeliveryPackage package(String id,int scan,{DeliveryStatus status=DeliveryStatus
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   test('AppState restores packages and route state through PackageStore',() async {
     final original=package('saved-1',7,status:DeliveryStatus.absent,zone:'B-03',lat:-23.55,lng:-46.63);
     final store=MemoryPackageStore(packages:[original],optimized:true);
