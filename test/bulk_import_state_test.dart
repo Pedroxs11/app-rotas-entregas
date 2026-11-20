@@ -39,6 +39,26 @@ void main(){
     expect(count,1);expect(state.packages.firstWhere((p)=>p.id=='done').physicalZone,'HIST');expect(state.packages.firstWhere((p)=>p.id=='done').status,DeliveryStatus.delivered);expect(state.packages.firstWhere((p)=>p.id=='active').physicalZone,'A-02');expect(state.packages.last.physicalZone,isNull);expect(state.routeOptimized,isFalse);
   });
 
+  test('parallel scanner imports return the exact package created by each capture',() async {
+    final store=BulkStore([]);
+    final state=AppState(store:store);
+    await state.init();
+
+    final captured=await Future.wait([
+      state.addFromText('etiqueta sem endereco alpha',trackingCode:'SCAN-001'),
+      state.addFromText('etiqueta sem endereco beta',trackingCode:'SCAN-002'),
+    ]);
+
+    expect(captured.map((p)=>p.trackingCode).toList(),['SCAN-001','SCAN-002']);
+    expect(captured.map((p)=>p.scanNumber).toSet(),{1,2});
+    expect(captured.map((p)=>p.id).toSet(),hasLength(2));
+    expect(
+      state.packages.map((p)=>p.id).toSet(),
+      containsAll(captured.map((p)=>p.id)),
+    );
+    expect(state.packages,hasLength(2));
+  });
+
   test('empty bulk import is a true no-op and preserves optimized route and load labels',() async {
     final store=BulkStore([_existing('old',1,zone:'A-01')],optimized:true);final state=AppState(store:store);await state.init();
     final count=await state.addManyFromText('  \n\n   ');
