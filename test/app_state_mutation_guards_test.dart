@@ -8,9 +8,10 @@ class MutationStore implements PackageStore {
   List<DeliveryPackage> packages;
   bool optimized;
   int saves=0;
+  bool failNextSave=false;
   @override Future<List<DeliveryPackage>> load() async=>[...packages];
   @override Future<bool> loadRouteOptimized() async=>optimized;
-  @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized}) async {packages=[...value];if(routeOptimized!=null)optimized=routeOptimized;saves++;}
+  @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized}) async {if(failNextSave){failNextSave=false;throw StateError('simulated storage failure');}packages=[...value];if(routeOptimized!=null)optimized=routeOptimized;saves++;}
   @override Future<void> clear() async {packages=[];optimized=false;}
 }
 
@@ -57,5 +58,94 @@ void main(){
     final completed=DateTime.utc(2026,9,13,18);
     await state.update(0,state.packages.single.copyWith(status:DeliveryStatus.delivered,completedAt:completed));
     expect(state.routeOptimized,isTrue);expect(state.packages.single.status,DeliveryStatus.delivered);expect(state.packages.single.completedAt,completed);expect(state.packages.single.physicalZone,'A-01');expect(store.optimized,isTrue);expect(store.saves,1);
+
+  test('remove rolls back packages and route metadata when persistence fails',() async {
+    final original=[_p('a',1,zone:'A-01'),_p('b',2,zone:'A-02')];
+    final store=MutationStore(original,optimized:true);
+    final state=AppState(store:store);await state.init();
+    store.failNextSave=true;
+
+    await expectLater(state.removePackage('a'),throwsA(isA<StateError>()));
+
+    expect(state.packages.map((p)=>p.id).toList(),['a','b']);
+    expect(state.packages.map((p)=>p.physicalZone).toList(),['A-01','A-02']);
+    expect(state.routeOptimized,isTrue);
+    expect(store.packages.map((p)=>p.id).toList(),['a','b']);
+    expect(store.optimized,isTrue);
+  });
+
+  test('reorder rolls back order and physical positions when persistence fails',() async {
+    final original=[_p('a',1,zone:'A-01'),_p('b',2,zone:'A-02')];
+    final store=MutationStore(original,optimized:true);
+    final state=AppState(store:store);await state.init();
+    store.failNextSave=true;
+
+    await expectLater(state.reorder(0,2),throwsA(isA<StateError>()));
+
+    expect(state.packages.map((p)=>p.id).toList(),['a','b']);
+    expect(state.packages.map((p)=>p.physicalZone).toList(),['A-01','A-02']);
+    expect(state.routeOptimized,isTrue);
+    expect(store.packages.map((p)=>p.id).toList(),['a','b']);
+  });
+
+  test('optimization restores previous route state when persistence fails',() async {
+    final original=[_p('a',1,zone:'A-01'),_p('b',2,zone:'A-02')];
+    final store=MutationStore(original,optimized:false);
+    final state=AppState(store:store);await state.init();
+    store.failNextSave=true;
+
+    await expectLater(state.optimizeFrom(-23.5,-46.6),throwsA(isA<StateError>()));
+
+    expect(state.packages.map((p)=>p.id).toList(),['a','b']);
+    expect(state.packages.map((p)=>p.physicalZone).toList(),['A-01','A-02']);
+    expect(state.routeOptimized,isFalse);
+    expect(store.optimized,isFalse);
+  });
+
+  test('retry preparation restores delivery status and load positions when persistence fails',() async {
+    final original=[
+      _p('absent',1,zone:'A-01',status:DeliveryStatus.absent),
+      _p('pending',2,zone:'A-02',status:DeliveryStatus.pending),
+    ];
+    final store=MutationStore(original,optimized:true);
+    final state=AppState(store:store);await state.init();
+    store.failNextSave=true;
+
+    await expectLater(
+      state.prepareRetryRoute(-23.5,-46.6),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(state.packages.map((p)=>p.status).toList(),[
+      DeliveryStatus.absent,
+      DeliveryStatus.pending,
+    ]);
+    expect(state.packages.map((p)=>p.physicalZone).toList(),['A-01','A-02']);
+    expect(state.routeOptimized,isTrue);
+    expect(store.packages.first.status,DeliveryStatus.absent);
+  });
+
+  test('address edit restores every package position when persistence fails',() async {
+    final original=[_p('a',1,zone:'A-01'),_p('b',2,zone:'A-02')];
+    final store=MutationStore(original,optimized:true);
+    final state=AppState(store:store);await state.init();
+    const edited=AddressData(
+      raw:'Rua Nova, 100',
+      street:'Rua Nova',
+      number:'100',
+      city:'São Paulo',
+      state:'SP',
+      confidence:.8,
+      validation:ValidationStatus.confirmed,
+    );
+    store.failNextSave=true;
+
+    await expectLater(state.updateAddress(0,edited),throwsA(isA<StateError>()));
+
+    expect(state.packages.first.address.raw,'Rua Teste, 1');
+    expect(state.packages.map((p)=>p.physicalZone).toList(),['A-01','A-02']);
+    expect(state.routeOptimized,isTrue);
+    expect(store.packages.map((p)=>p.physicalZone).toList(),['A-01','A-02']);
+  });
   });
 }
