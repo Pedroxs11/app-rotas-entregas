@@ -15,12 +15,15 @@ class AppState extends ChangeNotifier {
   final previous=_packageMutationTail;
   final release=Completer<void>();
   _packageMutationTail=release.future;
-  return ()async{
-   await previous;
-   try{
+  return () async {
+   try {
+    await previous;
     return await operation();
-   }finally{
-    release.complete();
+   } finally {
+    // Always release the next queued mutation, even if waiting for a previous
+    // tail or executing this operation fails. The caller still receives the
+    // original error; only the queue hand-off is guaranteed to complete.
+    if (!release.isCompleted) release.complete();
    }
   }();
  }
