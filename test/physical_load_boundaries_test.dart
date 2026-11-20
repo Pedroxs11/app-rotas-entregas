@@ -467,7 +467,7 @@ void main() {
     );
   });
 
-  test('package updates normalize active compartment labels and preserve delivered history', () async {
+  test('generic package updates cannot overwrite active or delivered compartment labels', () async {
     final store = LoadStore([
       _p(1, zone: 'Porta-malas'),
       _p(2, status: DeliveryStatus.delivered, zone: 'Porta-malas'),
@@ -475,21 +475,23 @@ void main() {
     final state = AppState(store: store);
     await state.init();
 
+    // A stale delivery-screen model must not move or clear the latest load
+    // assignment. Compartment changes go through the dedicated organizer API.
     await state.update(
       0,
-      state.packages[0].copyWith(physicalZone: '  Porta-malas  '),
+      state.packages[0].copyWith(physicalZone: '  Frente esquerda  '),
     );
     await state.update(
       1,
-      state.packages[1].copyWith(physicalZone: '  Porta-malas  '),
+      state.packages[1].copyWith(physicalZone: '  Frente esquerda  '),
     );
     await state.update(
       0,
       state.packages[0].copyWith(physicalZone: '   '),
     );
 
-    expect(state.packages[0].physicalZone, isNull);
-    expect(state.packages[1].physicalZone, '  Porta-malas  ');
+    expect(state.packages[0].physicalZone, 'Porta-malas');
+    expect(state.packages[1].physicalZone, 'Porta-malas');
     expect(store.saves, 3);
   });
 
@@ -521,7 +523,9 @@ void main() {
 
     expect(state.packages[0].physicalZone, isNull);
     expect(state.packages[1].physicalZone, 'A-01');
-    expect(state.packages[2].physicalZone, ' Porta-malas ');
+    // Delivered history keeps its original label; generic updates cannot
+    // replace it with a stale, whitespace-padded value.
+    expect(state.packages[2].physicalZone, 'Porta-malas');
   });
 
   test('physical zone mutations normalize whitespace at the state boundary', () async {
