@@ -27,6 +27,32 @@ jobs:
       - name: Generate Flutter platform files
         run: flutter create --platforms=android,ios --org com.pedro .
 
+      - name: Add Maven Central to Gradle plugin resolution
+        shell: bash
+        run: |
+          # Flutter's included Gradle build may resolve Kotlin plugin artifacts
+          # from Maven Central. Add it before settings/plugin resolution for every
+          # Gradle build, including included builds created by Flutter.
+          mkdir -p "$HOME/.gradle"
+          cat > "$HOME/.gradle/init.gradle" <<'EOF'
+          gradle.beforeSettings { settings ->
+              settings.pluginManagement.repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          gradle.beforeProject { project ->
+              project.buildscript.repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          EOF
+
+
       - name: Configure permanent Android application id and MainActivity package
         shell: bash
         run: |
