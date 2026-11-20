@@ -56,6 +56,8 @@ DeliveryPackage _package(String id,int scan,{String? zone,DeliveryStatus status=
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
  test('manual position cannot be assigned before route optimization',()async{
   final store=GuardStore([_package('a',1),_package('b',2)]);
   final state=AppState(store:store);await state.init();
