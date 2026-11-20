@@ -312,20 +312,11 @@ class AppState extends ChangeNotifier {
  }
  Future<void> updateAddress(int index,AddressData address) async {
   await _serializePackageMutation(() async {
-   final p=packages[index];
-   final previousPackages=packages;
-   final previousOptimized=routeOptimized;
-   final next=[...packages]..[index]=p.copyWith(address:address);
-   packages=_clearLoadLabels(next);
-   routeOptimized=false;
-   try{
-    await _persist();
-   }catch(error){
-    packages=previousPackages;
-    routeOptimized=previousOptimized;
-    notifyListeners();
-    rethrow;
-   }
+   final next=[...packages]..[index]=packages[index].copyWith(address:address);
+   await _persistPackageMutation(
+    _clearLoadLabels(next),
+    nextRouteOptimized:false,
+   );
   });
   // Network geocoding must not hold the package-mutation queue while it runs.
   if(address.validation==ValidationStatus.confirmed)await locateConfirmed();
@@ -363,11 +354,24 @@ class AppState extends ChangeNotifier {
  }
  Future<void> removePackage(String packageId)async=>removePackages({packageId});
  Future<void> removePackages(Set<String> packageIds) {
-  return _serializePackageMutation(() async {if(packageIds.isEmpty)return;final next=packages.where((p)=>!packageIds.contains(p.id)).toList();if(next.length==packages.length)return;packages=next;routeOptimized=false;await _persist();
+  return _serializePackageMutation(() async {
+   if(packageIds.isEmpty)return;
+   final next=packages.where((p)=>!packageIds.contains(p.id)).toList();
+   if(next.length==packages.length)return;
+   await _persistPackageMutation(next,nextRouteOptimized:false);
   });
  }
  Future<void> reorder(int oldIndex,int newIndex) {
-  return _serializePackageMutation(() async {if(newIndex>oldIndex)newIndex--;if(newIndex==oldIndex)return;final x=[...packages];final p=x.removeAt(oldIndex);x.insert(newIndex,p);packages=_clearLoadLabels(x);routeOptimized=false;await _persist();
+  return _serializePackageMutation(() async {
+   if(newIndex>oldIndex)newIndex--;
+   if(newIndex==oldIndex)return;
+   final next=[...packages];
+   final package=next.removeAt(oldIndex);
+   next.insert(newIndex,package);
+   await _persistPackageMutation(
+    _clearLoadLabels(next),
+    nextRouteOptimized:false,
+   );
   });
  }
  bool _sameAddress(AddressData left,AddressData right)=>
@@ -451,7 +455,17 @@ class AppState extends ChangeNotifier {
   }
  }
  Future<void> optimizeFrom(double lat,double lng) {
-  return _serializePackageMutation(() async {final activeStatuses={DeliveryStatus.pending,DeliveryStatus.current,DeliveryStatus.absent,DeliveryStatus.addressProblem};final finished=packages.where((p)=>!activeStatuses.contains(p.status)).toList();final active=packages.where((p)=>activeStatuses.contains(p.status)).toList();packages=[...finished,..._optimize(active,lat,lng)];routeOptimized=true;await _persist();
+  return _serializePackageMutation(() async {
+   final activeStatuses={
+    DeliveryStatus.pending,
+    DeliveryStatus.current,
+    DeliveryStatus.absent,
+    DeliveryStatus.addressProblem,
+   };
+   final finished=packages.where((p)=>!activeStatuses.contains(p.status)).toList();
+   final active=packages.where((p)=>activeStatuses.contains(p.status)).toList();
+   final next=[...finished,..._optimize(active,lat,lng)];
+   await _persistPackageMutation(next,nextRouteOptimized:true);
   });
  }
  List<DeliveryPackage> _optimize(List<DeliveryPackage> active,double lat,double lng){final pinned=<int,DeliveryPackage>{};final free=<DeliveryPackage>[];for(var i=0;i<active.length;i++){if(active[i].pinned){pinned[i]=active[i];}else{free.add(active[i]);}}final optimized=routeEngine.optimize(free,startLat:lat,startLng:lng);for(final e in pinned.entries){final insertAt=e.key<0?0:(e.key>optimized.length?optimized.length:e.key);optimized.insert(insertAt,e.value);}return optimized;}
@@ -463,9 +477,8 @@ class AppState extends ChangeNotifier {
    final reset=retry.map((p)=>p.copyWith(status:DeliveryStatus.pending,clearCompletedAt:true)).toList();
    final optimized=_optimize(reset,lat,lng);
    final untouched=packages.where((p)=>!ids.contains(p.id)).toList();
-   packages=_clearLoadLabels([...untouched,...optimized]);
-   routeOptimized=true;
-   await _persist();
+   final next=_clearLoadLabels([...untouched,...optimized]);
+   await _persistPackageMutation(next,nextRouteOptimized:true);
    return optimized.length;
   });
  }
