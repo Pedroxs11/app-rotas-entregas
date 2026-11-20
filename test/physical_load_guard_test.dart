@@ -14,32 +14,6 @@ class GuardStore implements PackageStore {
   @override Future<bool> loadRouteOptimized()async=>optimized;
   @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized})async{if(failSaves)throw StateError('simulated storage failure');packages=[...value];if(routeOptimized!=null)optimized=routeOptimized;saves++;}
   @override Future<void> clear()async{packages=[];optimized=false;}
- test('car and motorcycle compartments cannot be mixed',()async{
-  SharedPreferences.setMockInitialValues({'load_vehicle_type':'car'});
-  final carStore=GuardStore([_package('car-package',1)],optimized:true);
-  final carState=AppState(store:carStore);
-  await carState.init();
-
-  await expectLater(
-   carState.setPhysicalZone('car-package','Baú traseiro'),
-   throwsA(isA<ArgumentError>()),
-  );
-  expect(carState.packages.single.physicalZone,isNull);
-  expect(carStore.saves,0);
-
-  SharedPreferences.setMockInitialValues({'load_vehicle_type':'motorcycle'});
-  final motorcycleStore=GuardStore([_package('motorcycle-package',1)],optimized:true);
-  final motorcycleState=AppState(store:motorcycleStore);
-  await motorcycleState.init();
-
-  await expectLater(
-   motorcycleState.setPhysicalZone('motorcycle-package','Porta-malas'),
-   throwsA(isA<ArgumentError>()),
-  );
-  expect(motorcycleState.packages.single.physicalZone,isNull);
-  expect(motorcycleStore.saves,0);
- });
-
 }
 
 DeliveryPackage _package(String id,int scan,{String? zone,DeliveryStatus status=DeliveryStatus.pending})=>DeliveryPackage(
@@ -196,6 +170,32 @@ void main(){
   );
   expect(state.packages.single.physicalZone,'Porta-malas');
   expect(store.saves,0);
+ });
+
+ test('car and motorcycle compartments cannot be mixed',()async{
+  SharedPreferences.setMockInitialValues({'load_vehicle_type':'car'});
+  final carStore=GuardStore([_package('car-package',1)],optimized:true);
+  final carState=AppState(store:carStore);
+  await carState.init();
+
+  await expectLater(
+   carState.setPhysicalZone('car-package','Baú traseiro'),
+   throwsA(isA<ArgumentError>()),
+  );
+  expect(carState.packages.single.physicalZone,isNull);
+  expect(carStore.saves,0);
+
+  SharedPreferences.setMockInitialValues({'load_vehicle_type':'motorcycle'});
+  final motorcycleStore=GuardStore([_package('motorcycle-package',1)],optimized:true);
+  final motorcycleState=AppState(store:motorcycleStore);
+  await motorcycleState.init();
+
+  await expectLater(
+   motorcycleState.setPhysicalZone('motorcycle-package','Porta-malas'),
+   throwsA(isA<ArgumentError>()),
+  );
+  expect(motorcycleState.packages.single.physicalZone,isNull);
+  expect(motorcycleStore.saves,0);
  });
 
 }
