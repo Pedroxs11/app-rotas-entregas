@@ -82,12 +82,18 @@ void main() {
         await tester.tap(find.byTooltip('Selecionar vários'));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Selecionar lista'));
+        final selectListButton = find.text('Selecionar lista');
+        await tester.ensureVisible(selectListButton);
+        await tester.pumpAndSettle();
+        await tester.tap(selectListButton);
         await tester.pumpAndSettle();
 
         expect(find.text('600 pacote(s) selecionado(s)'), findsOneWidget);
 
-        await tester.tap(find.text(targetLabel));
+        final targetCompartment = find.text(targetLabel);
+        await tester.ensureVisible(targetCompartment);
+        await tester.pumpAndSettle();
+        await tester.tap(targetCompartment);
         await tester.pumpAndSettle();
 
         expect(state.packages, hasLength(600));
