@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _MultiZoneStore implements PackageStore {
-  _MultiZoneStore(this.items, {this.optimized = true});
+  _MultiZoneStore(this.items);
+
+  bool optimized = true;
 
   List<DeliveryPackage> items;
   bool optimized;
