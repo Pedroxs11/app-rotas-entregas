@@ -49,8 +49,20 @@ class _LoadScreenState extends State<LoadScreen>{
   bool _hasActiveZone(DeliveryPackage p)=>p.physicalZone?.trim().isNotEmpty==true&&widget.state.activePhysicalZones.contains(p.physicalZone);
   bool get _organized=>_route.isNotEmpty&&_route.every(_hasActiveZone);
 
+  String _normalizeSearchText(String value) => value.toLowerCase()
+      .replaceAll(RegExp(r'[áàâãäå]'), 'a')
+      .replaceAll(RegExp(r'[éèêë]'), 'e')
+      .replaceAll(RegExp(r'[íìîï]'), 'i')
+      .replaceAll(RegExp(r'[óòôõöø]'), 'o')
+      .replaceAll(RegExp(r'[úùûü]'), 'u')
+      .replaceAll('ç', 'c')
+      .replaceAll('ñ', 'n')
+      .replaceAll(RegExp(r'[ýÿ]'), 'y');
+
   bool _matchesSearch(DeliveryPackage p){
-    final q=search.trim().toLowerCase();
+    // Drivers often type addresses without accents. Normalize both sides so
+    // "Sao Paulo" finds "São Paulo" without changing the displayed address.
+    final q=_normalizeSearchText(search.trim());
     if(q.isEmpty)return true;
     final number=p.scanNumber.toString();
     final paddedNumber=number.padLeft(2,'0');
@@ -59,12 +71,12 @@ class _LoadScreenState extends State<LoadScreen>{
         ?normalizedQuery.substring(1)
         :'';
     final matchesCode=codeNumber==number||codeNumber==paddedNumber;
-    return p.label.toLowerCase().contains(q)||
+    return _normalizeSearchText(p.label).contains(q)||
         matchesCode||
         number.contains(q)||
         paddedNumber.contains(q)||
-        p.address.formatted.toLowerCase().contains(q)||
-        p.address.raw.toLowerCase().contains(q);
+        _normalizeSearchText(p.address.formatted).contains(q)||
+        _normalizeSearchText(p.address.raw).contains(q);
   }
   List<DeliveryPackage> get _visibleRoute=>_route.where((p)=>!_hasActiveZone(p)&&_matchesSearch(p)).toList();
   DeliveryPackage? _selected(){
