@@ -106,12 +106,13 @@ void main() {
         await tester.tap(find.byTooltip('Selecionar vários'));
         await tester.pumpAndSettle();
 
-        for (final label in ['P01', 'P02']) {
-          final chip = find.widgetWithText(InputChip, label);
-          await tester.ensureVisible(chip);
-          await tester.tap(chip);
-          await tester.pumpAndSettle();
-        }
+        // Select the two active packages through the screen's bulk action.
+        // The delivered package is intentionally excluded from the active route.
+        final selectListButton = find.text('Selecionar lista');
+        await tester.ensureVisible(selectListButton);
+        await tester.pumpAndSettle();
+        await tester.tap(selectListButton);
+        await tester.pumpAndSettle();
 
         expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
         final removeButton = find.text('RETIRAR 2 PACOTES');
