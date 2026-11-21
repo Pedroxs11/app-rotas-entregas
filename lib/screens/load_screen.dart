@@ -655,72 +655,86 @@ class _LoadScreenState extends State<LoadScreen>{
         :selected?.physicalZone==zone;
     final highlighted=selected!=null||selectedIds.isNotEmpty;
     final hasSearch=search.trim().isNotEmpty;
-    return InkWell(
-      onTap:()=>_assign(zone),
-      borderRadius:BorderRadius.circular(18),
-      child:AnimatedContainer(
-        duration:const Duration(milliseconds:160),
-        constraints:BoxConstraints(minHeight:wide?78:126),
-        padding:const EdgeInsets.all(9),
-        decoration:BoxDecoration(
+    return AnimatedContainer(
+      duration:const Duration(milliseconds:160),
+      constraints:BoxConstraints(minHeight:wide?78:126),
+      padding:const EdgeInsets.all(9),
+      decoration:BoxDecoration(
+        color:activeZone
+            ?Theme.of(context).colorScheme.primaryContainer
+            :Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius:BorderRadius.circular(18),
+        border:Border.all(
           color:activeZone
-              ?Theme.of(context).colorScheme.primaryContainer
-              :Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius:BorderRadius.circular(18),
-          border:Border.all(
-            color:activeZone
-                ?Theme.of(context).colorScheme.primary
-                :highlighted
-                    ?Theme.of(context).colorScheme.outline
-                    :Theme.of(context).colorScheme.outlineVariant,
-            width:activeZone?2:1,
+              ?Theme.of(context).colorScheme.primary
+              :highlighted
+                  ?Theme.of(context).colorScheme.outline
+                  :Theme.of(context).colorScheme.outlineVariant,
+          width:activeZone?2:1,
+        ),
+      ),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        // Keep the assignment target separate from the package chips. If the
+        // whole compartment is an InkWell, tapping a chip can also trigger the
+        // parent tap and immediately consume the selection.
+        InkWell(
+          onTap:()=>_assign(zone),
+          borderRadius:BorderRadius.circular(10),
+          child:Padding(
+            padding:const EdgeInsets.symmetric(vertical:3),
+            child:Row(children:[
+              Expanded(child:Text(shortName,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12))),
+              if(allPackages.isNotEmpty)Text(
+                hasSearch?'${packages.length}/${allPackages.length}':'${allPackages.length}',
+                style:const TextStyle(fontWeight:FontWeight.bold),
+              ),
+              if(highlighted)...[
+                const SizedBox(width:6),
+                const Icon(Icons.add_circle_outline,size:16),
+              ],
+            ]),
           ),
         ),
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Row(children:[
-            Expanded(child:Text(shortName,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12))),
-            if(allPackages.isNotEmpty)Text(
-              hasSearch?'${packages.length}/${allPackages.length}':'${allPackages.length}',
-              style:const TextStyle(fontWeight:FontWeight.bold),
-            ),
-          ]),
-          const SizedBox(height:6),
-          if(packages.isEmpty)
-            SizedBox(
+        const SizedBox(height:6),
+        if(packages.isEmpty)
+          InkWell(
+            onTap:()=>_assign(zone),
+            borderRadius:BorderRadius.circular(10),
+            child:SizedBox(
               height:allPackages.isEmpty?72:40,
               child:Center(child:Text(
                 allPackages.isEmpty?'Vazio':'Sem resultados',
                 style:const TextStyle(fontSize:12),
               )),
-            )
-          else ...[
-            Wrap(spacing:3,runSpacing:3,children:[
-              for(final p in visiblePackages)
-                InputChip(
-                  visualDensity:VisualDensity.compact,
-                  padding:EdgeInsets.zero,
-                  selected:multiSelect?selectedIds.contains(p.id):selected?.id==p.id,
-                  onSelected:(_)=>_togglePackage(p.id),
-                  label:Text('P${p.scanNumber.toString().padLeft(2,'0')}'),
-                ),
-            ]),
-            if(packages.length>8)
-              Align(
-                alignment:Alignment.centerLeft,
-                child:TextButton(
-                  style:TextButton.styleFrom(
-                    minimumSize:Size.zero,
-                    padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-                    tapTargetSize:MaterialTapTargetSize.shrinkWrap,
-                    visualDensity:VisualDensity.compact,
-                  ),
-                  onPressed:()=>setState(()=>expanded?_expandedZones.remove(zone):_expandedZones.add(zone)),
-                  child:Text(expanded?'Mostrar menos':'Ver todos (${packages.length})'),
-                ),
+            ),
+          )
+        else ...[
+          Wrap(spacing:3,runSpacing:3,children:[
+            for(final p in visiblePackages)
+              InputChip(
+                visualDensity:VisualDensity.compact,
+                padding:EdgeInsets.zero,
+                selected:multiSelect?selectedIds.contains(p.id):selected?.id==p.id,
+                onSelected:(_)=>_togglePackage(p.id),
+                label:Text('P${p.scanNumber.toString().padLeft(2,'0')}'),
               ),
-          ],
-        ]),
-      ),
+          ]),
+          if(packages.length>8)
+            Align(
+              alignment:Alignment.centerLeft,
+              child:TextButton(
+                style:TextButton.styleFrom(
+                  minimumSize:Size.zero,
+                  padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                  tapTargetSize:MaterialTapTargetSize.shrinkWrap,
+                  visualDensity:VisualDensity.compact,
+                ),
+                onPressed:()=>setState(()=>expanded?_expandedZones.remove(zone):_expandedZones.add(zone)),
+                child:Text(expanded?'Mostrar menos':'Ver todos (${packages.length})'),
+              ),
+            ),
+        ],
+      ]),
     );
   }
 
