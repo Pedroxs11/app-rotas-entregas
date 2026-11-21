@@ -228,7 +228,14 @@ void main() {
         expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
         expect(find.textContaining('RETIRAR'), findsNothing);
 
+        // The unassigned package is below the organizer diagram in the lazy
+        // CustomScrollView. Return to the top so the compartment chips are
+        // mounted again before selecting an already assigned package.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, 1200));
+        await tester.pumpAndSettle();
+
         final assignedChip = find.widgetWithText(InputChip, 'P01');
+        expect(assignedChip, findsOneWidget);
         await tester.ensureVisible(assignedChip);
         await tester.pumpAndSettle();
         await tester.tap(assignedChip);
