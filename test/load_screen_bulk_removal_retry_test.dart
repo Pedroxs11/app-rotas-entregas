@@ -191,4 +191,67 @@ void main() {
       }
     },
   );
+
+  testWidgets(
+    'bulk removal only targets assigned packages and preserves unassigned selections',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': vehicle.name,
+        });
+        final targetZone = vehicle == VehicleType.car
+            ? 'Porta-malas'
+            : 'Baú traseiro';
+        final store = _FailOncePackageStore([
+          _package(vehicle, 1, targetZone),
+          _package(vehicle, 2, targetZone).copyWith(clearPhysicalZone: true),
+        ])..failNextSave = false;
+        final state = AppState(store: store);
+        await state.init();
+
+        await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Selecionar vários'));
+        await tester.pumpAndSettle();
+
+        final unassignedTile = find.text('Pacote 02');
+        await tester.ensureVisible(unassignedTile);
+        await tester.pumpAndSettle();
+        await tester.tap(unassignedTile);
+        await tester.pumpAndSettle();
+
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+        expect(find.textContaining('RETIRAR'), findsNothing);
+
+        final assignedChip = find.widgetWithText(InputChip, 'P01');
+        await tester.ensureVisible(assignedChip);
+        await tester.pumpAndSettle();
+        await tester.tap(assignedChip);
+        await tester.pumpAndSettle();
+
+        expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
+        expect(find.text('RETIRAR PACOTE SELECIONADO'), findsOneWidget);
+
+        await tester.tap(find.text('RETIRAR PACOTE SELECIONADO'));
+        await tester.pumpAndSettle();
+
+        expect(store.saveAttempts, 1);
+        expect(store.successfulSaves, 1);
+        expect(state.packages.first.physicalZone, isNull);
+        expect(state.packages.last.physicalZone, isNull);
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+        expect(find.textContaining('RETIRAR'), findsNothing);
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      }
+    },
+  );
+
 }
