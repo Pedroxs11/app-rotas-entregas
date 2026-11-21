@@ -743,6 +743,37 @@ void main() {
         find.text('Nenhum pacote encontrado para essa busca.'),
         findsNothing,
       );
+
+      // A matching assigned package remains visible as a chip in its vehicle
+      // compartment. The driver can select it there and remove it from the
+      // compartment without clearing the search or losing the package.
+      final assignedChip = find.widgetWithText(InputChip, 'P09');
+      expect(assignedChip, findsOneWidget,
+          reason: 'The matching package should remain visible in $zone.');
+      await tester.tap(assignedChip);
+      await tester.pumpAndSettle();
+
+      final removeButton = find.text('RETIRAR PACOTE SELECIONADO');
+      expect(removeButton, findsOneWidget);
+      await tester.tap(removeButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'O pacote encontrado já está posicionado em um compartimento.',
+        ),
+        findsNothing,
+        reason: 'Removing the package should return it to the unassigned list.',
+      );
+      await tester.scrollUntilVisible(
+        find.text('Pacote 09'),
+        250,
+        scrollable: find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first,
+      );
+      expect(find.text('Pacote 09'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
