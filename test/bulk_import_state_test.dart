@@ -186,7 +186,7 @@ void main(){
     expect(scanned.physicalZone,isNull);
 
     final bulkCount=await state.addManyFromText(
-      'Rua Nova, 500\\nRua Nova, 600',
+      'Rua Nova, 500\nRua Nova, 600',
     );
     expect(bulkCount,2);
     expect(state.packages,hasLength(5));
