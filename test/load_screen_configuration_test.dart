@@ -687,6 +687,16 @@ void main() {
       await tester.enterText(find.byType(TextField), 'sao paulo');
       await tester.pumpAndSettle();
 
+      // The package list is a lazy SliverList below the vehicle diagram;
+      // scroll to its result before asserting that the accent-free query found it.
+      await tester.scrollUntilVisible(
+        find.text('Pacote 09'),
+        300,
+        scrollable: find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ),
+      );
       expect(find.text('Pacote 09'), findsOneWidget);
       expect(
         find.text('Nenhum pacote encontrado para essa busca.'),
