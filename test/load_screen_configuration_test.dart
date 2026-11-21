@@ -710,4 +710,44 @@ void main() {
     }
   });
 
+
+  testWidgets(
+      'search explains when a matching package is already assigned in car and motorcycle modes',
+      (tester) async {
+    for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': vehicle.name,
+      });
+      final zone = vehicle == VehicleType.car
+          ? 'Frente esquerda'
+          : 'Baú traseiro';
+      final state = AppState(
+        store: _ConfigurationStore([_package(9, zone: zone)]),
+      );
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'sao paulo');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'O pacote encontrado já está posicionado em um compartimento.',
+        ),
+        findsOneWidget,
+        reason: 'Assigned search results should be explained in $vehicle mode.',
+      );
+      expect(
+        find.text('Nenhum pacote encontrado para essa busca.'),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
 }
