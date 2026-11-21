@@ -695,7 +695,7 @@ void main() {
         scrollable: find.descendant(
           of: find.byType(CustomScrollView),
           matching: find.byType(Scrollable),
-        ),
+        ).first,
       );
       expect(find.text('Pacote 09'), findsOneWidget);
       expect(
