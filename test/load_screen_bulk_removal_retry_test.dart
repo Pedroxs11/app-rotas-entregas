@@ -235,6 +235,11 @@ void main() {
         await tester.tap(unassignedTile);
         await tester.pumpAndSettle();
 
+        // Selection survives while the lazy list scrolls. Return to the
+        // organizer header before asserting its summary and removal action.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, 1200));
+        await tester.pumpAndSettle();
+
         expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
         // The removal action must still count only the one assigned package.
         expect(find.text('RETIRAR PACOTE SELECIONADO'), findsOneWidget);
