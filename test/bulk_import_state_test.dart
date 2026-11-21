@@ -103,4 +103,64 @@ void main(){
     expect(store.saves, 1);
   });
 
+
+  test('scanner keeps all 600 organized packages in place for car and motorcycle', () async {
+    for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+      final targetZone = vehicle == VehicleType.car
+          ? 'Porta-malas'
+          : 'Baú traseiro';
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': vehicle.name,
+      });
+
+      final store = BulkStore(
+        List.generate(
+          600,
+          (index) => _existing(
+            'organized-${vehicle.name}-$index',
+            index + 1,
+            zone: targetZone,
+          ),
+        ),
+        optimized: true,
+      );
+      final state = AppState(store: store);
+      await state.init();
+
+      expect(state.packages, hasLength(600));
+      expect(state.routeOptimized, isTrue);
+      expect(
+        state.packages.every((package) => package.physicalZone == targetZone),
+        isTrue,
+      );
+
+      final scanned = await state.addFromText(
+        'etiqueta sem endereco nova',
+        trackingCode: 'SCAN-${vehicle.name.toUpperCase()}',
+      );
+
+      expect(state.packages, hasLength(601));
+      expect(state.routeOptimized, isFalse);
+      expect(
+        state.packages
+            .where((package) => package.id.startsWith('organized-'))
+            .every((package) => package.physicalZone == targetZone),
+        isTrue,
+        reason: 'Scanning a new package must not erase the existing $vehicle load.',
+      );
+      expect(
+        state.packages.singleWhere((package) => package.id == scanned.id).physicalZone,
+        isNull,
+      );
+      expect(
+        store.packages
+            .where((package) => package.id.startsWith('organized-'))
+            .every((package) => package.physicalZone == targetZone),
+        isTrue,
+      );
+      expect(store.packages, hasLength(601));
+      expect(store.saves, 1);
+    }
+  });
+
 }
