@@ -144,6 +144,10 @@ void main() {
         expect(store.saveAttempts, 2);
         expect(store.successfulSaves, 1);
         expect(state.routeOptimized, isTrue);
+        // A successful retry must consume the selection so a later tap
+        // cannot accidentally assign the same 600 packages a second time.
+        expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
+        expect(find.textContaining('RETIRAR'), findsNothing);
         expect(tester.takeException(), isNull);
 
         await tester.pumpWidget(const SizedBox.shrink());
