@@ -111,6 +111,7 @@ void main() {
         for (final label in ['P01', 'P02']) {
           final chip = find.widgetWithText(InputChip, label);
           await tester.ensureVisible(chip);
+          await tester.pumpAndSettle();
           await tester.tap(chip);
           await tester.pumpAndSettle();
         }
