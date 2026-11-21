@@ -29,7 +29,9 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  sqflite_common_ffi: 2.3.3
+  sqflite_common_ffi: ^2.3.3
+  # Keep sqflite_common_ffi on sqlite3 v2 until its v3-compatible release is selected.
+  sqlite3: ^2.9.4
 
 flutter:
   uses-material-design: true
