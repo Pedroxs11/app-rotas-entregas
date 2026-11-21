@@ -161,6 +161,39 @@ void main() {
           store.items.where((package) => package.id.startsWith('organized-')),
           hasLength(600),
         );
+
+        // Re-open the state after the concurrent scans. All pre-existing
+        // compartment assignments must survive, new scans stay unassigned,
+        // and startup must not perform an unnecessary repair write.
+        final savesBeforeRestart = store.saves;
+        final resumed = AppState(store: store);
+        await resumed.init();
+
+        expect(resumed.vehicleType, vehicle);
+        expect(resumed.packages, hasLength(603));
+        expect(resumed.routeOptimized, isFalse);
+        for (final entry in originalZones.entries) {
+          expect(
+            resumed.packages.singleWhere((package) => package.id == entry.key).physicalZone,
+            entry.value,
+            reason: 'Restart must preserve ${entry.key} for $vehicle.',
+          );
+        }
+        expect(
+          resumed.packages.where((package) => package.scanNumber == 602 || package.scanNumber == 603)
+              .every((package) => package.physicalZone == null),
+          isTrue,
+        );
+        final resumedHistory = resumed.packages.singleWhere(
+          (package) => package.id == delivered.id,
+        );
+        expect(resumedHistory.status, DeliveryStatus.delivered);
+        expect(resumedHistory.physicalZone, deliveredHistoryZone);
+        expect(
+          store.saves,
+          savesBeforeRestart,
+          reason: 'A clean multi-zone restart must not rewrite the stored load.',
+        );
       }
     },
   );
