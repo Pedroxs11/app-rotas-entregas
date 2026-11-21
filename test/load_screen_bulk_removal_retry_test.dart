@@ -106,15 +106,21 @@ void main() {
         await tester.tap(find.byTooltip('Selecionar vários'));
         await tester.pumpAndSettle();
 
-        // Select the two active packages through the screen's bulk action.
-        // The delivered package is intentionally excluded from the active route.
-        final selectListButton = find.text('Selecionar lista');
-        await tester.ensureVisible(selectListButton);
-        await tester.pumpAndSettle();
-        await tester.tap(selectListButton);
-        await tester.pumpAndSettle();
+        // Selecting an assigned chip must not bubble into the compartment
+        // assignment target and clear the selection immediately.
+        for (final label in ['P01', 'P02']) {
+          final chip = find.widgetWithText(InputChip, label);
+          await tester.ensureVisible(chip);
+          await tester.tap(chip);
+          await tester.pumpAndSettle();
+        }
 
         expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
+        expect(
+          store.saveAttempts,
+          0,
+          reason: 'Selecting chips must not trigger a compartment save.',
+        );
         final removeButton = find.text('RETIRAR 2 PACOTES');
         await tester.ensureVisible(removeButton);
         await tester.tap(removeButton);
