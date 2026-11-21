@@ -219,25 +219,23 @@ void main() {
         await tester.tap(find.byTooltip('Selecionar vários'));
         await tester.pumpAndSettle();
 
-        // Select the assigned chip while the organizer diagram is mounted.
-        // Then scroll to the unassigned row and add it to the same selection.
-        final assignedChip = find.widgetWithText(InputChip, 'P01');
-        expect(assignedChip, findsOneWidget);
-        await tester.tap(assignedChip);
-        await tester.pumpAndSettle();
-
-        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
-        expect(find.text('RETIRAR PACOTE SELECIONADO'), findsOneWidget);
-
         final unassignedTile = find.text('Pacote 02');
         await tester.ensureVisible(unassignedTile);
         await tester.pumpAndSettle();
         await tester.tap(unassignedTile);
         await tester.pumpAndSettle();
 
-        // Selection survives while the lazy list scrolls. Return to the
-        // organizer header before asserting its summary and removal action.
+        // The unassigned row is in a lazy sliver. Return to the top so the
+        // organizer diagram and its assigned-package chips are mounted.
         await tester.drag(find.byType(CustomScrollView), const Offset(0, 1200));
+        await tester.pumpAndSettle();
+
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+        expect(find.textContaining('RETIRAR'), findsNothing);
+
+        final assignedChip = find.widgetWithText(InputChip, 'P01');
+        expect(assignedChip, findsOneWidget);
+        await tester.tap(assignedChip);
         await tester.pumpAndSettle();
 
         expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
