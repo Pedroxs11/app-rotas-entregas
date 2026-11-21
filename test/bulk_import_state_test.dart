@@ -163,4 +163,48 @@ void main(){
     }
   });
 
+
+  test('scanner keeps scan numbers unique after removing a package from an organized load',() async {
+    final store=BulkStore([
+      _existing('first',1,zone:'Porta-malas'),
+      _existing('middle',2,zone:'Porta-malas'),
+      _existing('last',3,zone:'Porta-malas'),
+    ],optimized:true);
+    final state=AppState(store:store);
+    await state.init();
+
+    await state.removePackage('middle');
+    expect(state.packages,hasLength(2));
+    expect(state.packages.map((p)=>p.scanNumber).toSet(),{1,3});
+    expect(state.packages.every((p)=>p.physicalZone=='Porta-malas'),isTrue);
+
+    final scanned=await state.addFromText(
+      'etiqueta sem endereco depois da remocao',
+      trackingCode:'SCAN-AFTER-DELETE',
+    );
+    expect(scanned.scanNumber,4);
+    expect(scanned.physicalZone,isNull);
+
+    final bulkCount=await state.addManyFromText(
+      'Rua Nova, 500\\nRua Nova, 600',
+    );
+    expect(bulkCount,2);
+    expect(state.packages,hasLength(5));
+    expect(
+      state.packages.map((p)=>p.scanNumber).toSet(),
+      {1,3,4,5,6},
+    );
+    expect(
+      state.packages.map((p)=>p.scanNumber).toSet(),
+      hasLength(state.packages.length),
+      reason:'Removing an earlier package must not cause a later scan number to be reused.',
+    );
+    expect(state.packages.firstWhere((p)=>p.id=='first').physicalZone,'Porta-malas');
+    expect(state.packages.firstWhere((p)=>p.id=='last').physicalZone,'Porta-malas');
+    expect(state.packages.firstWhere((p)=>p.id==scanned.id).physicalZone,isNull);
+    expect(state.routeOptimized,isFalse);
+    expect(store.packages,hasLength(5));
+    expect(store.saves,3);
+  });
+
 }
