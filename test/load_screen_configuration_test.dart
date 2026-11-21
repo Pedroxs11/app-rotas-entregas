@@ -669,4 +669,35 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+
+  testWidgets('address search ignores Portuguese accents in car and motorcycle modes',
+      (tester) async {
+    for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': vehicle.name,
+      });
+      final state = AppState(
+        store: _ConfigurationStore([_package(9)]),
+      );
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'sao paulo');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pacote 09'), findsOneWidget);
+      expect(
+        find.text('Nenhum pacote encontrado para essa busca.'),
+        findsNothing,
+        reason: 'Accent-free searches should find São Paulo in $vehicle mode.',
+      );
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
 }
