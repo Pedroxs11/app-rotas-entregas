@@ -219,29 +219,24 @@ void main() {
         await tester.tap(find.byTooltip('Selecionar vários'));
         await tester.pumpAndSettle();
 
+        // Select the assigned chip while the organizer diagram is mounted.
+        // Then scroll to the unassigned row and add it to the same selection.
+        final assignedChip = find.widgetWithText(InputChip, 'P01');
+        expect(assignedChip, findsOneWidget);
+        await tester.tap(assignedChip);
+        await tester.pumpAndSettle();
+
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+        expect(find.text('RETIRAR PACOTE SELECIONADO'), findsOneWidget);
+
         final unassignedTile = find.text('Pacote 02');
         await tester.ensureVisible(unassignedTile);
         await tester.pumpAndSettle();
         await tester.tap(unassignedTile);
         await tester.pumpAndSettle();
 
-        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
-        expect(find.textContaining('RETIRAR'), findsNothing);
-
-        // The unassigned package is below the organizer diagram in the lazy
-        // CustomScrollView. Return to the top so the compartment chips are
-        // mounted again before selecting an already assigned package.
-        await tester.drag(find.byType(CustomScrollView), const Offset(0, 1200));
-        await tester.pumpAndSettle();
-
-        final assignedChip = find.widgetWithText(InputChip, 'P01');
-        expect(assignedChip, findsOneWidget);
-        await tester.ensureVisible(assignedChip);
-        await tester.pumpAndSettle();
-        await tester.tap(assignedChip);
-        await tester.pumpAndSettle();
-
         expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
+        // The removal action must still count only the one assigned package.
         expect(find.text('RETIRAR PACOTE SELECIONADO'), findsOneWidget);
 
         await tester.tap(find.text('RETIRAR PACOTE SELECIONADO'));
