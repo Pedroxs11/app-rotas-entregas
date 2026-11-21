@@ -525,4 +525,52 @@ void main(){
   expect(store.saves,1);
  });
 
+
+ test('failed bulk load assignment is atomic and can be retried for car and motorcycle',()async{
+  for(final vehicle in [VehicleType.car,VehicleType.motorcycle]){
+   SharedPreferences.setMockInitialValues({'load_vehicle_type':vehicle.name});
+   final zones=vehicle==VehicleType.car
+       ?AppState.carPhysicalZones
+       :AppState.motorcyclePhysicalZones;
+   final initial=List.generate(
+    600,
+    (i)=>_package(
+     'bulk-${vehicle.name}-${i+1}',
+     i+1,
+     zone:i<300?zones[0]:null,
+    ),
+   );
+   final store=GuardStore(initial,optimized:true,failSaves:true);
+   final state=AppState(store:store);
+   await state.init();
+
+   final movingIds=state.packages
+       .take(200)
+       .map((p)=>p.id)
+       .toSet();
+
+   await expectLater(
+    state.setPhysicalZones(movingIds,zones[1]),
+    throwsA(isA<StateError>()),
+   );
+
+   expect(state.packages,hasLength(600));
+   expect(state.packages.take(300).every((p)=>p.physicalZone==zones[0]),isTrue);
+   expect(state.packages.skip(300).every((p)=>p.physicalZone==null),isTrue);
+   expect(store.packages.take(300).every((p)=>p.physicalZone==zones[0]),isTrue);
+   expect(store.packages.skip(300).every((p)=>p.physicalZone==null),isTrue);
+   expect(store.saves,0);
+
+   store.failSaves=false;
+   await state.setPhysicalZones(movingIds,zones[1]);
+
+   expect(state.packages,hasLength(600));
+   expect(state.packages.take(200).every((p)=>p.physicalZone==zones[1]),isTrue);
+   expect(state.packages.skip(200).take(100).every((p)=>p.physicalZone==zones[0]),isTrue);
+   expect(state.packages.skip(300).every((p)=>p.physicalZone==null),isTrue);
+   expect(store.packages.map((p)=>p.id).toSet(),hasLength(600));
+   expect(store.saves,1);
+  }
+ });
+
 }
