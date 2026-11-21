@@ -197,8 +197,7 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   void _stopSelectionAutoScroll(){
-    _autoScrollTimer?.cancel();
-    _autoScrollTimer=null;
+    _autoScrollTimer?.cancel();    _autoScrollTimer=null;
     _autoScrollDirection=0;
     _autoScrollSpeed=0;
   }
@@ -256,11 +255,41 @@ class _LoadScreenState extends State<LoadScreen>{
     if (matches.isNotEmpty) setState(() => selectedIds.addAll(matches));
   }
 
-  Future<void> _clearSelected()async{
-    final ids=selectedIds.isNotEmpty?selectedIds.toList():(_selected()==null?<String>[]:[_selected()!.id]);
-    if(ids.isEmpty)return;
-    try{await widget.state.clearPhysicalZones(ids.toSet());if(mounted)setState((){selectedId=null;selectedIds.clear();});}
-    catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
+  Set<String> _selectedAssignedPackageIds(List<DeliveryPackage> route) {
+    final selected = selectedIds.isNotEmpty
+        ? selectedIds
+        : selectedId == null
+            ? const <String>{}
+            : <String>{selectedId!};
+    return route
+        .where((package) =>
+            selected.contains(package.id) && _hasActiveZone(package))
+        .map((package) => package.id)
+        .toSet();
+  }
+
+  Future<void> _clearSelected() async {
+    final ids = _selectedAssignedPackageIds(_route);
+    if (ids.isEmpty) return;
+    try {
+      await widget.state.clearPhysicalZones(ids);
+      if (!mounted) return;
+      setState(() {
+        if (multiSelect) {
+          // Keep any selected packages that were already unassigned. Only
+          // consume the selection that this removal operation actually changed.
+          selectedIds.removeAll(ids);
+        } else {
+          selectedId = null;
+        }
+      });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$error')),
+        );
+      }
+    }
   }
 
   void _startDeliveries(){
@@ -283,6 +312,7 @@ class _LoadScreenState extends State<LoadScreen>{
     // lazy SliverList child would repeatedly scan all packages on large loads.
     final visibleRoute=route.where((p)=>!_hasActiveZone(p)&&_matchesSearch(p)).toList(growable:false);
     final selected=_selected();
+    final removableIds = _selectedAssignedPackageIds(route);
     final assigned=route.where(_hasActiveZone).length;
     final missing=route.length-assigned;
     return Scaffold(
@@ -361,13 +391,13 @@ class _LoadScreenState extends State<LoadScreen>{
                         SizedBox(
                           height: 48,
                           width: double.infinity,
-                          child: selected != null || selectedIds.isNotEmpty
+                          child: removableIds.isNotEmpty
                               ? OutlinedButton.icon(
                                   onPressed: _clearSelected,
                                   icon: const Icon(Icons.remove_circle_outline),
                                   label: Text(
-                                    selectedIds.length > 1
-                                        ? 'RETIRAR ${selectedIds.length} PACOTES'
+                                    removableIds.length > 1
+                                        ? 'RETIRAR ${removableIds.length} PACOTES'
                                         : 'RETIRAR PACOTE SELECIONADO',
                                   ),
                                 )
@@ -397,8 +427,7 @@ class _LoadScreenState extends State<LoadScreen>{
                                           : 'Selecionar resultados'),
                                 ),
                               ),
-                          ],
-                        ),
+                          ],                        ),
                         const SizedBox(height: 8),
                       ],
                     ),
@@ -597,8 +626,7 @@ class _LoadScreenState extends State<LoadScreen>{
             const SizedBox(height:12),
             Container(
               height:34,
-              margin:const EdgeInsets.symmetric(horizontal:30),
-              decoration:BoxDecoration(
+              margin:const EdgeInsets.symmetric(horizontal:30),              decoration:BoxDecoration(
                 color:colors.surfaceContainerHighest,
                 borderRadius:BorderRadius.circular(18),
                 border:Border.all(color:colors.outlineVariant),
@@ -848,31 +876,3 @@ class _TrackedPackageTile extends SingleChildRenderObjectWidget {
 
 class _TrackedPackageTileRenderBox extends RenderProxyBox {
   _TrackedPackageTileRenderBox(this.packageId, this.onChanged);
-
-  String packageId;
-  void Function(String id, RenderBox box, bool attached) onChanged;
-
-  void updateRegistration(
-    String nextPackageId,
-    void Function(String id, RenderBox box, bool attached) nextOnChanged,
-  ) {
-    if (packageId != nextPackageId) {
-      onChanged(packageId, this, false);
-      packageId = nextPackageId;
-    }
-    onChanged = nextOnChanged;
-    if (attached) onChanged(packageId, this, true);
-  }
-
-  @override
-  void attach(PipelineOwner owner) {
-    super.attach(owner);
-    onChanged(packageId, this, true);
-  }
-
-  @override
-  void detach() {
-    onChanged(packageId, this, false);
-    super.detach();
-  }
-}
