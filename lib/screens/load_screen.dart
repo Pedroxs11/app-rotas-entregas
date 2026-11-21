@@ -197,7 +197,8 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   void _stopSelectionAutoScroll(){
-    _autoScrollTimer?.cancel();    _autoScrollTimer=null;
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer=null;
     _autoScrollDirection=0;
     _autoScrollSpeed=0;
   }
@@ -427,7 +428,8 @@ class _LoadScreenState extends State<LoadScreen>{
                                           : 'Selecionar resultados'),
                                 ),
                               ),
-                          ],                        ),
+                          ],
+                        ),
                         const SizedBox(height: 8),
                       ],
                     ),
@@ -626,7 +628,8 @@ class _LoadScreenState extends State<LoadScreen>{
             const SizedBox(height:12),
             Container(
               height:34,
-              margin:const EdgeInsets.symmetric(horizontal:30),              decoration:BoxDecoration(
+              margin:const EdgeInsets.symmetric(horizontal:30),
+              decoration:BoxDecoration(
                 color:colors.surfaceContainerHighest,
                 borderRadius:BorderRadius.circular(18),
                 border:Border.all(color:colors.outlineVariant),
@@ -876,3 +879,31 @@ class _TrackedPackageTile extends SingleChildRenderObjectWidget {
 
 class _TrackedPackageTileRenderBox extends RenderProxyBox {
   _TrackedPackageTileRenderBox(this.packageId, this.onChanged);
+
+  String packageId;
+  void Function(String id, RenderBox box, bool attached) onChanged;
+
+  void updateRegistration(
+    String nextPackageId,
+    void Function(String id, RenderBox box, bool attached) nextOnChanged,
+  ) {
+    if (packageId != nextPackageId) {
+      onChanged(packageId, this, false);
+      packageId = nextPackageId;
+    }
+    onChanged = nextOnChanged;
+    if (attached) onChanged(packageId, this, true);
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    onChanged(packageId, this, true);
+  }
+
+  @override
+  void detach() {
+    onChanged(packageId, this, false);
+    super.detach();
+  }
+}
