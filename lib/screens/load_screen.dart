@@ -376,16 +376,17 @@ class _LoadScreenState extends State<LoadScreen>{
                           onChanged: (value) => setState(() => search = value),
                         ),
                         const SizedBox(height: 10),
-                        if (search.trim().isNotEmpty &&
-                            !route.any(_matchesSearch))
+                        if (search.trim().isNotEmpty && visibleRoute.isEmpty)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: Column(
                               children: [
                                 const Icon(Icons.search_off, size: 36),
                                 const SizedBox(height: 8),
-                                const Text(
-                                  'Nenhum pacote encontrado para essa busca.',
+                                Text(
+                                  route.any(_matchesSearch)
+                                      ? 'O pacote encontrado já está posicionado em um compartimento.'
+                                      : 'Nenhum pacote encontrado para essa busca.',
                                   textAlign: TextAlign.center,
                                 ),
                                 TextButton.icon(
