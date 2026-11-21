@@ -287,14 +287,16 @@ void main() {
 
         final assignedChip = find.widgetWithText(InputChip, 'P01');
         expect(assignedChip, findsOneWidget);
+        await _ensureLoadItemVisible(tester, assignedChip);
         await tester.tap(assignedChip);
         await tester.pumpAndSettle();
 
         expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
         // The removal action must still count only the one assigned package.
-        expect(find.text('RETIRAR PACOTE SELECIONADO'), findsOneWidget);
-
-        await tester.tap(find.text('RETIRAR PACOTE SELECIONADO'));
+        final removeAssignedButton = find.text('RETIRAR PACOTE SELECIONADO');
+        expect(removeAssignedButton, findsOneWidget);
+        await _ensureLoadItemVisible(tester, removeAssignedButton);
+        await tester.tap(removeAssignedButton);
         await tester.pumpAndSettle();
 
         expect(store.saveAttempts, 1);
