@@ -64,6 +64,58 @@ DeliveryPackage _package(
       status: status,
     );
 
+
+Future<void> _ensureLoadItemVisible(
+  WidgetTester tester,
+  Finder finder,
+) async {
+  final scrollable = find.descendant(
+    of: find.byType(CustomScrollView),
+    matching: find.byType(Scrollable),
+  ).first;
+  final position = tester.state<ScrollableState>(scrollable).position;
+  final viewportFinder = find.byType(CustomScrollView);
+
+  if (finder.evaluate().isEmpty &&
+      position.pixels > position.minScrollExtent) {
+    position.jumpTo(position.minScrollExtent);
+    await tester.pumpAndSettle();
+  }
+
+  for (var attempt = 0; attempt < 120; attempt++) {
+    if (finder.evaluate().isNotEmpty) {
+      final target = tester.getRect(finder.first);
+      final viewport = tester.getRect(viewportFinder);
+      if (target.top >= viewport.top && target.bottom <= viewport.bottom) {
+        return;
+      }
+      final delta = target.top < viewport.top
+          ? target.top - viewport.top
+          : target.bottom - viewport.bottom;
+      final next = (position.pixels + delta)
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if ((next - position.pixels).abs() < 0.5) break;
+      position.jumpTo(next);
+    } else {
+      // Sliver children outside the cache extent do not have an Element yet,
+      // so scroll in small increments until the requested package is built.
+      final next = (position.pixels + 100)
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if (next <= position.pixels) break;
+      position.jumpTo(next);
+    }
+    await tester.pumpAndSettle();
+  }
+
+  expect(finder, findsWidgets);
+  final target = tester.getRect(finder.first);
+  final viewport = tester.getRect(viewportFinder);
+  expect(target.top, greaterThanOrEqualTo(viewport.top));
+  expect(target.bottom, lessThanOrEqualTo(viewport.bottom));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -220,7 +272,7 @@ void main() {
         await tester.pumpAndSettle();
 
         final unassignedTile = find.text('Pacote 02');
-        await tester.ensureVisible(unassignedTile);
+        await _ensureLoadItemVisible(tester, unassignedTile);
         await tester.pumpAndSettle();
         await tester.tap(unassignedTile);
         await tester.pumpAndSettle();
