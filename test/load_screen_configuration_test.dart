@@ -750,6 +750,16 @@ void main() {
       final assignedChip = find.widgetWithText(InputChip, 'P09');
       expect(assignedChip, findsOneWidget,
           reason: 'The matching package should remain visible in $zone.');
+      // The vehicle diagram sits above the lazy package list and may extend
+      // below the initial viewport. Bring the chip on-screen before tapping it.
+      await tester.scrollUntilVisible(
+        assignedChip,
+        180,
+        scrollable: find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first,
+      );
       await tester.tap(assignedChip);
       await tester.pumpAndSettle();
 
