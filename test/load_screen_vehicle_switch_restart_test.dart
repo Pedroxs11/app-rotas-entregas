@@ -252,7 +252,7 @@ void main() {
       expect(find.text('MODO MOTO'), findsOneWidget);
 
       await scrollToLastPackage();
-      expect(scrollState.position.pixels, greaterThan(0));
+      expect(currentScrollOffset(), greaterThan(0));
 
       await switchVehicle(VehicleType.car);
       expect(find.text('FRENTE', skipOffstage: false), findsOneWidget);
