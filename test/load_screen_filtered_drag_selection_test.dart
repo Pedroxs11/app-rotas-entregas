@@ -150,8 +150,6 @@ void main() {
       }
     },
   );
-}
-
 
   testWidgets(
     'select all only assigns filtered search results for car and motorcycle',
@@ -216,3 +214,5 @@ void main() {
       }
     },
   );
+
+}
