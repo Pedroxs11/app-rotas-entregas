@@ -157,6 +157,25 @@ void main() {
           state.packages.first.physicalZone,
           vehicle == VehicleType.car ? 'Frente esquerda' : 'Baú traseiro',
         );
+
+        // On narrow phones, assigned chips and the removal action must remain
+        // reachable without relying on a large viewport.
+        await tester.tap(find.byTooltip('Selecionar vários'));
+        await tester.pumpAndSettle();
+        final assignedChip = find.widgetWithText(InputChip, 'P01');
+        await _ensureLoadItemVisible(tester, assignedChip);
+        await tester.tap(assignedChip);
+        await tester.pumpAndSettle();
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+        final removeButton = find.text('RETIRAR PACOTE SELECIONADO');
+        await _ensureLoadItemVisible(tester, removeButton);
+        await tester.tap(removeButton);
+        await tester.pumpAndSettle();
+
+        expect(state.packages.first.physicalZone, isNull);
+        expect(store.items.first.physicalZone, isNull);
+        expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
         await tester.pumpWidget(const SizedBox.shrink());
