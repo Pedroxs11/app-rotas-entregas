@@ -111,11 +111,13 @@ class _LoadScreenState extends State<LoadScreen>{
       selectedIds.clear();
       _expandedZones.clear();
     });
-    // A vehicle switch changes the diagram and compartment layout. Return to
-    // the top so the driver immediately sees the new vehicle organizer.
-    if (_scrollController.hasClients) {
+    // Wait until the new vehicle diagram has completed layout before
+    // resetting the scroll position. Jumping during the state update can be
+    // overwritten by the scrollable's next layout when its extent changes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
       _scrollController.jumpTo(_scrollController.position.minScrollExtent);
-    }
+    });
   }
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
