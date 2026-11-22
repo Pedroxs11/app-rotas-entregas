@@ -220,7 +220,10 @@ void main() {
         of: find.byType(CustomScrollView),
         matching: find.byType(Scrollable),
       ).first;
-      final scrollState = tester.state<ScrollableState>(scrollable);
+      double currentScrollOffset() =>
+          tester.state<ScrollableState>(scrollable).position.pixels;
+      double currentMinScrollOffset() =>
+          tester.state<ScrollableState>(scrollable).position.minScrollExtent;
 
       Future<void> scrollToLastPackage() async {
         await tester.scrollUntilVisible(
@@ -239,14 +242,11 @@ void main() {
         ));
         await tester.pumpAndSettle();
         expect(state.vehicleType, vehicle);
-        expect(
-          scrollState.position.pixels,
-          scrollState.position.minScrollExtent,
-        );
+        expect(currentScrollOffset(), currentMinScrollOffset());
       }
 
       await scrollToLastPackage();
-      expect(scrollState.position.pixels, greaterThan(0));
+      expect(currentScrollOffset(), greaterThan(0));
 
       await switchVehicle(VehicleType.motorcycle);
       expect(find.text('MODO MOTO'), findsOneWidget);
