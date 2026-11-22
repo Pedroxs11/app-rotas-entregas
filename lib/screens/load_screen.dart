@@ -327,18 +327,67 @@ class _LoadScreenState extends State<LoadScreen>{
     final selected=_selected();
     final removableIds = _selectedAssignedPackageIds(route);
     final assigned=route.where(_hasActiveZone).length;
-    final missing=route.length-assigned;
+    final compactViewport = MediaQuery.sizeOf(context).width < 360 ||
+        MediaQuery.sizeOf(context).height < 600;
     return Scaffold(
       appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[IconButton(tooltip:'Configurar compartimentos',onPressed:_configureZones,icon:const Icon(Icons.tune)),IconButton(tooltip:'Selecionar vários',onPressed:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),PopupMenuButton<VehicleType>(tooltip:'Veículo',onSelected:_switchVehicle,itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))])]),
       body:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
-        Padding(padding:const EdgeInsets.fromLTRB(16,12,16,8),child:Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text('$assigned de ${route.length} pacotes posicionados',style:Theme.of(context).textTheme.titleLarge),
-          if(multiSelect)Padding(padding:const EdgeInsets.only(top:6),child:Text('${selectedIds.length} pacote(s) selecionado(s)',style:TextStyle(fontWeight:FontWeight.w700,color:Theme.of(context).colorScheme.primary))),
-          const SizedBox(height:6),
-          Text(multiSelect?'Toque para marcar; mantenha pressionado e arraste para selecionar vários. Depois toque no compartimento para guardar todos.':(selected==null?(_isMoto?'Toque em um pacote e depois no baú, bolsa ou mochila.':'Toque em um pacote e depois na área do carro onde ele ficará.'):'Pacote ${selected.scanNumber.toString().padLeft(2,'0')} selecionado. Agora toque no compartimento do veículo.')),
-          const SizedBox(height:10),
-          LinearProgressIndicator(value:route.isEmpty?0:assigned/route.length),
-        ])))),
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            compactViewport ? 6 : 12,
+            16,
+            compactViewport ? 4 : 8,
+          ),
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(compactViewport ? 10 : 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$assigned de ${route.length} pacotes posicionados',
+                    style: compactViewport
+                        ? Theme.of(context).textTheme.titleMedium
+                        : Theme.of(context).textTheme.titleLarge,
+                  ),
+                  if (multiSelect)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '${selectedIds.length} pacote(s) selecionado(s)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  SizedBox(height: compactViewport ? 4 : 6),
+                  Text(
+                    compactViewport
+                        ? (multiSelect
+                            ? 'Selecione pacotes e toque no compartimento.'
+                            : selected == null
+                                ? 'Escolha um pacote e depois o compartimento.'
+                                : 'Toque no compartimento para guardar o pacote.')
+                        : (multiSelect
+                            ? 'Toque para marcar; mantenha pressionado e arraste para selecionar vários. Depois toque no compartimento para guardar todos.'
+                            : (selected == null
+                                ? (_isMoto
+                                    ? 'Toque em um pacote e depois no baú, bolsa ou mochila.'
+                                    : 'Toque em um pacote e depois na área do carro onde ele ficará.')
+                                : 'Pacote ${selected.scanNumber.toString().padLeft(2, '0')} selecionado. Agora toque no compartimento do veículo.')),
+                    maxLines: compactViewport ? 2 : null,
+                    overflow: compactViewport ? TextOverflow.ellipsis : TextOverflow.visible,
+                  ),
+                  SizedBox(height: compactViewport ? 6 : 10),
+                  LinearProgressIndicator(value: route.isEmpty ? 0 : assigned / route.length),
+                ],
+              ),
+            ),
+          ),
+        ),
         Expanded(
           child: Listener(
             behavior: HitTestBehavior.translucent,
