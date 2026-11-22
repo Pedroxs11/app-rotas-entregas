@@ -195,4 +195,71 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'switching vehicles returns the load organizer to the top',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 850);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final store = _PersistentLoadStore(
+        List.generate(
+          40,
+          (index) => _package('package-${index + 1}', index + 1),
+        ),
+      );
+      final state = AppState(store: store);
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      final scrollable = find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ).first;
+      final scrollState = tester.state<ScrollableState>(scrollable);
+
+      Future<void> scrollToLastPackage() async {
+        await tester.scrollUntilVisible(
+          find.text('Pacote 40'),
+          180,
+          scrollable: scrollable,
+        );
+        await tester.pumpAndSettle();
+      }
+
+      Future<void> switchVehicle(VehicleType vehicle) async {
+        await tester.tap(find.byTooltip('Veículo'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(
+          vehicle == VehicleType.car ? '🚗 Carro' : '🏍️ Moto',
+        ));
+        await tester.pumpAndSettle();
+        expect(state.vehicleType, vehicle);
+        expect(
+          scrollState.position.pixels,
+          scrollState.position.minScrollExtent,
+        );
+      }
+
+      await scrollToLastPackage();
+      expect(scrollState.position.pixels, greaterThan(0));
+
+      await switchVehicle(VehicleType.motorcycle);
+      expect(find.text('MODO MOTO'), findsOneWidget);
+
+      await scrollToLastPackage();
+      expect(scrollState.position.pixels, greaterThan(0));
+
+      await switchVehicle(VehicleType.car);
+      expect(find.text('FRENTE', skipOffstage: false), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
 }

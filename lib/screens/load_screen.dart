@@ -111,6 +111,11 @@ class _LoadScreenState extends State<LoadScreen>{
       selectedIds.clear();
       _expandedZones.clear();
     });
+    // A vehicle switch changes the diagram and compartment layout. Return to
+    // the top so the driver immediately sees the new vehicle organizer.
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(_scrollController.position.minScrollExtent);
+    }
   }
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
