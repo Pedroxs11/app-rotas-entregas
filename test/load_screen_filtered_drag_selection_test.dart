@@ -122,7 +122,12 @@ void main() {
         final targetLabel = vehicle == VehicleType.car
             ? 'FRENTE E'
             : 'BAÚ TRASEIRO';
-        await tester.tap(find.text(targetLabel));
+        // The drag leaves the list scrolled near the filtered packages.
+        // Bring the compartment back into the viewport before tapping it.
+        final targetCompartment = find.text(targetLabel);
+        await tester.ensureVisible(targetCompartment);
+        await tester.pumpAndSettle();
+        await tester.tap(targetCompartment);
         await tester.pumpAndSettle();
 
         final assignedIds = state.packages
