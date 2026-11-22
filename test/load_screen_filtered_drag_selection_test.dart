@@ -78,6 +78,23 @@ void main() {
         await tester.enterText(find.byType(TextField), 'setor 1');
         await tester.pumpAndSettle();
 
+        // The package list is a lazy SliverList below the vehicle diagram.
+        // Scroll to the filtered rows before querying or starting the drag.
+        final scrollable = find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first;
+        await tester.scrollUntilVisible(
+          find.text('Pacote 10'),
+          300,
+          scrollable: scrollable,
+        );
+        await tester.scrollUntilVisible(
+          find.text('Pacote 12'),
+          300,
+          scrollable: scrollable,
+        );
+
         expect(find.text('Pacote 10'), findsOneWidget);
         expect(find.text('Pacote 11'), findsOneWidget);
         expect(find.text('Pacote 12'), findsOneWidget);
