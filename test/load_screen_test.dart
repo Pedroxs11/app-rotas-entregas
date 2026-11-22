@@ -382,6 +382,71 @@ void main(){
   });
 
 
+  testWidgets('car and motorcycle drag selection auto-scrolls upward through an 80-package load', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+      SharedPreferences.setMockInitialValues(
+        vehicle == VehicleType.motorcycle
+            ? {'load_vehicle_type': 'motorcycle'}
+            : {},
+      );
+      final state = AppState(
+        store: _LoadStore(List.generate(80, (index) => _package(index + 1))),
+      );
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pump();
+
+      // Begin at the bottom of the lazy list and keep the finger near the
+      // top edge. This exercises the reverse direction of the real auto-scroll.
+      await _ensureLoadItemVisible(tester, find.text('Pacote 80'));
+      final last = tester.getCenter(find.text('Pacote 80'));
+      final viewport = tester.getRect(find.byType(CustomScrollView));
+      final gesture = await tester.startGesture(last);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+      final edge = Offset(last.dx, viewport.top + 30);
+      await gesture.moveTo(edge, timeStamp: const Duration(milliseconds: 700));
+      await tester.pump();
+
+      for (var frame = 0; frame < 125; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      final selectedCountFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is Text &&
+            (widget.data?.endsWith('pacote(s) selecionado(s)') ?? false),
+      );
+      expect(selectedCountFinder, findsOneWidget);
+      final selectedCount = int.parse(
+        tester.widget<Text>(selectedCountFinder).data!.split(' ').first,
+      );
+      expect(
+        selectedCount,
+        greaterThan(10),
+        reason: 'Reverse drag auto-scroll must keep selecting packages in $vehicle mode.',
+      );
+      expect(state.packages, hasLength(80));
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
+
   testWidgets('drag selection stays contiguous when the finger changes direction', (tester) async {
     // Keep all six target rows mounted so this test isolates direction changes,
     // rather than depending on lazy-list scrolling before the drag begins.
