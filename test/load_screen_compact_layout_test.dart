@@ -100,13 +100,23 @@ void main() {
   testWidgets(
     'car and motorcycle organizers remain usable on a 320px phone',
     (tester) async {
-      tester.view.physicalSize = const Size(320, 700);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      for (final vehicle in VehicleType.values) {
-        SharedPreferences.setMockInitialValues({
+      // Cover a short 5-inch class viewport as well as common compact Android
+      // sizes. The fixed bottom action must not prevent the organizer from
+      // scrolling to packages, compartments, and bulk-removal controls.
+      const compactSizes = <Size>[
+        Size(320, 568),
+        Size(360, 640),
+        Size(320, 700),
+      ];
+
+      for (final screenSize in compactSizes) {
+        tester.view.physicalSize = screenSize;
+        for (final vehicle in VehicleType.values) {
+          SharedPreferences.setMockInitialValues({
           'load_vehicle_type': vehicle.name,
         });
 
@@ -177,8 +187,9 @@ void main() {
         expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
-        await tester.pumpWidget(const SizedBox.shrink());
-        await tester.pumpAndSettle();
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pumpAndSettle();
+        }
       }
     },
   );
