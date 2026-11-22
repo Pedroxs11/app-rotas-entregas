@@ -36,7 +36,9 @@ DeliveryPackage _package(int number) => DeliveryPackage(
       id: 'p$number',
       scanNumber: number,
       address: AddressData(
-        raw: 'Rua Teste, $number',
+        raw: number >= 10
+            ? 'Rua Teste, setor 1, $number'
+            : 'Rua Teste, setor 2, $number',
         street: 'Rua Teste',
         number: '$number',
         city: 'São Paulo',
@@ -73,7 +75,7 @@ void main() {
         await tester.tap(find.byTooltip('Selecionar vários'));
         await tester.pumpAndSettle();
 
-        await tester.enterText(find.byType(TextField), 'Pacote 1');
+        await tester.enterText(find.byType(TextField), 'setor 1');
         await tester.pumpAndSettle();
 
         expect(find.text('Pacote 10'), findsOneWidget);
