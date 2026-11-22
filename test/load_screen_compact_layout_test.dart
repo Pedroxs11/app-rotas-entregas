@@ -98,7 +98,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets(
-    'car and motorcycle organizers remain usable on a 320px phone',
+    'car and motorcycle organizers remain usable on compact phone viewports',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -117,80 +117,79 @@ void main() {
         tester.view.physicalSize = screenSize;
         for (final vehicle in VehicleType.values) {
           SharedPreferences.setMockInitialValues({
-          'load_vehicle_type': vehicle.name,
-        });
+            'load_vehicle_type': vehicle.name,
+          });
 
-        final store = _CompactLoadStore([
-          _package(1),
-          _package(2),
-          _package(3),
-        ]);
-        final state = AppState(store: store);
-        await state.init();
+          final store = _CompactLoadStore([
+            _package(1),
+            _package(2),
+            _package(3),
+          ]);
+          final state = AppState(store: store);
+          await state.init();
 
-        await tester.pumpWidget(
-          MaterialApp(home: LoadScreen(state: state)),
-        );
-        await tester.pumpAndSettle();
+          await tester.pumpWidget(
+            MaterialApp(home: LoadScreen(state: state)),
+          );
+          await tester.pumpAndSettle();
 
-        if (vehicle == VehicleType.car) {
-          expect(find.text('FRENTE E'), findsOneWidget);
-          expect(find.text('FRENTE D'), findsOneWidget);
-          expect(find.text('TRASEIRA E'), findsOneWidget);
-          expect(find.text('TRASEIRA D'), findsOneWidget);
-          expect(find.text('PORTA-MALAS'), findsOneWidget);
-        } else {
-          expect(find.text('MODO MOTO'), findsOneWidget);
-          expect(find.text('BOLSA ESQUERDA'), findsOneWidget);
-          expect(find.text('BOLSA DIREITA'), findsOneWidget);
-          expect(find.text('BAÚ TRASEIRO'), findsOneWidget);
-          expect(find.text('MOCHILA DE ENTREGA'), findsOneWidget);
-        }
-        expect(tester.takeException(), isNull);
+          if (vehicle == VehicleType.car) {
+            expect(find.text('FRENTE E'), findsOneWidget);
+            expect(find.text('FRENTE D'), findsOneWidget);
+            expect(find.text('TRASEIRA E'), findsOneWidget);
+            expect(find.text('TRASEIRA D'), findsOneWidget);
+            expect(find.text('PORTA-MALAS'), findsOneWidget);
+          } else {
+            expect(find.text('MODO MOTO'), findsOneWidget);
+            expect(find.text('BOLSA ESQUERDA'), findsOneWidget);
+            expect(find.text('BOLSA DIREITA'), findsOneWidget);
+            expect(find.text('BAÚ TRASEIRO'), findsOneWidget);
+            expect(find.text('MOCHILA DE ENTREGA'), findsOneWidget);
+          }
+          expect(tester.takeException(), isNull);
 
-        final packageRow = find.text('Pacote 01');
-        await _ensureLoadItemVisible(tester, packageRow);
-        await tester.pumpAndSettle();
-        await tester.tap(packageRow);
-        await tester.pump();
+          final packageRow = find.text('Pacote 01');
+          await _ensureLoadItemVisible(tester, packageRow);
+          await tester.pumpAndSettle();
+          await tester.tap(packageRow);
+          await tester.pump();
 
-        final targetZone = find.text(
-          vehicle == VehicleType.car ? 'FRENTE E' : 'BAÚ TRASEIRO',
-        );
-        await _ensureLoadItemVisible(tester, targetZone);
-        await tester.pumpAndSettle();
-        await tester.tap(targetZone);
-        await tester.pumpAndSettle();
+          final targetZone = find.text(
+            vehicle == VehicleType.car ? 'FRENTE E' : 'BAÚ TRASEIRO',
+          );
+          await _ensureLoadItemVisible(tester, targetZone);
+          await tester.pumpAndSettle();
+          await tester.tap(targetZone);
+          await tester.pumpAndSettle();
 
-        expect(
-          state.packages.first.physicalZone,
-          vehicle == VehicleType.car ? 'Frente esquerda' : 'Baú traseiro',
-        );
+          expect(
+            state.packages.first.physicalZone,
+            vehicle == VehicleType.car ? 'Frente esquerda' : 'Baú traseiro',
+          );
 
-        // On narrow phones, assigned chips and the removal action must remain
-        // reachable without relying on a large viewport.
-        await tester.tap(find.byTooltip('Selecionar vários'));
-        await tester.pumpAndSettle();
-        final assignedChip = find.widgetWithText(InputChip, 'P01');
-        await _ensureLoadItemVisible(tester, assignedChip);
-        await tester.tap(assignedChip);
-        await tester.pumpAndSettle();
-        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+          // On compact phones, assigned chips and the removal action must
+          // remain reachable without relying on a large viewport.
+          await tester.tap(find.byTooltip('Selecionar vários'));
+          await tester.pumpAndSettle();
+          final assignedChip = find.widgetWithText(InputChip, 'P01');
+          await _ensureLoadItemVisible(tester, assignedChip);
+          await tester.tap(assignedChip);
+          await tester.pumpAndSettle();
+          expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
 
-        final removeButton = find.text('RETIRAR PACOTE SELECIONADO');
-        await _ensureLoadItemVisible(tester, removeButton);
-        await tester.tap(removeButton);
-        await tester.pumpAndSettle();
+          final removeButton = find.text('RETIRAR PACOTE SELECIONADO');
+          await _ensureLoadItemVisible(tester, removeButton);
+          await tester.tap(removeButton);
+          await tester.pumpAndSettle();
 
-        expect(state.packages.first.physicalZone, isNull);
-        expect(store.items.first.physicalZone, isNull);
-        expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
-        expect(tester.takeException(), isNull);
+          expect(state.packages.first.physicalZone, isNull);
+          expect(store.items.first.physicalZone, isNull);
+          expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
+          expect(tester.takeException(), isNull);
 
           await tester.pumpWidget(const SizedBox.shrink());
           await tester.pumpAndSettle();
-        }
-      }
+        }      }
     },
   );
 }
