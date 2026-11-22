@@ -327,8 +327,10 @@ class _LoadScreenState extends State<LoadScreen>{
     final selected=_selected();
     final removableIds = _selectedAssignedPackageIds(route);
     final assigned=route.where(_hasActiveZone).length;
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
     final compactViewport = MediaQuery.sizeOf(context).width < 360 ||
-        MediaQuery.sizeOf(context).height < 600;
+        MediaQuery.sizeOf(context).height < 600 ||
+        textScale >= 1.2;
     return Scaffold(
       appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[IconButton(tooltip:'Configurar compartimentos',onPressed:_configureZones,icon:const Icon(Icons.tune)),IconButton(tooltip:'Selecionar vários',onPressed:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),PopupMenuButton<VehicleType>(tooltip:'Veículo',onSelected:_switchVehicle,itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))])]),
       body:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
