@@ -58,6 +58,15 @@ Future<void> _ensureLoadItemVisible(
   final position = tester.state<ScrollableState>(scrollable).position;
   final viewportFinder = find.byType(CustomScrollView);
 
+  // The compartment diagram is near the start of the scroll view. A previous
+  // ensure-visible call may have moved to the package list, so return to the
+  // start before searching for a chip that is no longer in the sliver cache.
+  if (finder.evaluate().isEmpty &&
+      position.pixels > position.minScrollExtent) {
+    position.jumpTo(position.minScrollExtent);
+    await tester.pumpAndSettle();
+  }
+
   for (var attempt = 0; attempt < 120; attempt++) {
     if (finder.evaluate().isNotEmpty) {
       final target = tester.getRect(finder.first);
@@ -166,6 +175,7 @@ void main() {
             state.packages.first.physicalZone,
             vehicle == VehicleType.car ? 'Frente esquerda' : 'Baú traseiro',
           );
+          expect(find.text('P01'), findsOneWidget);
 
           // On compact phones, assigned chips and the removal action must
           // remain reachable without relying on a large viewport.
