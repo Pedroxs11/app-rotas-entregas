@@ -110,13 +110,12 @@ void main() {
           'load_vehicle_type': vehicle.name,
         });
 
-        final state = AppState(
-          store: _CompactLoadStore([
-            _package(1),
-            _package(2),
-            _package(3),
-          ]),
-        );
+        final store = _CompactLoadStore([
+          _package(1),
+          _package(2),
+          _package(3),
+        ]);
+        final state = AppState(store: store);
         await state.init();
 
         await tester.pumpWidget(
