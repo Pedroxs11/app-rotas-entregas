@@ -20,8 +20,8 @@ class _LoadScreenState extends State<LoadScreen>{
   final Map<String, RenderBox> _mountedTileBoxes = <String, RenderBox>{};
   final Map<String, int> _dragSelectionIndexById = <String, int>{};
   final Set<String> _expandedZones=<String>{};
-  final ScrollController _scrollController=ScrollController();
-  final GlobalKey _scrollViewportKey=GlobalKey();
+  ScrollController _scrollController=ScrollController(keepScrollOffset:false);
+  GlobalKey _scrollViewportKey=GlobalKey();
   Timer? _autoScrollTimer;
   Offset? _lastSelectionPointer;
   List<DeliveryPackage> _dragSelectionPackages = const [];
@@ -104,21 +104,23 @@ class _LoadScreenState extends State<LoadScreen>{
       return;
     }
     if (!mounted) return;
-    // Reset while the current scrollable is still attached to its existing
-    // layout. Waiting until after the vehicle rebuild can race with the new
-    // sliver dimensions and leave the previous offset (for example, 744 px).
-    final position = _scrollController.hasClients
-        ? _scrollController.position
-        : null;
-    if (position != null && position.hasContentDimensions) {
-      _scrollController.jumpTo(position.minScrollExtent);
-    }
+
+    // A vehicle change replaces the diagram and changes the sliver extents.
+    // Recreate the scrollable with a fresh controller so Flutter cannot
+    // restore the previous vehicle's offset during the next layout pass.
+    final previousController = _scrollController;
+    final nextController = ScrollController(keepScrollOffset: false);
     _searchController.clear();
     setState(() {
+      _scrollController = nextController;
+      _scrollViewportKey = GlobalKey();
       search = '';
       selectedId = null;
       selectedIds.clear();
       _expandedZones.clear();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      previousController.dispose();
     });
   }
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
