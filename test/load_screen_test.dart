@@ -817,6 +817,24 @@ void main(){
     expect(find.text('P03'), findsOneWidget);
     expect(find.text('3'), findsOneWidget);
   });
+  
+  testWidgets('search matches city names without accents', (tester) async {
+    final state = AppState(store: _LoadStore([_package(1), _package(2)]));
+    await state.init();
+
+    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Sao Paulo');
+    await tester.pump();
+
+    expect(find.text('P01'), findsOneWidget);
+    expect(find.text('P02'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('large compartments collapse after eight package chips', (tester) async {
     final state = AppState(store: _LoadStore(
