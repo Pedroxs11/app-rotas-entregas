@@ -763,6 +763,18 @@ void main() {
 
       final removeButton = find.text('RETIRAR PACOTE SELECIONADO');
       expect(removeButton, findsOneWidget);
+      // The removal action follows the vehicle diagram in the same scroll
+      // view; make it visible before tapping so the test uses a real hit target.
+      await tester.scrollUntilVisible(
+        removeButton,
+        180,
+        scrollable: find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first,
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(removeButton);
       await tester.pumpAndSettle();
 
