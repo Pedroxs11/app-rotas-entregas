@@ -79,19 +79,15 @@ void main() {
         await tester.pumpAndSettle();
 
         // The package list is a lazy SliverList below the vehicle diagram.
-        // Scroll to the filtered rows before querying or starting the drag.
+        // Bring the last filtered row into view with small increments so the
+        // first and last drag targets remain visible at the same time.
         final scrollable = find.descendant(
           of: find.byType(CustomScrollView),
           matching: find.byType(Scrollable),
         ).first;
         await tester.scrollUntilVisible(
-          find.text('Pacote 10'),
-          300,
-          scrollable: scrollable,
-        );
-        await tester.scrollUntilVisible(
           find.text('Pacote 12'),
-          300,
+          100,
           scrollable: scrollable,
         );
 
@@ -99,6 +95,13 @@ void main() {
         expect(find.text('Pacote 11'), findsOneWidget);
         expect(find.text('Pacote 12'), findsOneWidget);
         expect(find.text('Pacote 01'), findsNothing);
+
+        final viewport = tester.getRect(find.byType(CustomScrollView));
+        for (final target in ['Pacote 10', 'Pacote 12']) {
+          final targetRect = tester.getRect(find.text(target));
+          expect(targetRect.top, greaterThanOrEqualTo(viewport.top));
+          expect(targetRect.bottom, lessThanOrEqualTo(viewport.bottom));
+        }
 
         final first = tester.getCenter(find.text('Pacote 10'));
         final last = tester.getCenter(find.text('Pacote 12'));
