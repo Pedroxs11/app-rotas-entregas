@@ -765,14 +765,10 @@ void main() {
       expect(removeButton, findsOneWidget);
       // The removal action follows the vehicle diagram in the same scroll
       // view; make it visible before tapping so the test uses a real hit target.
-      await tester.scrollUntilVisible(
-        removeButton,
-        180,
-        scrollable: find.descendant(
-          of: find.byType(CustomScrollView),
-          matching: find.byType(Scrollable),
-        ).first,
+      await Scrollable.ensureVisible(
+        tester.element(removeButton),
         alignment: 0.5,
+        duration: Duration.zero,
       );
       await tester.pumpAndSettle();
       await tester.tap(removeButton);
