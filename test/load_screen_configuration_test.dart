@@ -750,22 +750,13 @@ void main() {
       final assignedChip = find.widgetWithText(InputChip, 'P09');
       expect(assignedChip, findsOneWidget,
           reason: 'The matching package should remain visible in $zone.');
-      // The vehicle diagram sits above the lazy package list and may extend
-      // below the initial viewport. Bring the chip on-screen before tapping it.
-      final loadScrollView = find.byType(CustomScrollView);
-      final loadScrollable = find.descendant(
-        of: loadScrollView,
-        matching: find.byType(Scrollable),
-      ).first;
-      await tester.scrollUntilVisible(
-        assignedChip,
-        180,
-        scrollable: loadScrollable,
+      // Center the chip in the scroll viewport. Merely making it intersect
+      // the viewport can leave its center behind the fixed bottom action bar.
+      await Scrollable.ensureVisible(
+        tester.element(assignedChip),
+        alignment: 0.5,
+        duration: Duration.zero,
       );
-      // scrollUntilVisible only guarantees that the chip intersects the
-      // viewport. Move it farther from the fixed bottom action area so the
-      // center tap lands on the chip itself.
-      await tester.drag(loadScrollView, const Offset(0, -220));
       await tester.pumpAndSettle();
       await tester.tap(assignedChip);
       await tester.pumpAndSettle();
