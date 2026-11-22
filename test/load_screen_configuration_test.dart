@@ -752,14 +752,21 @@ void main() {
           reason: 'The matching package should remain visible in $zone.');
       // The vehicle diagram sits above the lazy package list and may extend
       // below the initial viewport. Bring the chip on-screen before tapping it.
+      final loadScrollView = find.byType(CustomScrollView);
+      final loadScrollable = find.descendant(
+        of: loadScrollView,
+        matching: find.byType(Scrollable),
+      ).first;
       await tester.scrollUntilVisible(
         assignedChip,
         180,
-        scrollable: find.descendant(
-          of: find.byType(CustomScrollView),
-          matching: find.byType(Scrollable),
-        ).first,
+        scrollable: loadScrollable,
       );
+      // scrollUntilVisible only guarantees that the chip intersects the
+      // viewport. Move it farther from the fixed bottom action area so the
+      // center tap lands on the chip itself.
+      await tester.drag(loadScrollView, const Offset(0, -220));
+      await tester.pumpAndSettle();
       await tester.tap(assignedChip);
       await tester.pumpAndSettle();
 
