@@ -515,7 +515,7 @@ class _LoadScreenState extends State<LoadScreen>{
                     ),
                   ),
                 ),
-                if (missing == 0)
+                if (assigned == route.length)
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     sliver: SliverToBoxAdapter(
