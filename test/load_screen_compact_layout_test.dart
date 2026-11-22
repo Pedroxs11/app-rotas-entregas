@@ -47,6 +47,51 @@ DeliveryPackage _package(int number) => DeliveryPackage(
       scannedAt: DateTime.utc(2026, 11, 22, 10, number),
     );
 
+Future<void> _ensureLoadItemVisible(
+  WidgetTester tester,
+  Finder finder,
+) async {
+  final scrollable = find.descendant(
+    of: find.byType(CustomScrollView),
+    matching: find.byType(Scrollable),
+  ).first;
+  final position = tester.state<ScrollableState>(scrollable).position;
+  final viewportFinder = find.byType(CustomScrollView);
+
+  for (var attempt = 0; attempt < 120; attempt++) {
+    if (finder.evaluate().isNotEmpty) {
+      final target = tester.getRect(finder.first);
+      final viewport = tester.getRect(viewportFinder);
+      if (target.top >= viewport.top && target.bottom <= viewport.bottom) {
+        return;
+      }
+      final delta = target.top < viewport.top
+          ? target.top - viewport.top
+          : target.bottom - viewport.bottom;
+      final next = (position.pixels + delta)
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if ((next - position.pixels).abs() < 0.5) break;
+      position.jumpTo(next);
+    } else {
+      // SliverList builds rows lazily. Scroll in small increments until the
+      // package enters the cache extent before trying to inspect or tap it.
+      final next = (position.pixels + 100)
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if (next <= position.pixels) break;
+      position.jumpTo(next);
+    }
+    await tester.pumpAndSettle();
+  }
+
+  expect(finder, findsWidgets);
+  final target = tester.getRect(finder.first);
+  final viewport = tester.getRect(viewportFinder);
+  expect(target.top, greaterThanOrEqualTo(viewport.top));
+  expect(target.bottom, lessThanOrEqualTo(viewport.bottom));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -95,7 +140,7 @@ void main() {
         expect(tester.takeException(), isNull);
 
         final packageRow = find.text('Pacote 01');
-        await tester.ensureVisible(packageRow);
+        await _ensureLoadItemVisible(tester, packageRow);
         await tester.pumpAndSettle();
         await tester.tap(packageRow);
         await tester.pump();
@@ -103,7 +148,7 @@ void main() {
         final targetZone = find.text(
           vehicle == VehicleType.car ? 'FRENTE E' : 'BAÚ TRASEIRO',
         );
-        await tester.ensureVisible(targetZone);
+        await _ensureLoadItemVisible(tester, targetZone);
         await tester.pumpAndSettle();
         await tester.tap(targetZone);
         await tester.pumpAndSettle();
