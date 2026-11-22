@@ -104,19 +104,21 @@ class _LoadScreenState extends State<LoadScreen>{
       return;
     }
     if (!mounted) return;
+    // Reset while the current scrollable is still attached to its existing
+    // layout. Waiting until after the vehicle rebuild can race with the new
+    // sliver dimensions and leave the previous offset (for example, 744 px).
+    final position = _scrollController.hasClients
+        ? _scrollController.position
+        : null;
+    if (position != null && position.hasContentDimensions) {
+      _scrollController.jumpTo(position.minScrollExtent);
+    }
     _searchController.clear();
     setState(() {
       search = '';
       selectedId = null;
       selectedIds.clear();
       _expandedZones.clear();
-    });
-    // Wait until the new vehicle diagram has completed layout before
-    // resetting the scroll position. Jumping during the state update can be
-    // overwritten by the scrollable's next layout when its extent changes.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) return;
-      _scrollController.jumpTo(_scrollController.position.minScrollExtent);
     });
   }
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
