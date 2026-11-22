@@ -203,4 +203,78 @@ void main() {
       }
     },
   );
+  testWidgets(
+    'car and motorcycle organizers support enlarged text on compact phones',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final vehicle in VehicleType.values) {
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': vehicle.name,
+        });
+        final state = AppState(
+          store: _CompactLoadStore([_package(1), _package(2)]),
+        );
+        await state.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(1.3),
+              ),
+              child: child!,
+            ),
+            home: LoadScreen(state: state),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final expectedZone = vehicle == VehicleType.car
+            ? 'FRENTE E'
+            : 'BAÚ TRASEIRO';
+        expect(find.text(expectedZone), findsOneWidget);
+        expect(find.text('Pacotes sem posição'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        // The compartment settings dialog must remain usable with enlarged
+        // system text instead of clipping its title, choices, or actions.
+        await tester.tap(find.byTooltip('Configurar compartimentos'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            vehicle == VehicleType.car
+                ? 'Compartimentos do carro'
+                : 'Compartimentos da moto',
+          ),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.text('Cancelar'));
+        await tester.pumpAndSettle();
+
+        await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
+        await tester.tap(find.text('Pacote 01'));
+        await tester.pump();
+
+        await _ensureLoadItemVisible(tester, find.text(expectedZone));
+        await tester.tap(find.text(expectedZone));
+        await tester.pumpAndSettle();
+
+        expect(
+          state.packages.first.physicalZone,
+          vehicle == VehicleType.car ? 'Frente esquerda' : 'Baú traseiro',
+        );
+        expect(find.text('P01'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      }
+    },
+  );
+
 }
