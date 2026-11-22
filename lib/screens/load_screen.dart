@@ -59,26 +59,30 @@ class _LoadScreenState extends State<LoadScreen>{
       .replaceAll('ñ', 'n')
       .replaceAll(RegExp(r'[ýÿ]'), 'y');
 
-  bool _matchesSearch(DeliveryPackage p){
-    // Drivers often type addresses without accents. Normalize both sides so
-    // "Sao Paulo" finds "São Paulo" without changing the displayed address.
-    final q=_normalizeSearchText(search.trim());
-    if(q.isEmpty)return true;
+  bool _matchesSearch(DeliveryPackage p, String query){
+    // The query is normalized once per filtering pass, not once per package.
+    // Drivers often type addresses without accents, so "Sao Paulo" still finds
+    // "São Paulo" without changing the displayed address.
+    if(query.isEmpty)return true;
     final number=p.scanNumber.toString();
     final paddedNumber=number.padLeft(2,'0');
-    final normalizedQuery=q.replaceAll(RegExp(r'[^a-z0-9]'),'');
+    final normalizedQuery=query.replaceAll(RegExp(r'[^a-z0-9]'),'');
     final codeNumber=normalizedQuery.startsWith('p')
         ?normalizedQuery.substring(1)
         :'';
     final matchesCode=codeNumber==number||codeNumber==paddedNumber;
-    return _normalizeSearchText(p.label).contains(q)||
+    return _normalizeSearchText(p.label).contains(query)||
         matchesCode||
-        number.contains(q)||
-        paddedNumber.contains(q)||
-        _normalizeSearchText(p.address.formatted).contains(q)||
-        _normalizeSearchText(p.address.raw).contains(q);
+        number.contains(query)||
+        paddedNumber.contains(query)||
+        _normalizeSearchText(p.address.formatted).contains(query)||
+        _normalizeSearchText(p.address.raw).contains(query);
   }
-  List<DeliveryPackage> get _visibleRoute=>_route.where((p)=>!_hasActiveZone(p)&&_matchesSearch(p)).toList();
+  List<DeliveryPackage> _visibleRouteForQuery(String query)=>_route
+      .where((p)=>!_hasActiveZone(p)&&_matchesSearch(p,query))
+      .toList(growable:false);
+  List<DeliveryPackage> get _visibleRoute=>
+      _visibleRouteForQuery(_normalizeSearchText(search.trim()));
   DeliveryPackage? _selected(){
     final id=selectedId;
     if(id==null)return null;
@@ -334,7 +338,10 @@ class _LoadScreenState extends State<LoadScreen>{
     final route=_route;
     // Build the filtered list once per frame. Recomputing this getter for every
     // lazy SliverList child would repeatedly scan all packages on large loads.
-    final visibleRoute=route.where((p)=>!_hasActiveZone(p)&&_matchesSearch(p)).toList(growable:false);
+    final normalizedSearch=_normalizeSearchText(search.trim());
+    final visibleRoute=route
+        .where((p)=>!_hasActiveZone(p)&&_matchesSearch(p,normalizedSearch))
+        .toList(growable:false);
     final selected=_selected();
     final removableIds = _selectedAssignedPackageIds(route);
     final assigned=route.where(_hasActiveZone).length;
