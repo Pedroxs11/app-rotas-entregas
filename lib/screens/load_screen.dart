@@ -543,6 +543,8 @@ class _LoadScreenState extends State<LoadScreen>{
     final defaults=_isMoto?AppState.motorcyclePhysicalZones:AppState.carPhysicalZones;
     final selected=widget.state.activePhysicalZones.toSet();
     await showDialog<void>(context:context,builder:(dialogContext)=>StatefulBuilder(builder:(context,setDialogState)=>AlertDialog(
+      insetPadding:const EdgeInsets.symmetric(horizontal:16,vertical:16),
+      scrollable:true,
       title:Text(_isMoto?'Compartimentos da moto':'Compartimentos do carro'),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
         const Text('Ative apenas os espaços que existem no seu veículo.'),
