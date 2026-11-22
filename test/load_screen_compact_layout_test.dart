@@ -253,8 +253,26 @@ void main() {
           findsOneWidget,
         );
         expect(tester.takeException(), isNull);
-        await tester.tap(find.text('Cancelar'));
+
+        // Reach the last option inside the scrollable dialog, disable it, and
+        // save with enlarged text on the smallest supported phone viewport.
+        final lastZone = vehicle == VehicleType.car
+            ? 'Porta-malas'
+            : 'Mochila de entrega';
+        final lastZoneTile =
+            find.widgetWithText(CheckboxListTile, lastZone);
+        await tester.ensureVisible(lastZoneTile);
         await tester.pumpAndSettle();
+        await tester.tap(lastZoneTile);
+        await tester.pumpAndSettle();
+
+        final saveZonesButton = find.text('Salvar');
+        await tester.ensureVisible(saveZonesButton);
+        await tester.tap(saveZonesButton);
+        await tester.pumpAndSettle();
+
+        expect(state.activePhysicalZones, isNot(contains(lastZone)));
+        expect(tester.takeException(), isNull);
 
         await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
         await tester.tap(find.text('Pacote 01'));
