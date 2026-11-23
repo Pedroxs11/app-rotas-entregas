@@ -32,6 +32,7 @@ class _LoadScreenState extends State<LoadScreen>{
   bool multiSelect=false;
   bool _dragSelecting=false;
   bool _suppressNextTap=false;
+  bool _vehicleSwitching=false;
   String search='';
   final TextEditingController _searchController=TextEditingController();
   bool get _isMoto=>widget.state.vehicleType==VehicleType.motorcycle;
@@ -98,11 +99,11 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   Future<void> _switchVehicle(VehicleType value) async {
-    if (value == widget.state.vehicleType) return;
+    if (value == widget.state.vehicleType || _vehicleSwitching) return;
 
-    // End the drag session before the asynchronous preference/package save.
-    // The periodic timer must not keep scrolling while the vehicle mutation
-    // waits for persistence to finish.
+    // End the drag session and lock the organizer before asynchronous
+    // persistence. Otherwise a second gesture could start against the old
+    // vehicle layout while the first vehicle change is still being saved.
     _stopSelectionAutoScroll();
     _dragSelecting = false;
     _suppressNextTap = false;
@@ -112,10 +113,17 @@ class _LoadScreenState extends State<LoadScreen>{
     _dragSelectionIndexById.clear();
     _lastSelectionIndex = null;
 
+    setState(() {
+      _vehicleSwitching = true;
+      selectedId = null;
+      selectedIds.clear();
+    });
+
     try {
       await widget.state.setVehicleType(value);
     } catch (error) {
       if (!mounted) return;
+      setState(() => _vehicleSwitching = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Não foi possível trocar o veículo: $error')),
       );
@@ -138,6 +146,7 @@ class _LoadScreenState extends State<LoadScreen>{
       selectedId = null;
       selectedIds.clear();
       _expandedZones.clear();
+      _vehicleSwitching = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       previousController.dispose();
@@ -366,8 +375,17 @@ class _LoadScreenState extends State<LoadScreen>{
         MediaQuery.sizeOf(context).height < 600 ||
         textScale >= 1.2;
     return Scaffold(
-      appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[IconButton(tooltip:'Configurar compartimentos',onPressed:_configureZones,icon:const Icon(Icons.tune)),IconButton(tooltip:'Selecionar vários',onPressed:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),PopupMenuButton<VehicleType>(tooltip:'Veículo',onSelected:_switchVehicle,itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))])]),
-      body:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
+      appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[
+        if(_vehicleSwitching)
+          const Padding(
+            padding:EdgeInsets.symmetric(horizontal:12),
+            child:SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)),
+          ),
+        IconButton(tooltip:'Configurar compartimentos',onPressed:_vehicleSwitching?null:_configureZones,icon:const Icon(Icons.tune)),
+        IconButton(tooltip:'Selecionar vários',onPressed:_vehicleSwitching?null:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),
+        PopupMenuButton<VehicleType>(tooltip:'Veículo',enabled:!_vehicleSwitching,onSelected:_switchVehicle,itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))]),
+      ]),
+      body:AbsorbPointer(absorbing:_vehicleSwitching,child:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
         Padding(
           padding: EdgeInsets.fromLTRB(
             16,
@@ -569,7 +587,7 @@ class _LoadScreenState extends State<LoadScreen>{
           ),
         ),
         SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?_startDeliveries:null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
-      ]),
+      ])),
     );
   }
 
