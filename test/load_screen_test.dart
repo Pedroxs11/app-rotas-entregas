@@ -1755,4 +1755,74 @@ void main(){
     },
   );
 
+
+  testWidgets(
+    'a second long press cannot replace the active drag selection owner',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final state = AppState(
+        store: _LoadStore(List.generate(10, (index) => _package(index + 1))),
+      );
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pump();
+
+      final first = tester.getCenter(find.text('Pacote 01'));
+      final primary = await tester.startGesture(
+        first,
+        pointer: 1,
+        timeStamp: const Duration(milliseconds: 0),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+      final second = tester.getCenter(find.text('Pacote 02'));
+      await primary.moveTo(
+        second,
+        timeStamp: const Duration(milliseconds: 700),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
+
+      // This second pointer long-presses a different package while the
+      // primary pointer still owns the active selection session.
+      final unrelated = tester.getCenter(find.text('Pacote 04'));
+      final secondary = await tester.startGesture(
+        unrelated,
+        pointer: 2,
+        timeStamp: const Duration(milliseconds: 800),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(
+        find.text('2 pacote(s) selecionado(s)'),
+        findsOneWidget,
+        reason: 'A secondary long press must not add a package or reset the anchor.',
+      );
+
+      final third = tester.getCenter(find.text('Pacote 03'));
+      await primary.moveTo(
+        third,
+        timeStamp: const Duration(milliseconds: 1500),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(find.text('3 pacote(s) selecionado(s)'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await secondary.up(timeStamp: const Duration(milliseconds: 1516));
+      await primary.up(timeStamp: const Duration(milliseconds: 1532));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
+
 }
