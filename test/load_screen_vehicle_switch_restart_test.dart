@@ -208,7 +208,7 @@ void main() {
         store: _PersistentLoadStore(
           List.generate(
             60,
-            (index) => _package('drag-' + (index + 1).toString(), index + 1),
+            (index) => _package('drag-${index + 1}', index + 1),
           ),
         ),
       );
