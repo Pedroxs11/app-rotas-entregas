@@ -131,6 +131,74 @@ void main() {
     },
   );
 
+  testWidgets(
+    'compartment confirmation counts only non-delivered packages across car and motorcycle zones',
+    (tester) async {
+      for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+        final zones = vehicle == VehicleType.car
+            ? AppState.carPhysicalZones
+            : AppState.motorcyclePhysicalZones;
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': vehicle.name,
+        });
+
+        final store = _ConfigurationStore([
+          _package(1, zone: zones.first),
+          _package(2, zone: zones[1]),
+          _package(3, zone: zones[2], status: DeliveryStatus.absent),
+          _package(4, zone: zones[3], status: DeliveryStatus.delivered),
+        ]);
+        final state = AppState(store: store);
+        await state.init();
+
+        await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Configurar compartimentos'));
+        await tester.pumpAndSettle();
+        for (final zone in zones.skip(1)) {
+          await tester.tap(find.widgetWithText(CheckboxListTile, zone));
+          await tester.pump();
+        }
+
+        await tester.tap(find.text('Salvar'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Confirmar alteração dos compartimentos'),
+          findsOneWidget,
+          reason: 'Both vehicle types must confirm removal of occupied zones.',
+        );
+        expect(
+          find.textContaining(
+            '2 pacotes não entregues perderão suas posições atuais.',
+          ),
+          findsOneWidget,
+          reason: 'Delivered history must not inflate the affected count.',
+        );
+        expect(store.saves, 0);
+        expect(state.packages[1].physicalZone, zones[1]);
+        expect(state.packages[2].physicalZone, zones[2]);
+        expect(state.packages[3].physicalZone, zones[3]);
+
+        await tester.tap(find.text('Desativar e continuar'));
+        await tester.pumpAndSettle();
+
+        expect(state.activePhysicalZones, [zones.first]);
+        expect(state.packages[0].physicalZone, zones.first);
+        expect(state.packages[1].physicalZone, isNull);
+        expect(state.packages[2].physicalZone, isNull);
+        expect(state.packages[3].status, DeliveryStatus.delivered);
+        expect(state.packages[3].physicalZone, zones[3]);
+        expect(store.saves, 1);
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      }
+    },
+  );
+
   testWidgets('motorcycle configuration shows only motorcycle compartments',
       (tester) async {
     final state = AppState(
