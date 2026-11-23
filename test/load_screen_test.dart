@@ -1728,6 +1728,11 @@ void main(){
       final secondary = Offset(viewport.left + 4, viewport.top + 4);
       final secondPointer = await tester.startGesture(secondary, pointer: 2);
       await tester.pump(const Duration(milliseconds: 40));
+      await secondPointer.moveTo(
+        Offset(secondary.dx + 1, secondary.dy + 1),
+        timeStamp: const Duration(milliseconds: 750),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
       await secondPointer.up();
       await tester.pump();
 
