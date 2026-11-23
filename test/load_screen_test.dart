@@ -826,10 +826,20 @@ void main(){
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Sao Paulo');
-    await tester.pump();
+    await tester.pumpAndSettle();
 
+    final scrollable = find.descendant(
+      of: find.byType(CustomScrollView),
+      matching: find.byType(Scrollable),
+    ).first;
+    await tester.scrollUntilVisible(find.text('Pacote 01'), 250, scrollable: scrollable);
     expect(find.text('Pacote 01'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Pacote 02'), 250, scrollable: scrollable);
     expect(find.text('Pacote 02'), findsOneWidget);
+    expect(
+      find.text('Nenhum pacote encontrado para essa busca.'),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());
