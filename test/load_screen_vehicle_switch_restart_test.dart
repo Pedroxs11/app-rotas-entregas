@@ -15,6 +15,7 @@ class _PersistentLoadStore implements PackageStore {
   List<DeliveryPackage> items;
   int saves = 0;
   Completer<void>? nextSaveGate;
+  Object? nextSaveError;
 
   @override
   Future<void> clear() async {
@@ -35,6 +36,9 @@ class _PersistentLoadStore implements PackageStore {
     final gate = nextSaveGate;
     nextSaveGate = null;
     if (gate != null) await gate.future;
+    final error = nextSaveError;
+    nextSaveError = null;
+    if (error != null) throw error;
     items = [...value];
     saves++;
   }
@@ -331,6 +335,57 @@ void main() {
 
       await gesture.up();
       await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'failed vehicle persistence rolls back and unlocks the organizer',
+    (tester) async {
+      final store = _PersistentLoadStore([
+        _package('assigned', 1, zone: 'Porta-malas'),
+        _package('pending', 2),
+      ]);
+      final state = AppState(store: store);
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      store.nextSaveError = StateError('simulated disk failure');
+      await tester.tap(find.byTooltip('Veículo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('🏍️ Moto'));
+      await tester.pumpAndSettle();
+
+      expect(state.vehicleType, VehicleType.car);
+      expect(state.activePhysicalZones, AppState.carPhysicalZones);
+      expect(state.packages.first.physicalZone, 'Porta-malas');
+      expect(
+        find.textContaining('Não foi possível trocar o veículo'),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<PopupMenuButton<VehicleType>>(
+          find.byTooltip('Veículo'),
+        ).enabled,
+        isTrue,
+        reason: 'A failed save must release the vehicle-switch lock.',
+      );
+      expect(tester.takeException(), isNull);
+
+      // The failed write is consumed and the same action can be retried.
+      await tester.tap(find.byTooltip('Veículo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('🏍️ Moto'));
+      await tester.pumpAndSettle();
+
+      expect(state.vehicleType, VehicleType.motorcycle);
+      expect(state.packages.first.physicalZone, isNull);
+      expect(find.text('MODO MOTO'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
