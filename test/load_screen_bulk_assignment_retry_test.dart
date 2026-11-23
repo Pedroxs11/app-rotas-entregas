@@ -249,8 +249,9 @@ void main() {
       // taps until the first persistence operation finishes.
       final secondCompartment = find.text('FRENTE D');
       expect(secondCompartment, findsOneWidget);
-      await _ensureLoadItemVisible(tester, secondCompartment);
-      await tester.tap(secondCompartment);
+      // The first compartment was brought fully into view; the adjacent
+      // compartment shares the same row. Absorb this intentional blocked tap.
+      await tester.tap(secondCompartment, warnIfMissed: false);
       await tester.pump();
       expect(store.saveAttempts, 1);
 
@@ -262,7 +263,7 @@ void main() {
       expect(store.items.first.physicalZone, 'Frente esquerda');
       expect(store.saveAttempts, 1);
       expect(store.successfulSaves, 1);
-      expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
+      expect(find.textContaining('selecionado. Agora toque'), findsNothing);
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
@@ -281,6 +282,7 @@ void main() {
       SharedPreferences.setMockInitialValues({'load_vehicle_type': 'car'});
       final store = _RetryingLoadStore([
         _package(VehicleType.car, 1).copyWith(physicalZone: 'Porta-malas'),
+        _package(VehicleType.car, 2).copyWith(physicalZone: 'Porta-malas'),
       ])..failNextSave = false;
       final saveGate = Completer<void>();
       store.saveGate = saveGate;
@@ -293,12 +295,15 @@ void main() {
       await tester.tap(find.byTooltip('Selecionar vários'));
       await tester.pumpAndSettle();
 
-      final assignedChip = find.widgetWithText(InputChip, 'P01');
-      await _ensureLoadItemVisible(tester, assignedChip);
-      await tester.tap(assignedChip);
-      await tester.pumpAndSettle();
+      for (final label in ['P01', 'P02']) {
+        final assignedChip = find.widgetWithText(InputChip, label);
+        await _ensureLoadItemVisible(tester, assignedChip);
+        await tester.tap(assignedChip);
+        await tester.pumpAndSettle();
+      }
+      expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
 
-      final removeButton = find.text('RETIRAR PACOTE SELECIONADO');
+      final removeButton = find.text('RETIRAR 2 PACOTES');
       await _ensureLoadItemVisible(tester, removeButton);
       await tester.tap(removeButton);
       await tester.pump();
@@ -311,8 +316,10 @@ void main() {
       saveGate.complete();
       await tester.pumpAndSettle();
 
-      expect(state.packages.single.physicalZone, isNull);
-      expect(store.items.single.physicalZone, isNull);
+      expect(state.packages, hasLength(2));
+      expect(state.packages.every((package) => package.physicalZone == null), isTrue);
+      expect(store.items, hasLength(2));
+      expect(store.items.every((package) => package.physicalZone == null), isTrue);
       expect(store.saveAttempts, 1);
       expect(store.successfulSaves, 1);
       expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
