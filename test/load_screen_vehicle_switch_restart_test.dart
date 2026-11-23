@@ -343,8 +343,12 @@ void main() {
   );
 
   testWidgets(
-    'failed vehicle persistence rolls back and unlocks the organizer',
+    'failed vehicle persistence rolls back state and saved vehicle preferences',
     (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': 'car',
+        'load_zones_motorcycle': ['Baú traseiro', 'Bolsa lateral direita'],
+      });
       final store = _PersistentLoadStore([
         _package('assigned', 1, zone: 'Porta-malas'),
         _package('pending', 2),
@@ -364,6 +368,13 @@ void main() {
       expect(state.vehicleType, VehicleType.car);
       expect(state.activePhysicalZones, AppState.carPhysicalZones);
       expect(state.packages.first.physicalZone, 'Porta-malas');
+      final preferences = await SharedPreferences.getInstance();
+      expect(preferences.getString('load_vehicle_type'), 'car');
+      expect(
+        preferences.getStringList('load_zones_motorcycle'),
+        ['Baú traseiro', 'Bolsa lateral direita'],
+        reason: 'A failed switch must restore the target vehicle preferences.',
+      );
       expect(
         find.textContaining('Não foi possível trocar o veículo'),
         findsOneWidget,
@@ -386,6 +397,11 @@ void main() {
 
       expect(state.vehicleType, VehicleType.motorcycle);
       expect(state.packages.first.physicalZone, isNull);
+      expect(preferences.getString('load_vehicle_type'), 'motorcycle');
+      expect(
+        preferences.getStringList('load_zones_motorcycle'),
+        ['Baú traseiro', 'Bolsa lateral direita'],
+      );
       expect(find.text('MODO MOTO'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
