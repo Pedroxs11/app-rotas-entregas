@@ -1759,7 +1759,9 @@ void main(){
   testWidgets(
     'a second long press cannot replace the active drag selection owner',
     (tester) async {
-      tester.view.physicalSize = const Size(400, 1200);
+      // Keep the header, vehicle diagram, and all ten package rows mounted
+      // so the test isolates multi-pointer ownership rather than lazy scrolling.
+      tester.view.physicalSize = const Size(400, 2400);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -1773,6 +1775,7 @@ void main(){
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Selecionar vários'));
       await tester.pump();
+      await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
 
       final first = tester.getCenter(find.text('Pacote 01'));
       final primary = await tester.startGesture(first, pointer: 1);
