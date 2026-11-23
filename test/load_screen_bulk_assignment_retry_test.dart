@@ -299,7 +299,9 @@ void main() {
         final assignedChip = find.widgetWithText(InputChip, label);
         await _ensureLoadItemVisible(tester, assignedChip);
         await tester.tap(assignedChip);
-        await tester.pumpAndSettle();
+        // A single frame applies the selection without waiting for any
+        // unrelated indeterminate progress animation.
+        await tester.pump();
       }
       expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
 
