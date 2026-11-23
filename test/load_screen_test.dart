@@ -1788,13 +1788,11 @@ void main(){
       expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
 
       // This second pointer long-presses a different package while the
-      // primary pointer still owns the active selection session.
+      // primary pointer still owns the active selection session. Advance the
+      // fake clock first; startGesture uses the current test clock.
+      await tester.pump(const Duration(milliseconds: 100));
       final unrelated = tester.getCenter(find.text('Pacote 04'));
-      final secondary = await tester.startGesture(
-        unrelated,
-        pointer: 2,
-        timeStamp: const Duration(milliseconds: 800),
-      );
+      final secondary = await tester.startGesture(unrelated, pointer: 2);
       await tester.pump(const Duration(milliseconds: 600));
       expect(
         find.text('2 pacote(s) selecionado(s)'),
