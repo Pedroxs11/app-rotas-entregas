@@ -104,14 +104,8 @@ class _LoadScreenState extends State<LoadScreen>{
     // End the drag session and lock the organizer before asynchronous
     // persistence. Otherwise a second gesture could start against the old
     // vehicle layout while the first vehicle change is still being saved.
-    _stopSelectionAutoScroll();
-    _dragSelecting = false;
+    _cancelDragSelection();
     _suppressNextTap = false;
-    _selectionStartPackageId = null;
-    _lastSelectionPointer = null;
-    _dragSelectionPackages = const [];
-    _dragSelectionIndexById.clear();
-    _lastSelectionIndex = null;
 
     setState(() {
       _vehicleSwitching = true;
@@ -153,7 +147,17 @@ class _LoadScreenState extends State<LoadScreen>{
     });
   }
   void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
-  void _toggleMulti(){setState((){multiSelect=!multiSelect;selectedId=null;selectedIds.clear();});}
+  void _toggleMulti(){
+    // A second pointer can toggle multi-select while another finger is still
+    // dragging. Stop its timer before changing modes so it cannot keep
+    // scrolling or adding selections after multi-select has been disabled.
+    _cancelDragSelection();
+    setState(() {
+      multiSelect = !multiSelect;
+      selectedId = null;
+      selectedIds.clear();
+    });
+  }
   bool _allVisiblePackagesSelected(List<DeliveryPackage> visible) =>
       visible.isNotEmpty && visible.every((package) => selectedIds.contains(package.id));
 
@@ -255,6 +259,16 @@ class _LoadScreenState extends State<LoadScreen>{
     _autoScrollSpeed=0;
   }
 
+  void _cancelDragSelection() {
+    _stopSelectionAutoScroll();
+    _selectionStartPackageId = null;
+    _lastSelectionPointer = null;
+    _dragSelectionPackages = const [];
+    _dragSelectionIndexById.clear();
+    _lastSelectionIndex = null;
+    _dragSelecting = false;
+  }
+
   void _selectionPointerUp() {
     final wasDragging = _dragSelecting;
     if (wasDragging) {
@@ -263,13 +277,7 @@ class _LoadScreenState extends State<LoadScreen>{
         if (mounted) _suppressNextTap = false;
       });
     }
-    _stopSelectionAutoScroll();
-    _selectionStartPackageId = null;
-    _lastSelectionPointer = null;
-    _dragSelectionPackages = const [];
-    _dragSelectionIndexById.clear();
-    _lastSelectionIndex = null;
-    _dragSelecting = false;
+    _cancelDragSelection();
   }
   String? _packageIdAt(Offset pos) {
     for (final entry in _mountedTileBoxes.entries) {
@@ -346,7 +354,7 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   void _startDeliveries(){
-    _stopSelectionAutoScroll();
+    _cancelDragSelection();
     setState((){
       selectedId=null;
       selectedIds.clear();
