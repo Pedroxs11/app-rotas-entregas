@@ -104,6 +104,12 @@ class _LoadScreenState extends State<LoadScreen>{
             : <String>{selectedPackage.id};
     if (ids.isEmpty) return;
 
+    // Stop any active drag/autoscroll before locking the screen. The timer
+    // runs independently of pointer hit-testing, so AbsorbPointer alone
+    // would not stop it from scrolling the old load while persistence waits.
+    _cancelDragSelection();
+    _suppressNextTap = false;
+
     // Do not queue a second UI mutation while the first save is pending. The
     // state layer serializes writes, but without this screen-level lock two
     // rapid compartment taps could move the same packages twice.
@@ -397,6 +403,10 @@ class _LoadScreenState extends State<LoadScreen>{
     if (_vehicleSwitching || _loadMutationInProgress) return;
     final ids = _selectedAssignedPackageIds(_route);
     if (ids.isEmpty) return;
+
+    // Cancel drag selection and its periodic auto-scroll before persistence.
+    _cancelDragSelection();
+    _suppressNextTap = false;
 
     setState(() => _loadMutationInProgress = true);
     try {
