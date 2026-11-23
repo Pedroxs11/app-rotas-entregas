@@ -368,10 +368,11 @@ void main() {
         find.textContaining('Não foi possível trocar o veículo'),
         findsOneWidget,
       );
+      final vehicleMenuButton = find.byWidgetPredicate(
+        (widget) => widget is PopupMenuButton<VehicleType>,
+      );
       expect(
-        tester.widget<PopupMenuButton<VehicleType>>(
-          find.byTooltip('Veículo'),
-        ).enabled,
+        tester.widget<PopupMenuButton<VehicleType>>(vehicleMenuButton).enabled,
         isTrue,
         reason: 'A failed save must release the vehicle-switch lock.',
       );
