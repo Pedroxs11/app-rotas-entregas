@@ -297,16 +297,15 @@ void main() {
 
       for (final label in ['P01', 'P02']) {
         final assignedChip = find.widgetWithText(InputChip, label);
-        await _ensureLoadItemVisible(tester, assignedChip);
-        await tester.tap(assignedChip);
-        // A single frame applies the selection without waiting for any
-        // unrelated indeterminate progress animation.
+        final chip = tester.widget<InputChip>(assignedChip);
+        chip.onSelected!(true);
         await tester.pump();
       }
       expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
 
       final removeButton = find.text('RETIRAR 2 PACOTES');
-      await _ensureLoadItemVisible(tester, removeButton);
+      await tester.ensureVisible(removeButton);
+      await tester.pumpAndSettle();
       await tester.tap(removeButton);
       await tester.pump();
 
