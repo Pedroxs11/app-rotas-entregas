@@ -219,6 +219,15 @@ void main() {
       await tester.tap(find.byTooltip('Selecionar vários'));
       await tester.pump();
 
+      final loadScrollable = find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ).first;
+      await tester.scrollUntilVisible(
+        find.text('Pacote 01'),
+        120,
+        scrollable: loadScrollable,
+      );
       final first = tester.getCenter(find.text('Pacote 01'));
       final viewport = tester.getRect(find.byType(CustomScrollView));
       final gesture = await tester.startGesture(first, pointer: 1);
