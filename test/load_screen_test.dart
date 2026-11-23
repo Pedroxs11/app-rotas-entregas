@@ -1607,4 +1607,76 @@ void main(){
     }
   });
 
+
+  testWidgets(
+    'turning off multi-select cancels an active drag auto-scroll',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 850);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final store = _LoadStore(
+        List.generate(80, (index) => _package(index + 1)),
+      );
+      final state = AppState(store: store);
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pump();
+
+      await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
+      final first = tester.getCenter(find.text('Pacote 01'));
+      final viewport = tester.getRect(find.byType(CustomScrollView));
+      final gesture = await tester.startGesture(first, pointer: 1);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+      await gesture.moveTo(
+        Offset(first.dx, viewport.bottom - 30),
+        timeStamp: const Duration(milliseconds: 700),
+      );
+      await tester.pump(const Duration(milliseconds: 160));
+
+      final scrollable = find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ).first;
+      final position = tester.state<ScrollableState>(scrollable).position;
+      final offsetBeforeToggle = position.pixels;
+      expect(
+        offsetBeforeToggle,
+        greaterThan(0),
+        reason: 'The test must start with the drag auto-scroll active.',
+      );
+
+      // A second finger can reach the toolbar while the first finger keeps
+      // dragging. Disabling multi-select must stop the timer immediately.
+      await tester.tapAt(
+        tester.getCenter(find.byTooltip('Selecionar vários')),
+        pointer: 2,
+      );
+      await tester.pump();
+      expect(find.text('1 pacote(s) selecionado(s)'), findsNothing);
+
+      final offsetAfterToggle = position.pixels;
+      await tester.pump(const Duration(milliseconds: 240));
+      expect(
+        position.pixels,
+        offsetAfterToggle,
+        reason: 'Auto-scroll must stop as soon as multi-select is disabled.',
+      );
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(position.pixels, offsetAfterToggle);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
+
 }
