@@ -472,6 +472,7 @@ class _LoadScreenState extends State<LoadScreen>{
             onPointerDown: (event) {
               if (multiSelect &&
                   !_dragSelecting &&
+                  _selectionPointerId == null &&
                   _mountedPackageIdAt(event.position) != null) {
                 _selectionPointerId = event.pointer;
               }
