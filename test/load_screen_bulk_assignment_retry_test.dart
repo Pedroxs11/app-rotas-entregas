@@ -306,11 +306,19 @@ void main() {
       final removeButton = find.text('RETIRAR 2 PACOTES');
       await tester.ensureVisible(removeButton);
       await tester.pumpAndSettle();
+      // Capture the original hit target before the optimistic state update
+      // removes the now-unassigned packages from the removal action.
+      final removeButtonCenter = tester.getCenter(removeButton);
       await tester.tap(removeButton);
       await tester.pump();
 
       expect(store.saveAttempts, 1);
-      await tester.tap(removeButton);
+      expect(removeButton, findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+
+      // The action can disappear while the save is pending, but tapping its
+      // former location must still be absorbed by the organizer's busy lock.
+      await tester.tapAt(removeButtonCenter, warnIfMissed: false);
       await tester.pump();
       expect(store.saveAttempts, 1);
 
