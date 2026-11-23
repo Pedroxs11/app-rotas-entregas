@@ -260,7 +260,7 @@ void main() {
       );
       expect(state.vehicleType, VehicleType.motorcycle);
       expect(find.text('MODO MOTO'), findsOneWidget);
-      expect(selectedCountFinder, findsNothing);
+      expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
 
       await gesture.up();
       await tester.pumpAndSettle();
