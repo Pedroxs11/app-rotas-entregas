@@ -32,6 +32,7 @@ class _LoadScreenState extends State<LoadScreen>{
   bool multiSelect=false;
   bool _dragSelecting=false;
   int? _selectionPointerId;
+  String? _selectionPointerPackageId;
   bool _suppressNextTap=false;
   bool _vehicleSwitching=false;
   String search='';
@@ -182,7 +183,15 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   void _selectionPointerDown(Offset pos, String packageId) {
-    if (!multiSelect) return;
+    // LongPressStartDetails does not expose its pointer id. The ancestor
+    // Listener reserves the first pointer's package, so a second finger's
+    // long press cannot replace the active selection anchor.
+    if (!multiSelect ||
+        _selectionPointerId == null ||
+        _selectionPointerPackageId != packageId ||
+        _dragSelecting) {
+      return;
+    }
     _dragSelectionPackages = _visibleRoute;
     _dragSelectionIndexById.clear();
     for (var index = 0; index < _dragSelectionPackages.length; index++) {
@@ -269,6 +278,7 @@ class _LoadScreenState extends State<LoadScreen>{
     _lastSelectionIndex = null;
     _dragSelecting = false;
     _selectionPointerId = null;
+    _selectionPointerPackageId = null;
   }
 
   void _selectionPointerUp(int pointer) {
@@ -470,11 +480,13 @@ class _LoadScreenState extends State<LoadScreen>{
           child: Listener(
             behavior: HitTestBehavior.translucent,
             onPointerDown: (event) {
+              final packageId = _mountedPackageIdAt(event.position);
               if (multiSelect &&
                   !_dragSelecting &&
                   _selectionPointerId == null &&
-                  _mountedPackageIdAt(event.position) != null) {
+                  packageId != null) {
                 _selectionPointerId = event.pointer;
+                _selectionPointerPackageId = packageId;
               }
             },
             onPointerMove: (event) {
