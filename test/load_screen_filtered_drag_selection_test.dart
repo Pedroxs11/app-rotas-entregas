@@ -143,6 +143,47 @@ void main() {
           {'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9'},
         );
         expect(store.items, hasLength(12));
+        // Clearing the search through the suffix button follows the same
+        // cancellation path as typing a new query while a drag is active.
+        await tester.enterText(find.byType(TextField), 'setor 1');
+        await tester.pumpAndSettle();
+        final tenthPackage = find.text('Pacote 10');
+        final clearGesture =
+            await tester.startGesture(tester.getCenter(tenthPackage));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+        await tester.tap(find.byTooltip('Limpar busca'));
+        await tester.pumpAndSettle();
+        final twelfthPackage = find.text('Pacote 12');
+        await clearGesture.moveTo(
+          tester.getCenter(twelfthPackage),
+          timeStamp: const Duration(milliseconds: 700),
+        );
+        await tester.pump();
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+        await clearGesture.up();
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(targetCompartment);
+        await tester.pumpAndSettle();
+        await tester.tap(targetCompartment);
+        await tester.pumpAndSettle();
+        expect(
+          state.packages
+              .where((package) => package.physicalZone == targetZone)
+              .map((package) => package.id)
+              .toSet(),
+          {'p1', 'p10'},
+          reason: 'Clearing search must cancel the active drag before it adds more packages.',
+        );
+        expect(
+          state.packages
+              .where((package) => package.physicalZone == null)
+              .map((package) => package.id)
+              .toSet(),
+          {'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p11', 'p12'},
+        );
         expect(tester.takeException(), isNull);
 
         await tester.pumpWidget(const SizedBox.shrink());
