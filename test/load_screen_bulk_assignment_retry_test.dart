@@ -318,7 +318,7 @@ void main() {
 
       // The action can disappear while the save is pending, but tapping its
       // former location must still be absorbed by the organizer's busy lock.
-      await tester.tapAt(removeButtonCenter, warnIfMissed: false);
+      await tester.tapAt(removeButtonCenter);
       await tester.pump();
       expect(store.saveAttempts, 1);
 
