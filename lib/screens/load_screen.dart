@@ -98,6 +98,20 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   Future<void> _switchVehicle(VehicleType value) async {
+    if (value == widget.state.vehicleType) return;
+
+    // End the drag session before the asynchronous preference/package save.
+    // The periodic timer must not keep scrolling while the vehicle mutation
+    // waits for persistence to finish.
+    _stopSelectionAutoScroll();
+    _dragSelecting = false;
+    _suppressNextTap = false;
+    _selectionStartPackageId = null;
+    _lastSelectionPointer = null;
+    _dragSelectionPackages = const [];
+    _dragSelectionIndexById.clear();
+    _lastSelectionIndex = null;
+
     try {
       await widget.state.setVehicleType(value);
     } catch (error) {
@@ -109,17 +123,6 @@ class _LoadScreenState extends State<LoadScreen>{
     }
     if (!mounted) return;
 
-    // A vehicle change ends the current drag-selection session. In particular,
-    // cancel its periodic auto-scroll before replacing the scroll controller;
-    // otherwise a held pointer could keep scrolling the new vehicle's layout.
-    _stopSelectionAutoScroll();
-    _dragSelecting = false;
-    _suppressNextTap = false;
-    _selectionStartPackageId = null;
-    _lastSelectionPointer = null;
-    _dragSelectionPackages = const [];
-    _dragSelectionIndexById.clear();
-    _lastSelectionIndex = null;
     _mountedTileBoxes.clear();
 
     // A vehicle change replaces the diagram and changes the sliver extents.
