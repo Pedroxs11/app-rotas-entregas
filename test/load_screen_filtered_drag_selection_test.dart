@@ -218,9 +218,11 @@ void main() {
 
 
   testWidgets(
-    'changing search during a drag cancels the stale selection range for car and motorcycle',
+    'changing search cancels pending and active drag selection for car and motorcycle',
     (tester) async {
-      tester.view.physicalSize = const Size(400, 1100);
+      // Keep the search field and the first lazy-list rows mounted together so
+      // the test can change the query while a pointer remains down.
+      tester.view.physicalSize = const Size(400, 1800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -240,8 +242,24 @@ void main() {
         await tester.tap(find.byTooltip('Selecionar vários'));
         await tester.pumpAndSettle();
 
-        // Start a long-press selection in the unfiltered list.
         final firstPackage = find.text('Pacote 01');
+        expect(firstPackage, findsOneWidget);
+
+        // A query change must also cancel a pointer that is reserved for a
+        // long press but has not crossed the long-press threshold yet.
+        final pendingGesture =
+            await tester.startGesture(tester.getCenter(firstPackage));
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.enterText(find.byType(TextField), 'setor 1');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
+        await pendingGesture.up();
+        await tester.pumpAndSettle();
+
+        // Reset the filter and start a real drag-selection session.
+        await tester.enterText(find.byType(TextField), '');
+        await tester.pumpAndSettle();
         final gesture = await tester.startGesture(tester.getCenter(firstPackage));
         await tester.pump(const Duration(milliseconds: 600));
         expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
