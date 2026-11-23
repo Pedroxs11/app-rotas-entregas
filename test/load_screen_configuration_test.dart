@@ -132,6 +132,52 @@ void main() {
   );
 
   testWidgets(
+    'disabling a compartment used only by delivered packages does not ask for confirmation',
+    (tester) async {
+      final store = _ConfigurationStore([
+        _package(1),
+        _package(
+          2,
+          zone: 'Porta-malas',
+          status: DeliveryStatus.delivered,
+        ),
+      ]);
+      final state = AppState(store: store);
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Configurar compartimentos'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(CheckboxListTile, 'Porta-malas'),
+      );
+      await tester.tap(find.text('Salvar'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Confirmar alteração dos compartimentos'),
+        findsNothing,
+        reason: 'Delivered history must not trigger an unnecessary warning.',
+      );
+      expect(find.text('Compartimentos do carro'), findsNothing);
+      expect(state.activePhysicalZones, isNot(contains('Porta-malas')));
+      expect(state.packages[1].status, DeliveryStatus.delivered);
+      expect(
+        state.packages[1].physicalZone,
+        'Porta-malas',
+        reason: 'The historical compartment label must remain unchanged.',
+      );
+      expect(store.saves, 0);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
     'compartment confirmation counts only non-delivered packages across car and motorcycle zones',
     (tester) async {
       for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
