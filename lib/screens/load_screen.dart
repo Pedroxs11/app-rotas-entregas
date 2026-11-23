@@ -525,7 +525,12 @@ class _LoadScreenState extends State<LoadScreen>{
                             isDense: true,
                           ),
                           onChanged: (value) {
-                            if (value != search && _dragSelecting) {
+                            if (value != search &&
+                                (_dragSelecting || _selectionPointerId != null)) {
+                              // A query change invalidates both an active drag
+                              // and a pointer reserved for a long press that has
+                              // not started yet. Do not let that stale pointer
+                              // begin selecting against a different result set.
                               _cancelDragSelection();
                             }
                             setState(() => search = value);
