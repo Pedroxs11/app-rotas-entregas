@@ -328,8 +328,16 @@ void main() {
         final twelfthPackage = find.text('Pacote 12');
         // Clearing the filter restores the full lazy list, but the twelfth
         // row may still be outside the viewport and therefore unmounted.
-        // Bring it into view before using its center as the second drag target.
-        await tester.ensureVisible(twelfthPackage);
+        // Scroll the lazy list until it builds the second drag target.
+        final scrollable = find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first;
+        await tester.scrollUntilVisible(
+          twelfthPackage,
+          100,
+          scrollable: scrollable,
+        );
         await tester.pumpAndSettle();
         expect(twelfthPackage, findsOneWidget);
         await clearGesture.moveTo(
