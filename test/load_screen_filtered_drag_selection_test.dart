@@ -326,6 +326,12 @@ void main() {
         await tester.tap(find.byTooltip('Limpar busca'), pointer: 2);
         await tester.pumpAndSettle();
         final twelfthPackage = find.text('Pacote 12');
+        // Clearing the filter restores the full lazy list, but the twelfth
+        // row may still be outside the viewport and therefore unmounted.
+        // Bring it into view before using its center as the second drag target.
+        await tester.ensureVisible(twelfthPackage);
+        await tester.pumpAndSettle();
+        expect(twelfthPackage, findsOneWidget);
         await clearGesture.moveTo(
           tester.getCenter(twelfthPackage),
           timeStamp: const Duration(milliseconds: 700),
