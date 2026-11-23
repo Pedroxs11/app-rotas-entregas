@@ -120,11 +120,7 @@ Future<TestGesture> _startDragAutoScroll(
     of: find.byType(CustomScrollView),
     matching: find.byType(Scrollable),
   ).first;
-  await tester.scrollUntilVisible(
-    find.text(packageLabel),
-    120,
-    scrollable: scrollable,
-  );
+  await _ensureLoadItemVisible(tester, find.text(packageLabel));
 
   final start = tester.getCenter(find.text(packageLabel));
   final viewport = tester.getRect(find.byType(CustomScrollView));
@@ -426,6 +422,14 @@ void main() {
         await tester.tap(find.byTooltip('Selecionar vários'));
         await tester.pump();
 
+        // Capture the real compartment callback while its card is visible;
+        // the drag will scroll this card out of the viewport.
+        final zoneFinder = find.ancestor(
+          of: find.text(zoneLabel),
+          matching: find.byType(InkWell),
+        ).first;
+        final assignToZone = tester.widget<InkWell>(zoneFinder).onTap!;
+
         final gesture = await _startDragAutoScroll(tester, 'Pacote 01');
         final selectedForAssignment = _selectedPackageCount(tester);
         final scrollable = find.descendant(
@@ -436,11 +440,7 @@ void main() {
 
         // Invoke the actual compartment tap callback while the drag pointer
         // is still down, matching a second-finger compartment selection.
-        final zoneFinder = find.ancestor(
-          of: find.text(zoneLabel),
-          matching: find.byType(InkWell),
-        ).first;
-        tester.widget<InkWell>(zoneFinder).onTap!();
+        assignToZone();
         await tester.pump();
         final offsetAtMutation = position.pixels;
 
@@ -516,6 +516,14 @@ void main() {
         await tester.pump();
         expect(_selectedPackageCount(tester), 1);
 
+        // Capture the removal action before the drag scrolls the header away.
+        final removeFinder = find.ancestor(
+          of: find.text('RETIRAR PACOTE SELECIONADO'),
+          matching: find.byType(OutlinedButton),
+        ).first;
+        final removeSelected =
+            tester.widget<OutlinedButton>(removeFinder).onPressed!;
+
         final gesture = await _startDragAutoScroll(tester, 'Pacote 02');
         final scrollable = find.descendant(
           of: find.byType(CustomScrollView),
@@ -525,11 +533,7 @@ void main() {
 
         // The assigned chip remains selected while a second pointer drags
         // through unassigned packages. Removing it must cancel that timer.
-        final removeFinder = find.ancestor(
-          of: find.text('RETIRAR PACOTE SELECIONADO'),
-          matching: find.byType(OutlinedButton),
-        ).first;
-        tester.widget<OutlinedButton>(removeFinder).onPressed!();
+        removeSelected();
         await tester.pump();
         final offsetAtMutation = position.pixels;
 
