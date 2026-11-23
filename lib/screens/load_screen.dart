@@ -453,7 +453,7 @@ class _LoadScreenState extends State<LoadScreen>{
                                 const Icon(Icons.search_off, size: 36),
                                 const SizedBox(height: 8),
                                 Text(
-                                  route.any(_matchesSearch)
+                                  route.any((package)=>_matchesSearch(package,normalizedSearch))
                                       ? 'O pacote encontrado já está posicionado em um compartimento.'
                                       : 'Nenhum pacote encontrado para essa busca.',
                                   textAlign: TextAlign.center,
@@ -762,7 +762,8 @@ class _LoadScreenState extends State<LoadScreen>{
 
   Widget _zone(BuildContext context,String zone,String shortName,List<DeliveryPackage> route,DeliveryPackage? selected,{bool wide=false}){
     final allPackages=route.where((p)=>p.physicalZone==zone).toList();
-    final packages=allPackages.where(_matchesSearch).toList();
+    final normalizedSearch=_normalizeSearchText(search.trim());
+    final packages=allPackages.where((package)=>_matchesSearch(package,normalizedSearch)).toList();
     final expanded=_expandedZones.contains(zone);
     final visiblePackages=expanded?packages:packages.take(8).toList();
     final activeZone=multiSelect
