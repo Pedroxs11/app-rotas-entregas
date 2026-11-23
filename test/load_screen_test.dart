@@ -1730,7 +1730,7 @@ void main(){
       await tester.pump(const Duration(milliseconds: 40));
       await secondPointer.moveTo(
         Offset(secondary.dx + 1, secondary.dy + 1),
-        timeStamp: const Duration(milliseconds: 750),
+        timeStamp: const Duration(milliseconds: 816),
       );
       await tester.pump(const Duration(milliseconds: 16));
       await secondPointer.up();
