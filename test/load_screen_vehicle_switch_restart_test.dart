@@ -273,7 +273,7 @@ void main() {
       final saveGate = Completer<void>();
       store.nextSaveGate = saveGate;
       final vehicleSelector = tester.widget<PopupMenuButton<VehicleType>>(
-        find.byTooltip('Veículo'),
+        find.byType(PopupMenuButton<VehicleType>),
       );
       vehicleSelector.onSelected!(VehicleType.motorcycle);
       await tester.pump();
