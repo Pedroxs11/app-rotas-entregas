@@ -828,8 +828,8 @@ void main(){
     await tester.enterText(find.byType(TextField), 'Sao Paulo');
     await tester.pump();
 
-    expect(find.text('P01'), findsOneWidget);
-    expect(find.text('P02'), findsOneWidget);
+    expect(find.text('Pacote 01'), findsOneWidget);
+    expect(find.text('Pacote 02'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());
