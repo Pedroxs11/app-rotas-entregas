@@ -250,12 +250,14 @@ void main() {
       );
       expect(selectedBeforeSwitch, greaterThan(1));
 
-      // Open the vehicle menu with a second pointer while the drag pointer is
-      // still held, reproducing a switch during the auto-scroll session.
-      await tester.tap(find.byTooltip('Veículo'), pointer: 2);
-      await tester.pump();
-      await tester.tap(find.text('🏍️ Moto'), pointer: 2);
-      await tester.pump();
+      // Invoke the same selection callback used by the vehicle popup. This
+      // keeps the first pointer held without relying on a second overlay tap,
+      // which is intercepted by the popup barrier in the widget test binding.
+      final vehicleSelector = tester.widget<PopupMenuButton<VehicleType>>(
+        find.byTooltip('Veículo'),
+      );
+      vehicleSelector.onSelected!(VehicleType.motorcycle);
+      await tester.pumpAndSettle();
       await tester.pump(const Duration(milliseconds: 160));
 
       final scrollable = find.descendant(
