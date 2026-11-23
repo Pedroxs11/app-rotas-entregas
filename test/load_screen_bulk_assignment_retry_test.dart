@@ -76,7 +76,7 @@ Future<void> _ensureLoadItemVisible(
   if (finder.evaluate().isEmpty &&
       position.pixels > position.minScrollExtent) {
     position.jumpTo(position.minScrollExtent);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 16));
   }
 
   for (var attempt = 0; attempt < 120; attempt++) {
@@ -101,7 +101,7 @@ Future<void> _ensureLoadItemVisible(
       if (next <= position.pixels) break;
       position.jumpTo(next);
     }
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 16));
   }
 
   expect(finder, findsWidgets);
