@@ -285,11 +285,32 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 160));
       expect(state.vehicleType, VehicleType.car);
+      expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
       expect(
         tester.state<ScrollableState>(oldScrollable).position.pixels,
         oldScrollOffset,
         reason: 'Auto-scroll must stop while vehicle persistence is pending.',
       );
+
+      // The old vehicle screen remains visible until persistence completes.
+      // A fresh gesture during that interval must be absorbed rather than
+      // starting a second drag session against stale compartments.
+      final oldViewport = tester.getRect(find.byType(CustomScrollView));
+      final blockedGesture = await tester.startGesture(
+        tester.getCenter(find.byType(CustomScrollView)),
+        pointer: 2,
+      );
+      await blockedGesture.moveTo(
+        Offset(oldViewport.center.dx, oldViewport.bottom - 20),
+      );
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(
+        tester.state<ScrollableState>(oldScrollable).position.pixels,
+        oldScrollOffset,
+        reason: 'The organizer must ignore new gestures while switching vehicles.',
+      );
+      expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
+      await blockedGesture.up();
 
       saveGate.complete();
       await tester.pumpAndSettle();
