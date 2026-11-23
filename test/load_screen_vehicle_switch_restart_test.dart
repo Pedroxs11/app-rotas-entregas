@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +14,7 @@ class _PersistentLoadStore implements PackageStore {
 
   List<DeliveryPackage> items;
   int saves = 0;
+  Completer<void>? nextSaveGate;
 
   @override
   Future<void> clear() async {
@@ -29,6 +32,9 @@ class _PersistentLoadStore implements PackageStore {
     List<DeliveryPackage> value, {
     bool? routeOptimized,
   }) async {
+    final gate = nextSaveGate;
+    nextSaveGate = null;
+    if (gate != null) await gate.future;
     items = [...value];
     saves++;
   }
@@ -204,14 +210,17 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final state = AppState(
-        store: _PersistentLoadStore(
-          List.generate(
-            60,
-            (index) => _package('drag-${index + 1}', index + 1),
+      final store = _PersistentLoadStore(
+        List.generate(
+          60,
+          (index) => _package(
+            'drag-${index + 1}',
+            index + 1,
+            zone: index == 59 ? 'Porta-malas' : null,
           ),
         ),
       );
+      final state = AppState(store: store);
       await state.init();
 
       await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
@@ -250,13 +259,33 @@ void main() {
       );
       expect(selectedBeforeSwitch, greaterThan(1));
 
-      // Invoke the same selection callback used by the vehicle popup. This
-      // keeps the first pointer held without relying on a second overlay tap,
-      // which is intercepted by the popup barrier in the widget test binding.
+      final oldScrollable = find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ).first;
+      final oldScrollOffset =
+          tester.state<ScrollableState>(oldScrollable).position.pixels;
+      expect(oldScrollOffset, greaterThan(0));
+
+      // Hold package persistence open while invoking the same selection
+      // callback used by the vehicle popup. The old auto-scroll timer must
+      // stop immediately, not after the asynchronous save finishes.
+      final saveGate = Completer<void>();
+      store.nextSaveGate = saveGate;
       final vehicleSelector = tester.widget<PopupMenuButton<VehicleType>>(
         find.byTooltip('Veículo'),
       );
       vehicleSelector.onSelected!(VehicleType.motorcycle);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 160));
+      expect(state.vehicleType, VehicleType.car);
+      expect(
+        tester.state<ScrollableState>(oldScrollable).position.pixels,
+        oldScrollOffset,
+        reason: 'Auto-scroll must stop while vehicle persistence is pending.',
+      );
+
+      saveGate.complete();
       await tester.pumpAndSettle();
       await tester.pump(const Duration(milliseconds: 160));
 
