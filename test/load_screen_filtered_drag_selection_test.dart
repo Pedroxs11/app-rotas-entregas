@@ -215,4 +215,91 @@ void main() {
     },
   );
 
+
+
+  testWidgets(
+    'changing search during a drag cancels the stale selection range for car and motorcycle',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': vehicle.name,
+        });
+        final store = _FilteredDragStore(
+          List.generate(12, (index) => _package(index + 1)),
+        );
+        final state = AppState(store: store);
+        await state.init();
+
+        await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Selecionar vários'));
+        await tester.pumpAndSettle();
+
+        // Start a long-press selection in the unfiltered list.
+        final firstPackage = find.text('Pacote 01');
+        final gesture = await tester.startGesture(tester.getCenter(firstPackage));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+        // The new filter contains only packages 10-12. The existing pointer
+        // must no longer be allowed to extend its old index range into it.
+        await tester.enterText(find.byType(TextField), 'setor 1');
+        await tester.pumpAndSettle();
+        final filteredPackage = find.text('Pacote 10');
+        await tester.ensureVisible(filteredPackage);
+        await tester.pumpAndSettle();
+        await gesture.moveTo(
+          tester.getCenter(filteredPackage),
+          timeStamp: const Duration(milliseconds: 700),
+        );
+        await tester.pump();
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        // Clearing the filter reveals the original selection again. Assigning
+        // it must affect only the package selected before the query changed.
+        await tester.enterText(find.byType(TextField), '');
+        await tester.pumpAndSettle();
+        final targetLabel = vehicle == VehicleType.car
+            ? 'FRENTE E'
+            : 'BAÚ TRASEIRO';
+        final targetZone = vehicle == VehicleType.car
+            ? 'Frente esquerda'
+            : 'Baú traseiro';
+        final targetCompartment = find.text(targetLabel);
+        await tester.ensureVisible(targetCompartment);
+        await tester.pumpAndSettle();
+        await tester.tap(targetCompartment);
+        await tester.pumpAndSettle();
+
+        expect(
+          state.packages
+              .where((package) => package.physicalZone == targetZone)
+              .map((package) => package.id)
+              .toSet(),
+          {'p1'},
+          reason: 'A stale drag must not add newly filtered packages in $vehicle mode.',
+        );
+        expect(
+          state.packages
+              .where((package) => package.physicalZone == null)
+              .map((package) => package.id)
+              .toSet(),
+          {'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12'},
+        );
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      }
+    },
+  );
+
 }

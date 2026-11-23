@@ -524,7 +524,12 @@ class _LoadScreenState extends State<LoadScreen>{
                             border: const OutlineInputBorder(),
                             isDense: true,
                           ),
-                          onChanged: (value) => setState(() => search = value),
+                          onChanged: (value) {
+                            if (value != search && _dragSelecting) {
+                              _cancelDragSelection();
+                            }
+                            setState(() => search = value);
+                          },
                         ),
                         const SizedBox(height: 10),
                         if (search.trim().isNotEmpty && visibleRoute.isEmpty)
