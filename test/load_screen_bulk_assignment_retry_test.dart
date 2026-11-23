@@ -111,6 +111,61 @@ Future<void> _ensureLoadItemVisible(
   expect(target.bottom, lessThanOrEqualTo(viewport.bottom));
 }
 
+
+Future<TestGesture> _startDragAutoScroll(
+  WidgetTester tester,
+  String packageLabel,
+) async {
+  final scrollable = find.descendant(
+    of: find.byType(CustomScrollView),
+    matching: find.byType(Scrollable),
+  ).first;
+  await tester.scrollUntilVisible(
+    find.text(packageLabel),
+    120,
+    scrollable: scrollable,
+  );
+
+  final start = tester.getCenter(find.text(packageLabel));
+  final viewport = tester.getRect(find.byType(CustomScrollView));
+  final gesture = await tester.startGesture(start, pointer: 1);
+  await tester.pump(const Duration(milliseconds: 600));
+  await gesture.moveTo(
+    Offset(start.dx, viewport.bottom - 30),
+    timeStamp: const Duration(milliseconds: 700),
+  );
+  await tester.pump(const Duration(milliseconds: 160));
+
+  final selectedCount = find.byWidgetPredicate(
+    (widget) =>
+        widget is Text &&
+        (widget.data?.endsWith('pacote(s) selecionado(s)') ?? false),
+  );
+  expect(selectedCount, findsOneWidget);
+  final selected = int.parse(
+    tester.widget<Text>(selectedCount).data!.split(' ').first,
+  );
+  expect(selected, greaterThan(1));
+
+  final position = tester.state<ScrollableState>(scrollable).position;
+  expect(
+    position.pixels,
+    greaterThan(0),
+    reason: 'The drag must have started the periodic edge auto-scroll.',
+  );
+  return gesture;
+}
+
+int _selectedPackageCount(WidgetTester tester) {
+  final finder = find.byWidgetPredicate(
+    (widget) =>
+        widget is Text &&
+        (widget.data?.endsWith('pacote(s) selecionado(s)') ?? false),
+  );
+  expect(finder, findsOneWidget);
+  return int.parse(tester.widget<Text>(finder).data!.split(' ').first);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -336,6 +391,168 @@ void main() {
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
+    },
+  );
+
+
+  testWidgets(
+    'assignment stops active drag auto-scroll before persistence for car and motorcycle',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 850);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': vehicle.name,
+        });
+        final zone = vehicle == VehicleType.car
+            ? 'Porta-malas'
+            : 'Baú traseiro';
+        final zoneLabel = vehicle == VehicleType.car
+            ? 'PORTA-MALAS'
+            : 'BAÚ TRASEIRO';
+        final store = _RetryingLoadStore(
+          List.generate(60, (index) => _package(vehicle, index + 1)),
+        )..failNextSave = false;
+        final saveGate = Completer<void>();
+        store.saveGate = saveGate;
+        final state = AppState(store: store);
+        await state.init();
+
+        await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Selecionar vários'));
+        await tester.pump();
+
+        final gesture = await _startDragAutoScroll(tester, 'Pacote 01');
+        final scrollable = find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first;
+        final position = tester.state<ScrollableState>(scrollable).position;
+        final offsetAtMutation = position.pixels;
+
+        // Invoke the actual compartment tap callback while the drag pointer
+        // is still down, matching a second-finger compartment selection.
+        final zoneFinder = find.ancestor(
+          of: find.text(zoneLabel),
+          matching: find.byType(InkWell),
+        ).first;
+        tester.widget<InkWell>(zoneFinder).onTap!();
+        await tester.pump();
+
+        expect(store.saveAttempts, 1);
+        expect(find.byType(CircularProgressIndicator), findsWidgets);
+        expect(_selectedPackageCount(tester), greaterThan(1));
+        await tester.pump(const Duration(milliseconds: 160));
+        expect(
+          position.pixels,
+          offsetAtMutation,
+          reason: 'Assignment must stop the old drag timer immediately in $vehicle mode.',
+        );
+
+        await gesture.up();
+        await tester.pump();
+        saveGate.complete();
+        await tester.pumpAndSettle();
+
+        expect(state.packages, hasLength(60));
+        expect(
+          state.packages.every((package) => package.physicalZone == zone),
+          isTrue,
+        );
+        expect(store.successfulSaves, 1);
+        expect(_selectedPackageCount(tester), 0);
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      }
+    },
+  );
+
+  testWidgets(
+    'bulk removal stops active drag auto-scroll before persistence for car and motorcycle',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 850);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': vehicle.name,
+        });
+        final zone = vehicle == VehicleType.car
+            ? 'Porta-malas'
+            : 'Baú traseiro';
+        final store = _RetryingLoadStore([
+          _package(vehicle, 1).copyWith(physicalZone: zone),
+          ...List.generate(
+            59,
+            (index) => _package(vehicle, index + 2),
+          ),
+        ])..failNextSave = false;
+        final saveGate = Completer<void>();
+        store.saveGate = saveGate;
+        final state = AppState(store: store);
+        await state.init();
+
+        await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Selecionar vários'));
+        await tester.pump();
+
+        final assignedChip = find.widgetWithText(InputChip, 'P01');
+        final chip = tester.widget<InputChip>(assignedChip);
+        chip.onSelected!(true);
+        await tester.pump();
+        expect(_selectedPackageCount(tester), 1);
+
+        final gesture = await _startDragAutoScroll(tester, 'Pacote 02');
+        final scrollable = find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first;
+        final position = tester.state<ScrollableState>(scrollable).position;
+        final offsetAtMutation = position.pixels;
+
+        // The assigned chip remains selected while a second pointer drags
+        // through unassigned packages. Removing it must cancel that timer.
+        final removeFinder = find.ancestor(
+          of: find.text('RETIRAR PACOTE SELECIONADO'),
+          matching: find.byType(OutlinedButton),
+        ).first;
+        tester.widget<OutlinedButton>(removeFinder).onPressed!();
+        await tester.pump();
+
+        expect(store.saveAttempts, 1);
+        expect(find.byType(CircularProgressIndicator), findsWidgets);
+        await tester.pump(const Duration(milliseconds: 160));
+        expect(
+          position.pixels,
+          offsetAtMutation,
+          reason: 'Bulk removal must stop the old drag timer immediately in $vehicle mode.',
+        );
+
+        await gesture.up();
+        await tester.pump();
+        saveGate.complete();
+        await tester.pumpAndSettle();
+
+        expect(state.packages, hasLength(60));
+        expect(state.packages.first.physicalZone, isNull);
+        expect(store.items.first.physicalZone, isNull);
+        expect(store.successfulSaves, 1);
+        expect(_selectedPackageCount(tester), greaterThan(0));
+        expect(find.textContaining('RETIRAR'), findsNothing);
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      }
     },
   );
 
