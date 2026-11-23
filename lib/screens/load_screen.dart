@@ -160,6 +160,14 @@ class _LoadScreenState extends State<LoadScreen>{
       selectedIds.clear();
     });
   }
+  void _updateSearch(String value) {
+    if (value == search) return;
+    if (_dragSelecting || _selectionPointerId != null) {
+      _cancelDragSelection();
+    }
+    setState(() => search = value);
+  }
+
   bool _allVisiblePackagesSelected(List<DeliveryPackage> visible) =>
       visible.isNotEmpty && visible.every((package) => selectedIds.contains(package.id));
 
@@ -516,7 +524,7 @@ class _LoadScreenState extends State<LoadScreen>{
                                     tooltip: 'Limpar busca',
                                     onPressed: () {
                                       _searchController.clear();
-                                      setState(() => search = '');
+                                      _updateSearch('');
                                     },
                                     icon: const Icon(Icons.close),
                                   ),
@@ -524,17 +532,7 @@ class _LoadScreenState extends State<LoadScreen>{
                             border: const OutlineInputBorder(),
                             isDense: true,
                           ),
-                          onChanged: (value) {
-                            if (value != search &&
-                                (_dragSelecting || _selectionPointerId != null)) {
-                              // A query change invalidates both an active drag
-                              // and a pointer reserved for a long press that has
-                              // not started yet. Do not let that stale pointer
-                              // begin selecting against a different result set.
-                              _cancelDragSelection();
-                            }
-                            setState(() => search = value);
-                          },
+                          onChanged: _updateSearch,
                         ),
                         const SizedBox(height: 10),
                         if (search.trim().isNotEmpty && visibleRoute.isEmpty)
@@ -553,7 +551,7 @@ class _LoadScreenState extends State<LoadScreen>{
                                 TextButton.icon(
                                   onPressed: () {
                                     _searchController.clear();
-                                    setState(() => search = '');
+                                    _updateSearch('');
                                   },
                                   icon: const Icon(Icons.clear),
                                   label: const Text('Limpar busca'),
