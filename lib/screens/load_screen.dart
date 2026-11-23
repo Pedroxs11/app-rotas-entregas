@@ -31,6 +31,7 @@ class _LoadScreenState extends State<LoadScreen>{
   double _autoScrollSpeed=0;
   bool multiSelect=false;
   bool _dragSelecting=false;
+  int? _selectionPointerId;
   bool _suppressNextTap=false;
   bool _vehicleSwitching=false;
   String search='';
@@ -267,9 +268,14 @@ class _LoadScreenState extends State<LoadScreen>{
     _dragSelectionIndexById.clear();
     _lastSelectionIndex = null;
     _dragSelecting = false;
+    _selectionPointerId = null;
   }
 
-  void _selectionPointerUp() {
+  void _selectionPointerUp(int pointer) {
+    // The list can receive multiple simultaneous pointers. Only the pointer
+    // that started the long-press selection may finish that drag session.
+    if (_selectionPointerId != pointer) return;
+    _selectionPointerId = null;
     final wasDragging = _dragSelecting;
     if (wasDragging) {
       _suppressNextTap = true;
@@ -279,6 +285,16 @@ class _LoadScreenState extends State<LoadScreen>{
     }
     _cancelDragSelection();
   }
+  String? _mountedPackageIdAt(Offset pos) {
+    for (final entry in _mountedTileBoxes.entries) {
+      final box = entry.value;
+      if (!box.attached || !box.hasSize) continue;
+      final rect = box.localToGlobal(Offset.zero) & box.size;
+      if (rect.contains(pos)) return entry.key;
+    }
+    return null;
+  }
+
   String? _packageIdAt(Offset pos) {
     for (final entry in _mountedTileBoxes.entries) {
       final box = entry.value;
@@ -453,9 +469,16 @@ class _LoadScreenState extends State<LoadScreen>{
         Expanded(
           child: Listener(
             behavior: HitTestBehavior.translucent,
+            onPointerDown: (event) {
+              if (multiSelect &&
+                  !_dragSelecting &&
+                  _mountedPackageIdAt(event.position) != null) {
+                _selectionPointerId = event.pointer;
+              }
+            },
             onPointerMove: (event) => _selectionPointerMove(event.position),
-            onPointerUp: (_) => _selectionPointerUp(),
-            onPointerCancel: (_) => _selectionPointerUp(),
+            onPointerUp: (event) => _selectionPointerUp(event.pointer),
+            onPointerCancel: (event) => _selectionPointerUp(event.pointer),
             child: CustomScrollView(
               key: _scrollViewportKey,
               controller: _scrollController,
