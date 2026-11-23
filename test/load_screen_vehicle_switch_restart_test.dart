@@ -197,6 +197,81 @@ void main() {
   );
 
   testWidgets(
+    'switching vehicles cancels an in-progress drag selection',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 850);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final state = AppState(
+        store: _PersistentLoadStore(
+          List.generate(
+            60,
+            (index) => _package('drag-\${index + 1}', index + 1),
+          ),
+        ),
+      );
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pump();
+
+      final first = tester.getCenter(find.text('Pacote 01'));
+      final viewport = tester.getRect(find.byType(CustomScrollView));
+      final gesture = await tester.startGesture(first, pointer: 1);
+      await tester.pump(const Duration(milliseconds: 600));
+      final edge = Offset(first.dx, viewport.bottom - 30);
+      await gesture.moveTo(
+        edge,
+        timeStamp: const Duration(milliseconds: 700),
+      );
+      await tester.pump(const Duration(milliseconds: 160));
+
+      final selectedCountFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is Text &&
+            (widget.data?.endsWith('pacote(s) selecionado(s)') ?? false),
+      );
+      expect(selectedCountFinder, findsOneWidget);
+      final selectedBeforeSwitch = int.parse(
+        tester.widget<Text>(selectedCountFinder).data!.split(' ').first,
+      );
+      expect(selectedBeforeSwitch, greaterThan(1));
+
+      // Open the vehicle menu with a second pointer while the drag pointer is
+      // still held, reproducing a switch during the auto-scroll session.
+      await tester.tap(find.byTooltip('Veículo'), pointer: 2);
+      await tester.pump();
+      await tester.tap(find.text('🏍️ Moto'), pointer: 2);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 160));
+
+      final scrollable = find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ).first;
+      expect(
+        tester.state<ScrollableState>(scrollable).position.pixels,
+        0,
+        reason: 'The old drag timer must not scroll the new vehicle layout.',
+      );
+      expect(state.vehicleType, VehicleType.motorcycle);
+      expect(find.text('MODO MOTO'), findsOneWidget);
+      expect(selectedCountFinder, findsNothing);
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
     'switching vehicles returns the load organizer to the top',
     (tester) async {
       tester.view.physicalSize = const Size(400, 850);
