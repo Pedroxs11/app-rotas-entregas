@@ -427,6 +427,7 @@ void main() {
         await tester.pump();
 
         final gesture = await _startDragAutoScroll(tester, 'Pacote 01');
+        final selectedForAssignment = _selectedPackageCount(tester);
         final scrollable = find.descendant(
           of: find.byType(CustomScrollView),
           matching: find.byType(Scrollable),
@@ -460,8 +461,12 @@ void main() {
 
         expect(state.packages, hasLength(60));
         expect(
-          state.packages.every((package) => package.physicalZone == zone),
-          isTrue,
+          state.packages.where((package) => package.physicalZone == zone),
+          hasLength(selectedForAssignment),
+        );
+        expect(
+          state.packages.where((package) => package.physicalZone == null),
+          hasLength(60 - selectedForAssignment),
         );
         expect(store.successfulSaves, 1);
         expect(_selectedPackageCount(tester), 0);
