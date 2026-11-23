@@ -213,11 +213,7 @@ void main() {
       final store = _PersistentLoadStore(
         List.generate(
           60,
-          (index) => _package(
-            'drag-${index + 1}',
-            index + 1,
-            zone: index == 59 ? 'Porta-malas' : null,
-          ),
+          (index) => _package('drag-${index + 1}', index + 1),
         ),
       );
       final state = AppState(store: store);
@@ -258,6 +254,16 @@ void main() {
         tester.widget<Text>(selectedCountFinder).data!.split(' ').first,
       );
       expect(selectedBeforeSwitch, greaterThan(1));
+
+      // Create a pending package-position save only after the drag has started.
+      // This keeps the whole list available for the selection gesture while
+      // still forcing the vehicle switch to await persistence.
+      await state.setPhysicalZone('drag-60', 'Porta-malas');
+      await tester.pump();
+      expect(
+        int.parse(tester.widget<Text>(selectedCountFinder).data!.split(' ').first),
+        greaterThan(1),
+      );
 
       final oldScrollable = find.descendant(
         of: find.byType(CustomScrollView),
