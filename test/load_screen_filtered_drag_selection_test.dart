@@ -153,7 +153,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 600));
         expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
 
-        await tester.tap(find.byTooltip('Limpar busca'));
+        await tester.tap(find.byTooltip('Limpar busca'), pointer: 2);
         await tester.pumpAndSettle();
         final twelfthPackage = find.text('Pacote 12');
         await clearGesture.moveTo(
