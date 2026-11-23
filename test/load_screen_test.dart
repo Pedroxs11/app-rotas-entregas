@@ -1080,6 +1080,17 @@ void main(){
       await tester.tap(save);
       await tester.pumpAndSettle();
 
+      expect(
+        find.text('Confirmar alteração dos compartimentos'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('1 pacote não entregue perderá sua posição atual.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Desativar e continuar'));
+      await tester.pumpAndSettle();
+
       expect(state.activePhysicalZones, isNot(contains(zone)));
       expect(state.packages.first.physicalZone, isNull);
       expect(

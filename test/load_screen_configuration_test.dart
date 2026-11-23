@@ -91,7 +91,7 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('1 pacote ativo perderá sua posição atual.'),
+        find.textContaining('1 pacote não entregue perderá sua posição atual.'),
         findsOneWidget,
         reason: 'Delivered packages must not be counted as active load.',
       );

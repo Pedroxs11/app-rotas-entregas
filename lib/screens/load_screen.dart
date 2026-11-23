@@ -703,8 +703,8 @@ class _LoadScreenState extends State<LoadScreen>{
 
                       if (affectedCount > 0) {
                         final packageMessage = affectedCount == 1
-                            ? '1 pacote ativo perderá sua posição atual.'
-                            : '$affectedCount pacotes ativos perderão suas posições atuais.';
+                            ? '1 pacote não entregue perderá sua posição atual.'
+                            : '$affectedCount pacotes não entregues perderão suas posições atuais.';
                         final confirmed = await showDialog<bool>(
                           context: dialogContext,
                           builder: (confirmationContext) => AlertDialog(

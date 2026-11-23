@@ -111,6 +111,14 @@ void main() {
         await tester.tap(find.text('Salvar'));
         await tester.pumpAndSettle();
 
+        expect(
+          find.text('Confirmar alteração dos compartimentos'),
+          findsOneWidget,
+        );
+        expect(store.saves, 0);
+        await tester.tap(find.text('Desativar e continuar'));
+        await tester.pumpAndSettle();
+
         expect(state.activePhysicalZones, [activeZone]);
         expect(state.packages[0].physicalZone, activeZone);
         expect(state.packages[1].physicalZone, isNull);
