@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NoopLoadStore implements PackageStore{
  NoopLoadStore(this.packages);List<DeliveryPackage> packages;bool optimized=true;int saves=0;
@@ -10,8 +11,11 @@ class NoopLoadStore implements PackageStore{
  @override Future<void> save(List<DeliveryPackage> value,{bool? routeOptimized})async{packages=[...value];if(routeOptimized!=null)optimized=routeOptimized;saves++;}
  @override Future<void> clear()async{packages=[];optimized=false;}
 }
-DeliveryPackage _p(String id,int n,DeliveryStatus status,String zone)=>DeliveryPackage(id:id,scanNumber:n,status:status,physicalZone:zone,address:AddressData(raw:'Rua $n',street:'Rua',number:'$n',city:'São Paulo',state:'SP',confidence:1,validation:ValidationStatus.confirmed),scannedAt:DateTime.utc(2026,9,13,21,n),completedAt:status==DeliveryStatus.delivered?DateTime.utc(2026,9,13,21,40):null);
+DeliveryPackage _p(String id,int n,DeliveryStatus status,String? zone)=>DeliveryPackage(id:id,scanNumber:n,status:status,physicalZone:zone,address:AddressData(raw:'Rua $n',street:'Rua',number:'$n',city:'São Paulo',state:'SP',confidence:1,validation:ValidationStatus.confirmed),scannedAt:DateTime.utc(2026,9,13,21,n),completedAt:status==DeliveryStatus.delivered?DateTime.utc(2026,9,13,21,40):null);
 void main(){
+ TestWidgetsFlutterBinding.ensureInitialized();
+ setUp(()=>SharedPreferences.setMockInitialValues({}));
+
  test('manual organization does not change delivered or skipped history',()async{
   final done=_p('done',1,DeliveryStatus.delivered,'Porta-malas');final skipped=_p('skip',2,DeliveryStatus.skipped,'Traseira direita');final store=NoopLoadStore([done,skipped]);final state=AppState(store:store);await state.init();
   expect(()=>state.setPhysicalZone('done','Frente esquerda'),throwsA(isA<StateError>()));
@@ -19,4 +23,24 @@ void main(){
   expect(state.packages.first.completedAt,done.completedAt);
   expect(store.saves,0);
  });
+ test('reassigning packages to the same compartment does not persist again',()async{
+  final store=NoopLoadStore([_p('one',1,DeliveryStatus.pending,'Porta-malas'),_p('two',2,DeliveryStatus.pending,'Porta-malas')]);final state=AppState(store:store);await state.init();
+  await state.setPhysicalZones({'one','two'},'Porta-malas');
+  expect(store.saves,0);
+  await state.setPhysicalZone('one','Porta-malas');
+  expect(store.saves,0);
+ });
+ test('initialization repairs a blank compartment once and clearing it again is a no-op',()async{
+  final store=NoopLoadStore([_p('one',1,DeliveryStatus.pending,'')]);final state=AppState(store:store);await state.init();
+  expect(state.packages.single.physicalZone,isNull);
+  expect(store.saves,1);
+  await state.clearPhysicalZones({'one'});
+  expect(store.saves,1);
+ });
+ test('clearing a package that already has no compartment is a no-op',()async{
+  final store=NoopLoadStore([_p('one',1,DeliveryStatus.pending,null)]);final state=AppState(store:store);await state.init();
+  await state.clearPhysicalZones({'one'});
+  expect(store.saves,0);
+ });
+
 }

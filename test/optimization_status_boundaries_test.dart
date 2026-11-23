@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StatusStore implements PackageStore {
  StatusStore(this.packages);List<DeliveryPackage> packages;bool optimized=false;int saves=0;
@@ -18,6 +19,8 @@ DeliveryPackage _p(String id,int n,DeliveryStatus status,double lat,double lng,{
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
  test('optimization includes pending current absent and address problem but excludes delivered and skipped',()async{
   final store=StatusStore([
    _p('pending-far',1,DeliveryStatus.pending,-23.70,-46.80),

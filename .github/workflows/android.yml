@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - play-internal-test
+      - feature/organizador-carga-configuravel
   workflow_dispatch:
 
 jobs:
@@ -12,9 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SIGNING_READY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+      PLAY_PUBLISH_READY: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -22,8 +24,37 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Install SQLite native libraries for integration tests
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-0 libsqlite3-dev
+
       - name: Generate Flutter platform files
         run: flutter create --platforms=android,ios --org com.pedro .
+
+      - name: Add Maven Central to Gradle plugin resolution
+        shell: bash
+        run: |
+          # Flutter's included Gradle build may resolve Kotlin plugin artifacts
+          # from Maven Central. Add it before settings/plugin resolution for every
+          # Gradle build, including included builds created by Flutter.
+          mkdir -p "$HOME/.gradle"
+          cat > "$HOME/.gradle/init.gradle" <<'EOF'
+          gradle.beforeSettings { settings ->
+              settings.pluginManagement.repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          gradle.beforeProject { project ->
+              project.buildscript.repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          EOF
+
 
       - name: Configure permanent Android application id and MainActivity package
         shell: bash
@@ -79,6 +110,33 @@ jobs:
           p.write_text(s)
           PY
 
+      - name: Add missing CameraX concurrent futures dependency
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("android/build.gradle.kts")
+          source = path.read_text()
+          block = """
+          // camera_android_camerax compiles against CameraX 1.5.x, which references
+          // CallbackToFutureAdapter but does not expose concurrent-futures transitively.
+          subprojects {
+              val cameraPlugin = this
+              cameraPlugin.plugins.withId("com.android.library") {
+                  if (cameraPlugin.name == "camera_android_camerax") {
+                      cameraPlugin.dependencies.add(
+                          "implementation",
+                          "androidx.concurrent:concurrent-futures:1.2.0",
+                      )
+                  }
+              }
+          }
+          """
+          if "androidx.concurrent:concurrent-futures" not in source:
+              path.write_text(source.rstrip() + chr(10) * 2 + block.lstrip())
+          PY
+
       - name: Get dependencies
         run: flutter pub get
 
@@ -103,7 +161,7 @@ jobs:
       # A Play-ready release is built only when all four signing secrets exist.
       # The keystore itself is decoded only inside the ephemeral GitHub runner.
       - name: Configure Play release signing
-        if: ${{ env.SIGNING_READY == 'true' }}
+        if: ${{ env.SIGNING_READY == 'true' && github.ref == 'refs/heads/play-internal-test' }}
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -159,7 +217,7 @@ jobs:
           PY
 
       - name: Build signed Play release AAB
-        if: ${{ env.SIGNING_READY == 'true' }}
+        if: ${{ env.SIGNING_READY == 'true' && github.ref == 'refs/heads/play-internal-test' }}
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -179,8 +237,10 @@ jobs:
             unzip -t build/app/outputs/bundle/release/app-release.aab >/dev/null
           fi
 
+      # Publishing is opt-in and manual only. Keep ENABLE_PLAY_INTERNAL_PUBLISH
+      # unset/false until the version has been explicitly approved for internal testing.
       - name: Publish Play release to internal testing
-        if: ${{ env.SIGNING_READY == 'true' }}
+        if: ${{ env.SIGNING_READY == 'true' && env.PLAY_PUBLISH_READY == 'true' && vars.ENABLE_PLAY_INTERNAL_PUBLISH == 'true' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/play-internal-test' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
@@ -195,7 +255,7 @@ jobs:
       # by the previous step.
       - name: Upload phone APK
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rotas-entregas-android-arm64-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
@@ -203,7 +263,8 @@ jobs:
           compression-level: 0
 
       - name: Upload Play release AAB
-        uses: actions/upload-artifact@v4
+        if: ${{ env.SIGNING_READY == 'true' && github.ref == 'refs/heads/play-internal-test' }}
+        uses: actions/upload-artifact@v7
         with:
           name: rotas-entregas-play-release-aab
           path: build/app/outputs/bundle/release/app-release.aab

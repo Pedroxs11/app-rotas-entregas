@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CoreStore implements PackageStore {
   CoreStore(this.packages,{this.optimized=false});
@@ -27,6 +28,8 @@ DeliveryPackage _p(String id,int scan,{DeliveryStatus status=DeliveryStatus.pend
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   test('summary counters exclude delivered packages from review and located totals',() async {
     final store=CoreStore([
       _p('pending-review',1,validation:ValidationStatus.needsReview),

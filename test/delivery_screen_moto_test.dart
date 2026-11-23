@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/screens/delivery_screen.dart';
@@ -43,11 +44,12 @@ DeliveryPackage _package(int n, String street, {String? physicalZone}) => Delive
 Future<AppState> _motoState(List<DeliveryPackage> packages) async {
   final state = AppState(store: _DeliveryStore(packages));
   await state.init();
-  state.setVehicleType(VehicleType.motorcycle);
+  await state.setVehicleType(VehicleType.motorcycle);
   return state;
 }
 
 void main() {
+  setUp(() { SharedPreferences.setMockInitialValues({}); });
   testWidgets('moto highlights the next package number and address', (tester) async {
     // Existing physical zones must be ignored when a route is used in Moto mode.
     final first = _package(7, 'Rua Teste', physicalZone: 'Frente esquerda');
@@ -55,7 +57,7 @@ void main() {
     final state = await _motoState([first, second]);
 
     await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('PEGUE ESTE PACOTE'), findsOneWidget);
     expect(find.text(first.label), findsWidgets);
@@ -68,25 +70,41 @@ void main() {
     expect(packageTexts.any((text) => text.style?.fontSize == 34), isTrue);
   });
 
+
+  testWidgets('moto shows assigned compartment and package number during delivery', (tester) async {
+    final package = _package(7, 'Rua Teste');
+    final state = await _motoState([package]);
+    await state.setPhysicalZone(package.id, 'Baú traseiro');
+
+    await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
+    await tester.pump();
+
+    expect(find.text('Baú traseiro'), findsOneWidget);
+    expect(find.text(package.label), findsWidgets);
+    final compartmentTexts = tester.widgetList<Text>(find.text('Baú traseiro'));
+    expect(compartmentTexts.any((text) => text.style?.fontSize == 34), isTrue);
+  });
+
   testWidgets('moto advances to the next package after delivery', (tester) async {
     final first = _package(7, 'Rua Teste');
     final second = _package(12, 'Avenida Próxima');
     final state = await _motoState([first, second]);
 
     await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     await tester.tap(find.text('ENTREGUE • PRÓXIMO'));
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(find.text('Quem recebeu?'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'Maria');
     await tester.tap(find.text('Confirmar entrega'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('Indo para a próxima entrega…'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Entrega 2 de 2'), findsOneWidget);
@@ -97,6 +115,24 @@ void main() {
     expect(packageTexts.any((text) => text.style?.fontSize == 34), isTrue);
   });
 
+
+  testWidgets('delivery actions stay visible on a compact phone viewport', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = await _motoState([_package(7, 'Rua Teste')]);
+    await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('ENTREGUE • PRÓXIMO'), findsOneWidget);
+    final actionRect = tester.getRect(find.text('ENTREGUE • PRÓXIMO'));
+    expect(actionRect.bottom, lessThanOrEqualTo(640));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('car keeps using the physical loading position', (tester) async {
     final first = _package(7, 'Rua Teste', physicalZone: 'Frente esquerda');
     final second = _package(12, 'Avenida Próxima', physicalZone: 'Frente direita');
@@ -104,7 +140,7 @@ void main() {
     await state.init();
 
     await tester.pumpWidget(MaterialApp(home: DeliveryScreen(state: state)));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('PEGUE ESTE PACOTE'), findsOneWidget);
     expect(find.text('Frente esquerda'), findsOneWidget);

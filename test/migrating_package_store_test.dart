@@ -1,13 +1,17 @@
+import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/migrating_package_store.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeStore implements PackageStore {
   List<DeliveryPackage> packages;
   bool optimized;
   bool failNextSave;
   bool corruptNextSave;
+  bool failClearBeforeMutation;
+  bool failClearAfterMutation;
   int saves=0;
   int clears=0;
 
@@ -16,6 +20,8 @@ class FakeStore implements PackageStore {
     this.optimized=false,
     this.failNextSave=false,
     this.corruptNextSave=false,
+    this.failClearBeforeMutation=false,
+    this.failClearAfterMutation=false,
   }):packages=[...?packages];
 
   @override
@@ -38,9 +44,17 @@ class FakeStore implements PackageStore {
 
   @override
   Future<void> clear() async {
+    clears++;
+    if(failClearBeforeMutation){
+      failClearBeforeMutation=false;
+      throw StateError('simulated clear failure before mutation');
+    }
     packages=[];
     optimized=false;
-    clears++;
+    if(failClearAfterMutation){
+      failClearAfterMutation=false;
+      throw StateError('simulated clear failure after mutation');
+    }
   }
 }
 
@@ -60,6 +74,9 @@ DeliveryPackage pkg(String id,int scan)=>DeliveryPackage(
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   test('copies legacy packages in exact order with route metadata',() async {
     final primary=FakeStore();
     final legacy=FakeStore(packages:[pkg('a',1),pkg('b',2),pkg('c',3)],optimized:true);
@@ -124,5 +141,91 @@ void main(){
     expect(legacy.clears,1);
     expect(await store.load(),isEmpty);
     expect(await store.loadRouteOptimized(),isFalse);
+  });
+
+  test('clear migrates legacy data before snapshot so rollback cannot resurrect the route',() async {
+    final primary=FakeStore();
+    final legacy=FakeStore(
+      packages:[pkg('legacy-only',1)],
+      optimized:true,
+      failClearAfterMutation:true,
+    );
+    final store=MigratingPackageStore(primary:primary,legacy:legacy);
+
+    await expectLater(store.clear(),throwsStateError);
+
+    // clear() must snapshot the same logical state that load() would expose,
+    // even when the primary database had not been migrated yet.
+    expect(primary.packages.map((p)=>p.id),['legacy-only']);
+    expect(primary.optimized,isTrue);
+    expect(legacy.packages.map((p)=>p.id),['legacy-only']);
+    expect(legacy.optimized,isTrue);
+
+    expect((await store.load()).map((p)=>p.id),['legacy-only']);
+    expect(await store.loadRouteOptimized(),isTrue);
+  });
+
+  test('failed legacy clear before mutation restores primary and does not resurrect stale legacy data',() async {
+    final primary=FakeStore(packages:[pkg('current',1)],optimized:true);
+    final legacy=FakeStore(
+      packages:[pkg('legacy',2)],
+      optimized:true,
+      failClearBeforeMutation:true,
+    );
+    final store=MigratingPackageStore(primary:primary,legacy:legacy);
+
+    await expectLater(store.clear(),throwsStateError);
+
+    expect(primary.packages.map((p)=>p.id),['current']);
+    expect(primary.optimized,isTrue);
+    expect(legacy.packages.map((p)=>p.id),['legacy']);
+    expect(legacy.optimized,isTrue);
+
+    // The failed clear must not leave an empty primary that causes stale
+    // legacy data to be imported on the next app startup.
+    expect((await store.load()).map((p)=>p.id),['current']);
+    expect(await store.loadRouteOptimized(),isTrue);
+  });
+
+  test('AppState clear restores the visible route when legacy clear fails',() async {
+    SharedPreferences.setMockInitialValues({});
+    final primary=FakeStore(packages:[pkg('current',1)],optimized:true);
+    final legacy=FakeStore(
+      packages:[pkg('legacy',2)],
+      optimized:true,
+      failClearAfterMutation:true,
+    );
+    final store=MigratingPackageStore(primary:primary,legacy:legacy);
+    final state=AppState(store:store);
+    await state.init();
+
+    await expectLater(state.clear(),throwsStateError);
+
+    expect(state.packages.map((p)=>p.id),['current']);
+    expect(state.routeOptimized,isTrue);
+    expect(primary.packages.map((p)=>p.id),['current']);
+    expect(legacy.packages.map((p)=>p.id),['legacy']);
+
+    final reopened=AppState(store:store);
+    await reopened.init();
+    expect(reopened.packages.map((p)=>p.id),['current']);
+    expect(reopened.routeOptimized,isTrue);
+  });
+
+  test('failed legacy clear after partial mutation restores both package snapshots',() async {
+    final primary=FakeStore(packages:[pkg('current',1)],optimized:true);
+    final legacy=FakeStore(
+      packages:[pkg('legacy',2)],
+      optimized:true,
+      failClearAfterMutation:true,
+    );
+    final store=MigratingPackageStore(primary:primary,legacy:legacy);
+
+    await expectLater(store.clear(),throwsStateError);
+
+    expect(primary.packages.map((p)=>p.id),['current']);
+    expect(primary.optimized,isTrue);
+    expect(legacy.packages.map((p)=>p.id),['legacy']);
+    expect(legacy.optimized,isTrue);
   });
 }

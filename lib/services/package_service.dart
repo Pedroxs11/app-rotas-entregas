@@ -33,7 +33,7 @@ class PackageService {
 
     return DeliveryPackage(
       id:_uuid.v4(),
-      scanNumber:existing.length+1,
+      scanNumber:existing.fold<int>(0,(highest,package)=>package.scanNumber>highest?package.scanNumber:highest)+1,
       trackingCode:trackingCode?.trim(),
       address:address,
       scannedAt:DateTime.now(),

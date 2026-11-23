@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MetadataFailureStore implements PackageStore {
   MetadataFailureStore(this.packages);
@@ -46,6 +47,8 @@ DeliveryPackage _package()=>DeliveryPackage(
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   test('route metadata startup failure keeps already loaded packages usable',() async {
     final store=MetadataFailureStore([_package()]);
     final state=AppState(store:store);

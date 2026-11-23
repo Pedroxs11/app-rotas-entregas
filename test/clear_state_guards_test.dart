@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ClearStore implements PackageStore {
  ClearStore(this.packages,{this.optimized=true});List<DeliveryPackage> packages;bool optimized;int clears=0;int saves=0;
@@ -18,6 +19,8 @@ DeliveryPackage _p(String id,int n,DeliveryStatus status)=>DeliveryPackage(
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
  test('clear removes packages route metadata and every dashboard count in one operation',()async{
   final store=ClearStore([_p('pending',1,DeliveryStatus.pending),_p('absent',2,DeliveryStatus.absent),_p('done',3,DeliveryStatus.delivered)]);
   final state=AppState(store:store);await state.init();

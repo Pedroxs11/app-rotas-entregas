@@ -69,8 +69,60 @@ class MigratingPackageStore implements PackageStore {
 
   @override
   Future<void> clear() async {
-    await primary.clear();
-    await legacy.clear();
-    _migrationChecked=true;
+    // Clear must observe the same migrated snapshot that load() would expose.
+    // Otherwise a failed legacy clear could restore data into an empty primary
+    // store and have that stale route imported again on the next startup.
+    await _ensureMigrated();
+    // Clearing two independent stores is not a single atomic transaction.
+    // Keep a snapshot of both before deleting either one: if the second clear
+    // fails after the primary has already been emptied, the next startup must
+    // not migrate the old route back from the legacy copy.
+    final primaryPackages=await primary.load();
+    final primaryOptimized=await primary.loadRouteOptimized();
+    final legacyPackages=await legacy.load();
+    final legacyOptimized=await legacy.loadRouteOptimized();
+
+    try{
+      await primary.clear();
+      await legacy.clear();
+      _migrationChecked=true;
+    }catch(error,stackTrace){
+      Object? primaryRollbackError;
+      Object? legacyRollbackError;
+
+      try{
+        await primary.save(primaryPackages,routeOptimized:primaryOptimized);
+      }catch(rollbackError){
+        primaryRollbackError=rollbackError;
+      }
+
+      try{
+        await legacy.save(legacyPackages,routeOptimized:legacyOptimized);
+      }catch(rollbackError){
+        legacyRollbackError=rollbackError;
+      }
+
+      // Re-check migration on the next read. If restoring the primary failed
+      // but the legacy rollback succeeded, migration can still recover the data.
+      _migrationChecked=false;
+
+      if(primaryRollbackError!=null||legacyRollbackError!=null){
+        final failures=<String>[
+          if(primaryRollbackError!=null)
+            'primary rollback failed: $primaryRollbackError',
+          if(legacyRollbackError!=null)
+            'legacy rollback failed: $legacyRollbackError',
+        ];
+        Error.throwWithStackTrace(
+          StateError(
+            'Package store clear failed: $error. '
+            'Rollback was incomplete: ${failures.join('; ')}',
+          ),
+          stackTrace,
+        );
+      }
+
+      Error.throwWithStackTrace(error,stackTrace);
+    }
   }
 }

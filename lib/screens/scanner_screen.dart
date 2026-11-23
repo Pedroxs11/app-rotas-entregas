@@ -53,10 +53,7 @@ class _ScannerScreenState extends State<ScannerScreen>{
       final text=results[0] as String;
       final tracking=results[1] as String?;
       if(text.trim().isEmpty)throw Exception('Nenhum endereço encontrado');
-      final before=widget.state.packages.length;
-      await widget.state.addFromText(text,trackingCode:tracking);
-      if(widget.state.packages.length<=before)throw Exception('Este pacote parece já ter sido registrado');
-      final p=widget.state.packages.last;
+      final p=await widget.state.addFromText(text,trackingCode:tracking);
       _captured++;
       final needsReview=p.address.validation!=ValidationStatus.confirmed;
       if(needsReview)_review++;

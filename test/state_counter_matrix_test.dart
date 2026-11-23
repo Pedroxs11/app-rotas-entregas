@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CounterStore implements PackageStore {
  CounterStore(this.packages);List<DeliveryPackage> packages;
@@ -18,6 +19,8 @@ DeliveryPackage _p(String id,int n,DeliveryStatus status,ValidationStatus valida
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
  test('dashboard counters follow the full delivery status and validation matrix',()async{
   final store=CounterStore([
    _p('pending-review',1,DeliveryStatus.pending,ValidationStatus.needsReview),

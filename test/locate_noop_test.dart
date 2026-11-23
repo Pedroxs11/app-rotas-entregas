@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LocateStore implements PackageStore {
  LocateStore(this.packages,{this.optimized=false});List<DeliveryPackage> packages;bool optimized;int saves=0;
@@ -18,6 +19,8 @@ DeliveryPackage _p(String id,int n,{required ValidationStatus validation,double?
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
  test('locate confirmed is a true no-op when every eligible package is already located',()async{
   final store=LocateStore([_p('ready',1,validation:ValidationStatus.confirmed,lat:-23.55,lng:-46.63,zone:'A-01')],optimized:true);
   final state=AppState(store:store);await state.init();await state.locateConfirmed();

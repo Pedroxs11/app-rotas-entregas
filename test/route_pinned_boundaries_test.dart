@@ -2,6 +2,7 @@ import 'package:app_rotas_entregas/app_state.dart';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PinStore implements PackageStore {
  PinStore(this.packages);List<DeliveryPackage> packages;bool optimized=false;int saves=0;
@@ -18,6 +19,8 @@ DeliveryPackage _p(String id,int scan,double lat,double lng,{bool pinned=false})
 );
 
 void main(){
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
  test('multiple pinned stops keep their original route slots while free stops optimize',()async{
   final store=PinStore([
    _p('free-far',1,-23.70,-46.80),
