@@ -476,7 +476,11 @@ class _LoadScreenState extends State<LoadScreen>{
                 _selectionPointerId = event.pointer;
               }
             },
-            onPointerMove: (event) => _selectionPointerMove(event.position),
+            onPointerMove: (event) {
+              if (_selectionPointerId == event.pointer) {
+                _selectionPointerMove(event.position);
+              }
+            },
             onPointerUp: (event) => _selectionPointerUp(event.pointer),
             onPointerCancel: (event) => _selectionPointerUp(event.pointer),
             child: CustomScrollView(
