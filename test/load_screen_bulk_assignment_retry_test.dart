@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +16,7 @@ class _RetryingLoadStore implements PackageStore {
   bool failNextSave = true;
   int saveAttempts = 0;
   int successfulSaves = 0;
+  Completer<void>? saveGate;
 
   @override
   Future<void> clear() async {
@@ -32,6 +35,9 @@ class _RetryingLoadStore implements PackageStore {
     bool? routeOptimized,
   }) async {
     saveAttempts++;
+    final gate = saveGate;
+    saveGate = null;
+    if (gate != null) await gate.future;
     if (failNextSave) {
       failNextSave = false;
       throw StateError('Falha simulada de gravação');
@@ -155,4 +161,106 @@ void main() {
       }
     },
   );
+
+  testWidgets(
+    'rapid compartment taps do not queue a second assignment while the first save is pending',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({'load_vehicle_type': 'car'});
+      final store = _RetryingLoadStore([
+        _package(VehicleType.car, 1),
+        _package(VehicleType.car, 2),
+      ])..failNextSave = false;
+      final saveGate = Completer<void>();
+      store.saveGate = saveGate;
+      final state = AppState(store: store);
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      final packageRow = find.text('Pacote 01');
+      await tester.ensureVisible(packageRow);
+      await tester.tap(packageRow);
+      await tester.pump();
+
+      final firstCompartment = find.text('FRENTE E');
+      await tester.ensureVisible(firstCompartment);
+      await tester.tap(firstCompartment);
+      await tester.pump();
+
+      expect(store.saveAttempts, 1);
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+
+      // The second compartment remains visible, but the organizer must absorb
+      // taps until the first persistence operation finishes.
+      final secondCompartment = find.text('FRENTE D');
+      expect(secondCompartment, findsOneWidget);
+      await tester.tap(secondCompartment);
+      await tester.pump();
+      expect(store.saveAttempts, 1);
+
+      saveGate.complete();
+      await tester.pumpAndSettle();
+
+      expect(state.packages.first.physicalZone, 'Frente esquerda');
+      expect(state.packages.last.physicalZone, isNull);
+      expect(store.items.first.physicalZone, 'Frente esquerda');
+      expect(store.saveAttempts, 1);
+      expect(store.successfulSaves, 1);
+      expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'rapid bulk-removal taps perform only one save while persistence is pending',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({'load_vehicle_type': 'car'});
+      final store = _RetryingLoadStore([
+        _package(VehicleType.car, 1).copyWith(physicalZone: 'Porta-malas'),
+      ])..failNextSave = false;
+      final saveGate = Completer<void>();
+      store.saveGate = saveGate;
+      final state = AppState(store: store);
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pumpAndSettle();
+
+      final assignedChip = find.widgetWithText(InputChip, 'P01');
+      await tester.ensureVisible(assignedChip);
+      await tester.tap(assignedChip);
+      await tester.pumpAndSettle();
+
+      final removeButton = find.text('RETIRAR PACOTE SELECIONADO');
+      await tester.ensureVisible(removeButton);
+      await tester.tap(removeButton);
+      await tester.pump();
+
+      expect(store.saveAttempts, 1);
+      await tester.tap(removeButton);
+      await tester.pump();
+      expect(store.saveAttempts, 1);
+
+      saveGate.complete();
+      await tester.pumpAndSettle();
+
+      expect(state.packages.single.physicalZone, isNull);
+      expect(store.items.single.physicalZone, isNull);
+      expect(store.saveAttempts, 1);
+      expect(store.successfulSaves, 1);
+      expect(find.text('0 pacote(s) selecionado(s)'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
+
 }
