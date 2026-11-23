@@ -128,7 +128,9 @@ class _LoadScreenState extends State<LoadScreen>{
   Future<void> _switchVehicle(VehicleType value) async {
     if (value == widget.state.vehicleType ||
         _vehicleSwitching ||
-        _loadMutationInProgress) return;
+        _loadMutationInProgress) {
+      return;
+    }
 
     // End the drag session and lock the organizer before asynchronous
     // persistence. Otherwise a second gesture could start against the old
