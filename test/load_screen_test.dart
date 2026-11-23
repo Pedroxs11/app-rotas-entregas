@@ -1780,11 +1780,11 @@ void main(){
       expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
 
       final second = tester.getCenter(find.text('Pacote 02'));
-      await primary.moveTo(
-        second,
-        timeStamp: const Duration(milliseconds: 700),
-      );
+      // Advance the fake clock before moving; TestGesture.moveTo uses the
+      // current test clock and does not accept an explicit timeStamp.
       await tester.pump(const Duration(milliseconds: 100));
+      await primary.moveTo(second);
+      await tester.pump();
       expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
 
       // This second pointer long-presses a different package while the
@@ -1803,16 +1803,14 @@ void main(){
       );
 
       final third = tester.getCenter(find.text('Pacote 03'));
-      await primary.moveTo(
-        third,
-        timeStamp: const Duration(milliseconds: 1500),
-      );
+      await primary.moveTo(third);
       await tester.pump(const Duration(milliseconds: 16));
       expect(find.text('3 pacote(s) selecionado(s)'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await secondary.up(timeStamp: const Duration(milliseconds: 1516));
-      await primary.up(timeStamp: const Duration(milliseconds: 1532));
+      // Lifting either pointer uses the same monotonic fake-clock timestamp.
+      await secondary.up();
+      await primary.up();
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
