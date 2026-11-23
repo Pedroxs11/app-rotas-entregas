@@ -240,7 +240,7 @@ jobs:
       # Publishing is opt-in and manual only. Keep ENABLE_PLAY_INTERNAL_PUBLISH
       # unset/false until the version has been explicitly approved for internal testing.
       - name: Publish Play release to internal testing
-        if: ${{ env.SIGNING_READY == 'true' && env.PLAY_PUBLISH_READY == 'true' && vars.ENABLE_PLAY_INTERNAL_PUBLISH == 'true' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/play-internal-test' }}
+        if: ${{ env.SIGNING_READY == 'true' && env.PLAY_PUBLISH_READY == 'true' && vars.ENABLE_PLAY_INTERNAL_PUBLISH == 'true' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/play-internal-test' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
