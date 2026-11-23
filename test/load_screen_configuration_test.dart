@@ -54,43 +54,82 @@ DeliveryPackage _package(
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('disabling a car compartment clears its active packages in the UI',
-      (tester) async {
-    final state = AppState(
-      store: _ConfigurationStore([
+  testWidgets(
+    'disabling an occupied compartment requires confirmation and preserves delivered history',
+    (tester) async {
+      final store = _ConfigurationStore([
         _package(1, zone: 'Porta-malas'),
         _package(2, zone: 'Frente esquerda'),
-      ]),
-    );
-    await state.init();
+        _package(
+          3,
+          zone: 'Porta-malas',
+          status: DeliveryStatus.delivered,
+        ),
+      ]);
+      final state = AppState(store: store);
+      await state.init();
 
-    await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
 
-    expect(find.text('2 de 2 pacotes posicionados'), findsOneWidget);
-    expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-      isNotNull,
-    );
+      expect(find.text('2 de 2 pacotes posicionados'), findsOneWidget);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNotNull,
+      );
 
-    await tester.tap(find.byTooltip('Configurar compartimentos'));
-    await tester.pumpAndSettle();
-    expect(find.text('Compartimentos do carro'), findsOneWidget);
+      await tester.tap(find.byTooltip('Configurar compartimentos'));
+      await tester.pumpAndSettle();
+      expect(find.text('Compartimentos do carro'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(CheckboxListTile, 'Porta-malas'));
-    await tester.tap(find.text('Salvar'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(CheckboxListTile, 'Porta-malas'));
+      await tester.tap(find.text('Salvar'));
+      await tester.pumpAndSettle();
 
-    expect(state.activePhysicalZones, isNot(contains('Porta-malas')));
-    expect(state.packages[0].physicalZone, isNull);
-    expect(state.packages[1].physicalZone, 'Frente esquerda');
-    expect(find.text('1 de 2 pacotes posicionados'), findsOneWidget);
-    expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-      isNull,
-    );
-    expect(tester.takeException(), isNull);
-  });
+      expect(
+        find.text('Confirmar alteração dos compartimentos'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('1 pacote ativo perderá sua posição atual.'),
+        findsOneWidget,
+        reason: 'Delivered packages must not be counted as active load.',
+      );
+      expect(state.activePhysicalZones, contains('Porta-malas'));
+      expect(state.packages[0].physicalZone, 'Porta-malas');
+      expect(state.packages[2].physicalZone, 'Porta-malas');
+
+      // Cancelling the warning keeps the configuration dialog and all package
+      // positions intact, so the driver can review or change the selection.
+      await tester.tap(find.text('Voltar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Compartimentos do carro'), findsOneWidget);
+      expect(state.activePhysicalZones, contains('Porta-malas'));
+      expect(state.packages[0].physicalZone, 'Porta-malas');
+      expect(store.saves, 0);
+
+      await tester.tap(find.text('Salvar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Desativar e continuar'));
+      await tester.pumpAndSettle();
+
+      expect(state.activePhysicalZones, isNot(contains('Porta-malas')));
+      expect(state.packages[0].physicalZone, isNull);
+      expect(state.packages[1].physicalZone, 'Frente esquerda');
+      expect(
+        state.packages[2].physicalZone,
+        'Porta-malas',
+        reason: 'Delivered package history must remain unchanged.',
+      );
+      expect(find.text('1 de 2 pacotes posicionados'), findsOneWidget);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNull,
+      );
+      expect(store.saves, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('motorcycle configuration shows only motorcycle compartments',
       (tester) async {
