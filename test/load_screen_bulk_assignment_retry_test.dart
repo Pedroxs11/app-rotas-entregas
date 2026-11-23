@@ -433,7 +433,6 @@ void main() {
           matching: find.byType(Scrollable),
         ).first;
         final position = tester.state<ScrollableState>(scrollable).position;
-        final offsetAtMutation = position.pixels;
 
         // Invoke the actual compartment tap callback while the drag pointer
         // is still down, matching a second-finger compartment selection.
@@ -443,6 +442,7 @@ void main() {
         ).first;
         tester.widget<InkWell>(zoneFinder).onTap!();
         await tester.pump();
+        final offsetAtMutation = position.pixels;
 
         expect(store.saveAttempts, 1);
         expect(find.byType(CircularProgressIndicator), findsWidgets);
@@ -522,7 +522,6 @@ void main() {
           matching: find.byType(Scrollable),
         ).first;
         final position = tester.state<ScrollableState>(scrollable).position;
-        final offsetAtMutation = position.pixels;
 
         // The assigned chip remains selected while a second pointer drags
         // through unassigned packages. Removing it must cancel that timer.
@@ -532,6 +531,7 @@ void main() {
         ).first;
         tester.widget<OutlinedButton>(removeFinder).onPressed!();
         await tester.pump();
+        final offsetAtMutation = position.pixels;
 
         expect(store.saveAttempts, 1);
         expect(find.byType(CircularProgressIndicator), findsWidgets);
