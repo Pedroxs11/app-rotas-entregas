@@ -62,6 +62,55 @@ DeliveryPackage _package(VehicleType vehicle, int number) => DeliveryPackage(
       scannedAt: DateTime.utc(2026, 11, 21, 12),
     );
 
+Future<void> _ensureLoadItemVisible(
+  WidgetTester tester,
+  Finder finder,
+) async {
+  final scrollable = find.descendant(
+    of: find.byType(CustomScrollView),
+    matching: find.byType(Scrollable),
+  ).first;
+  final position = tester.state<ScrollableState>(scrollable).position;
+  final viewportFinder = find.byType(CustomScrollView);
+
+  if (finder.evaluate().isEmpty &&
+      position.pixels > position.minScrollExtent) {
+    position.jumpTo(position.minScrollExtent);
+    await tester.pumpAndSettle();
+  }
+
+  for (var attempt = 0; attempt < 120; attempt++) {
+    if (finder.evaluate().isNotEmpty) {
+      final target = tester.getRect(finder.first);
+      final viewport = tester.getRect(viewportFinder);
+      if (target.top >= viewport.top && target.bottom <= viewport.bottom) {
+        return;
+      }
+      final delta = target.top < viewport.top
+          ? target.top - viewport.top
+          : target.bottom - viewport.bottom;
+      final next = (position.pixels + delta)
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if ((next - position.pixels).abs() < 0.5) break;
+      position.jumpTo(next);
+    } else {
+      final next = (position.pixels + 100)
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if (next <= position.pixels) break;
+      position.jumpTo(next);
+    }
+    await tester.pumpAndSettle();
+  }
+
+  expect(finder, findsWidgets);
+  final target = tester.getRect(finder.first);
+  final viewport = tester.getRect(viewportFinder);
+  expect(target.top, greaterThanOrEqualTo(viewport.top));
+  expect(target.bottom, lessThanOrEqualTo(viewport.bottom));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -165,6 +214,11 @@ void main() {
   testWidgets(
     'rapid compartment taps do not queue a second assignment while the first save is pending',
     (tester) async {
+      tester.view.physicalSize = const Size(400, 850);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       SharedPreferences.setMockInitialValues({'load_vehicle_type': 'car'});
       final store = _RetryingLoadStore([
         _package(VehicleType.car, 1),
@@ -179,12 +233,12 @@ void main() {
       await tester.pumpAndSettle();
 
       final packageRow = find.text('Pacote 01');
-      await tester.ensureVisible(packageRow);
+      await _ensureLoadItemVisible(tester, packageRow);
       await tester.tap(packageRow);
       await tester.pump();
 
       final firstCompartment = find.text('FRENTE E');
-      await tester.ensureVisible(firstCompartment);
+      await _ensureLoadItemVisible(tester, firstCompartment);
       await tester.tap(firstCompartment);
       await tester.pump();
 
@@ -195,6 +249,7 @@ void main() {
       // taps until the first persistence operation finishes.
       final secondCompartment = find.text('FRENTE D');
       expect(secondCompartment, findsOneWidget);
+      await _ensureLoadItemVisible(tester, secondCompartment);
       await tester.tap(secondCompartment);
       await tester.pump();
       expect(store.saveAttempts, 1);
@@ -218,6 +273,11 @@ void main() {
   testWidgets(
     'rapid bulk-removal taps perform only one save while persistence is pending',
     (tester) async {
+      tester.view.physicalSize = const Size(400, 850);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       SharedPreferences.setMockInitialValues({'load_vehicle_type': 'car'});
       final store = _RetryingLoadStore([
         _package(VehicleType.car, 1).copyWith(physicalZone: 'Porta-malas'),
@@ -234,12 +294,12 @@ void main() {
       await tester.pumpAndSettle();
 
       final assignedChip = find.widgetWithText(InputChip, 'P01');
-      await tester.ensureVisible(assignedChip);
+      await _ensureLoadItemVisible(tester, assignedChip);
       await tester.tap(assignedChip);
       await tester.pumpAndSettle();
 
       final removeButton = find.text('RETIRAR PACOTE SELECIONADO');
-      await tester.ensureVisible(removeButton);
+      await _ensureLoadItemVisible(tester, removeButton);
       await tester.tap(removeButton);
       await tester.pump();
 
