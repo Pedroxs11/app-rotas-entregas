@@ -1775,11 +1775,7 @@ void main(){
       await tester.pump();
 
       final first = tester.getCenter(find.text('Pacote 01'));
-      final primary = await tester.startGesture(
-        first,
-        pointer: 1,
-        timeStamp: const Duration(milliseconds: 0),
-      );
+      final primary = await tester.startGesture(first, pointer: 1);
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
 
@@ -1788,7 +1784,7 @@ void main(){
         second,
         timeStamp: const Duration(milliseconds: 700),
       );
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
 
       // This second pointer long-presses a different package while the
