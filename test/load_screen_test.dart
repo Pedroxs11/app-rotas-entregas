@@ -1679,4 +1679,75 @@ void main(){
     },
   );
 
+
+  testWidgets(
+    'lifting an unrelated second pointer does not cancel an active drag selection',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 850);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final state = AppState(
+        store: _LoadStore(List.generate(80, (index) => _package(index + 1))),
+      );
+      await state.init();
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pump();
+
+      await _ensureLoadItemVisible(tester, find.text('Pacote 01'));
+      final first = tester.getCenter(find.text('Pacote 01'));
+      final viewport = tester.getRect(find.byType(CustomScrollView));
+      final drag = await tester.startGesture(first, pointer: 1);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+      await drag.moveTo(
+        Offset(first.dx, viewport.bottom - 30),
+        timeStamp: const Duration(milliseconds: 700),
+      );
+      await tester.pump(const Duration(milliseconds: 160));
+
+      final scrollable = find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ).first;
+      final position = tester.state<ScrollableState>(scrollable).position;
+      final offsetBeforeSecondPointer = position.pixels;
+      expect(
+        offsetBeforeSecondPointer,
+        greaterThan(0),
+        reason: 'The primary drag must have activated auto-scroll.',
+      );
+
+      // A second finger briefly touches blank space inside the same list.
+      // Its pointer-up must not terminate the first finger's active drag.
+      final secondary = Offset(viewport.left + 4, viewport.top + 4);
+      final secondPointer = await tester.startGesture(secondary, pointer: 2);
+      await tester.pump(const Duration(milliseconds: 40));
+      await secondPointer.up();
+      await tester.pump();
+
+      final offsetAfterSecondPointer = position.pixels;
+      await tester.pump(const Duration(milliseconds: 240));
+      expect(
+        position.pixels,
+        greaterThan(offsetAfterSecondPointer),
+        reason: 'The primary drag auto-scroll must continue after an unrelated pointer lifts.',
+      );
+      expect(find.textContaining('pacote(s) selecionado(s)'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await drag.up();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
+
 }
