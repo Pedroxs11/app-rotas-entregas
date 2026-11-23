@@ -109,6 +109,19 @@ class _LoadScreenState extends State<LoadScreen>{
     }
     if (!mounted) return;
 
+    // A vehicle change ends the current drag-selection session. In particular,
+    // cancel its periodic auto-scroll before replacing the scroll controller;
+    // otherwise a held pointer could keep scrolling the new vehicle's layout.
+    _stopSelectionAutoScroll();
+    _dragSelecting = false;
+    _suppressNextTap = false;
+    _selectionStartPackageId = null;
+    _lastSelectionPointer = null;
+    _dragSelectionPackages = const [];
+    _dragSelectionIndexById.clear();
+    _lastSelectionIndex = null;
+    _mountedTileBoxes.clear();
+
     // A vehicle change replaces the diagram and changes the sliver extents.
     // Recreate the scrollable with a fresh controller so Flutter cannot
     // restore the previous vehicle's offset during the next layout pass.
