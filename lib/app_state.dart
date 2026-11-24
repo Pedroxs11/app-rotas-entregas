@@ -110,8 +110,27 @@ class AppState extends ChangeNotifier {
    debugPrint('Could not read saved vehicle compartments: $e');
   }
   final nextZones=_restorePhysicalZones(savedZones,defaults);
-  final nextPackages=packages.map((p)=>p.status==DeliveryStatus.delivered?p:p.copyWith(clearPhysicalZone:true)).toList();
-  final packagesChanged=packages.any((p)=>p.status!=DeliveryStatus.delivered&&p.physicalZone!=null);
+  final knownVehicleZones=<String>{
+   ...carPhysicalZones,
+   ...motorcyclePhysicalZones,
+  };
+  final nextPackages=packages.map((p){
+   if(p.status==DeliveryStatus.delivered)return p;
+   final rawZone=p.physicalZone;
+   if(rawZone==null)return p;
+   final normalizedZone=rawZone.trim();
+   if(normalizedZone.isEmpty||knownVehicleZones.contains(normalizedZone)){
+    return p.copyWith(clearPhysicalZone:true);
+   }
+   // Labels outside the vehicle diagrams are custom metadata, not physical
+   // vehicle positions. Preserve them when switching between car and moto.
+   if(normalizedZone!=rawZone){
+    return p.copyWith(physicalZone:normalizedZone);
+   }
+   return p;
+  }).toList();
+  final packagesChanged=packages.asMap().entries.any((entry)=>
+   entry.value.physicalZone!=nextPackages[entry.key].physicalZone);
   try{
    if(!await prefs.setString(vehiclePreferenceKey,value.name)){
     throw StateError('Could not save selected vehicle.');
