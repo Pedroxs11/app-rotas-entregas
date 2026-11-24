@@ -204,4 +204,88 @@ void main() {
       }
     },
   );
+
+  testWidgets(
+    'clearing an empty compartment resets its next preview to the initial batch',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': VehicleType.car.name,
+      });
+
+      final store = _ZonePreviewStore(
+        List.generate(9, (index) => _package(index + 1)),
+      );
+      final state = AppState(store: store);
+      await state.init();
+      await state.setPhysicalZones(
+        state.packages.map((package) => package.id).toSet(),
+        'Porta-malas',
+      );
+
+      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      final trunk = find.text('PORTA-MALAS');
+      await _ensureLoadItemVisible(tester, trunk);
+      final showOneMore = find.text('Ver mais 1');
+      await _ensureLoadItemVisible(tester, showOneMore);
+      await tester.tap(showOneMore);
+      await tester.pumpAndSettle();
+      expect(find.byType(InputChip), findsNWidgets(9));
+
+      // Remove the complete load from the compartment.
+      await tester.tap(find.byTooltip('Selecionar vários'));
+      await tester.pumpAndSettle();
+      for (var packageNumber = 1; packageNumber <= 9; packageNumber++) {
+        final chip = find.widgetWithText(
+          InputChip,
+          'P${packageNumber.toString().padLeft(2, '0')}',
+        );
+        await _ensureLoadItemVisible(tester, chip);
+        await tester.tap(chip);
+        await tester.pump();
+      }
+      expect(find.text('9 pacote(s) selecionado(s)'), findsOneWidget);
+
+      final removeAll = find.text('RETIRAR 9 PACOTES');
+      await _ensureLoadItemVisible(tester, removeAll);
+      await tester.tap(removeAll);
+      await tester.pumpAndSettle();
+      expect(
+        state.packages.every((package) => package.physicalZone == null),
+        isTrue,
+      );
+
+      // Put the same nine packages back. The empty compartment must not
+      // remember the previous nine-chip expansion; it starts with eight.
+      final selectAll = find.text('Selecionar lista');
+      await _ensureLoadItemVisible(tester, selectAll);
+      await tester.tap(selectAll);
+      await tester.pumpAndSettle();
+      expect(find.text('9 pacote(s) selecionado(s)'), findsOneWidget);
+
+      await _ensureLoadItemVisible(tester, trunk);
+      await tester.tap(trunk);
+      await tester.pumpAndSettle();
+
+      expect(
+        state.packages.every((package) => package.physicalZone == 'Porta-malas'),
+        isTrue,
+      );
+      expect(find.byType(InputChip), findsNWidgets(8));
+      expect(find.text('P08'), findsOneWidget);
+      expect(find.text('P09'), findsNothing);
+      expect(find.text('Ver mais 1'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      state.dispose();
+    },
+  );
+
 }
