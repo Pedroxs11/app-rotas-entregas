@@ -89,7 +89,7 @@ void main() {
       ];
 
       for (final scenario in scenarios) {
-        final legacyZone = '  \${scenario.zone}  ';
+        final legacyZone = '  ${scenario.zone}  ';
         SharedPreferences.setMockInitialValues({
           'load_vehicle_type': scenario.vehicle.name,
           scenario.preferenceKey: [scenario.zone],
@@ -120,7 +120,7 @@ void main() {
         expect(
           assignedChip,
           findsOneWidget,
-          reason: 'A legacy label for \${scenario.zone} must still render in its compartment.',
+          reason: 'A legacy label for ${scenario.zone} must still render in its compartment.',
         );
         expect(
           find.text('Pacote 01'),
