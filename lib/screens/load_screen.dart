@@ -870,10 +870,20 @@ class _LoadScreenState extends State<LoadScreen>{
                   Row(
                     crossAxisAlignment:CrossAxisAlignment.start,
                     children:[
-                      if(leftSideZone!=null)Expanded(child:sideZone(leftSideZone)),
-                      if(leftSideZone!=null&&rightSideZone!=null)
-                        const SizedBox(width:8),
-                      if(rightSideZone!=null)Expanded(child:sideZone(rightSideZone)),
+                      // Keep both physical halves reserved even when one bag is
+                      // disabled. Otherwise the remaining bag expands to the
+                      // full row and appears centered instead of on its real side.
+                      Expanded(
+                        child:leftSideZone==null
+                            ?const SizedBox.shrink()
+                            :sideZone(leftSideZone),
+                      ),
+                      const SizedBox(width:8),
+                      Expanded(
+                        child:rightSideZone==null
+                            ?const SizedBox.shrink()
+                            :sideZone(rightSideZone),
+                      ),
                     ],
                   ),
                 ],

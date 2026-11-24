@@ -90,6 +90,11 @@ void main() {
           100,
           scrollable: scrollable,
         );
+        // The compact motorcycle diagram can change the sliver's measured
+        // extent after the incremental scroll. Align the complete final row
+        // before checking that both drag targets fit in the viewport.
+        await tester.ensureVisible(find.text('Pacote 12'));
+        await tester.pumpAndSettle();
 
         expect(find.text('Pacote 10'), findsOneWidget);
         expect(find.text('Pacote 11'), findsOneWidget);
