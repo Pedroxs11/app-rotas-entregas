@@ -105,6 +105,8 @@ class _LoadScreenState extends State<LoadScreen>{
             ? <String>{}
             : <String>{selectedPackage.id};
     if (ids.isEmpty) return;
+    final targetZoneWasEmpty =
+        !_route.any((package) => package.physicalZone == zone);
 
     // Stop any active drag/autoscroll before locking the screen. The timer
     // runs independently of pointer hit-testing, so AbsorbPointer alone
@@ -120,6 +122,10 @@ class _LoadScreenState extends State<LoadScreen>{
       await widget.state.setPhysicalZones(ids, zone);
       if (!mounted) return;
       setState(() {
+        // A compartment that was empty may still have a stale expansion count
+        // from an earlier load. Start its next load with the compact preview.
+        if (targetZoneWasEmpty) _visibleZonePackageCount.remove(zone);
+        _pruneEmptyZonePreviews();
         selectedId = null;
         selectedIds.clear();
         _loadMutationInProgress = false;
@@ -401,6 +407,17 @@ class _LoadScreenState extends State<LoadScreen>{
         .toSet();
   }
 
+  void _pruneEmptyZonePreviews() {
+    final occupiedZones = <String>{};
+    for (final package in _route) {
+      final zone = package.physicalZone?.trim();
+      if (zone != null && zone.isNotEmpty) occupiedZones.add(zone);
+    }
+    _visibleZonePackageCount.removeWhere(
+      (zone, _) => !occupiedZones.contains(zone),
+    );
+  }
+
   Future<void> _clearSelected() async {
     if (_vehicleSwitching || _loadMutationInProgress) return;
     final ids = _selectedAssignedPackageIds(_route);
@@ -415,6 +432,9 @@ class _LoadScreenState extends State<LoadScreen>{
       await widget.state.clearPhysicalZones(ids);
       if (!mounted) return;
       setState(() {
+        // Do not carry a large preview count into a compartment after its
+        // final assigned package has been removed.
+        _pruneEmptyZonePreviews();
         if (multiSelect) {
           // Keep any selected packages that were already unassigned. Only
           // consume the selection that this removal operation actually changed.
