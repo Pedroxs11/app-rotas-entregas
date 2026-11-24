@@ -65,7 +65,6 @@ class _LoadScreenState extends State<LoadScreen>{
     final zone = _normalizedPhysicalZone(package);
     return zone != null && widget.state.activePhysicalZones.contains(zone);
   }
-  bool get _organized=>_route.isNotEmpty&&_route.every(_hasActiveZone);
 
   String _normalizeSearchText(String value) => value.toLowerCase()
       .replaceAll(RegExp(r'[áàâãäå]'), 'a')
@@ -101,16 +100,17 @@ class _LoadScreenState extends State<LoadScreen>{
       .toList(growable:false);
   List<DeliveryPackage> get _visibleRoute=>
       _visibleRouteForQuery(_normalizeSearchText(search.trim()));
-  DeliveryPackage? _selected(){
+  DeliveryPackage? _selected(List<DeliveryPackage> route){
     final id=selectedId;
     if(id==null)return null;
-    for(final p in _route){if(p.id==id)return p;}
+    for(final package in route){if(package.id==id)return package;}
     return null;
   }
 
   Future<void> _assign(String zone) async {
     if (_vehicleSwitching || _loadMutationInProgress) return;
-    final selectedPackage = _selected();
+    final route = _route;
+    final selectedPackage = _selected(route);
     final ids = selectedIds.isNotEmpty
         ? selectedIds.toSet()
         : selectedPackage == null
@@ -118,7 +118,7 @@ class _LoadScreenState extends State<LoadScreen>{
             : <String>{selectedPackage.id};
     if (ids.isEmpty) return;
     final targetZoneWasEmpty =
-        !_route.any((package) => _isPackageInZone(package, zone));
+        !route.any((package) => _isPackageInZone(package, zone));
 
     // Stop any active drag/autoscroll before locking the screen. The timer
     // runs independently of pointer hit-testing, so AbsorbPointer alone
@@ -490,9 +490,10 @@ class _LoadScreenState extends State<LoadScreen>{
     // Index every active compartment once per frame. This avoids scanning the
     // full route and normalizing every address separately for each vehicle zone.
     final zonePackageGroups = _groupPackagesByZone(route, normalizedSearch);
-    final selected=_selected();
+    final selected=_selected(route);
     final removableIds = _selectedAssignedPackageIds(route);
     final assigned=route.where(_hasActiveZone).length;
+    final organized = route.isNotEmpty && route.every(_hasActiveZone);
     final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
     final compactViewport = MediaQuery.sizeOf(context).width < 360 ||
         MediaQuery.sizeOf(context).height < 600 ||
@@ -641,9 +642,9 @@ class _LoadScreenState extends State<LoadScreen>{
                             ),
                           ),
                         if (_isMoto)
-                          _motoCard(context, route, zonePackageGroups)
+                          _motoCard(context, route, selected, zonePackageGroups)
                         else
-                          _carDiagram(context, route, zonePackageGroups),
+                          _carDiagram(context, route, selected, zonePackageGroups),
                         const SizedBox(height: 14),
                         SizedBox(
                           height: 48,
@@ -726,7 +727,7 @@ class _LoadScreenState extends State<LoadScreen>{
             ),
           ),
         ),
-        SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?_startDeliveries:null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
+        SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:organized?_startDeliveries:null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
       ])),
     );
   }
@@ -885,6 +886,7 @@ class _LoadScreenState extends State<LoadScreen>{
   Widget _motoCard(
     BuildContext context,
     List<DeliveryPackage> route,
+    DeliveryPackage? selected,
     Map<String, _ZonePackageGroup> zonePackageGroups,
   ){
     final zones=widget.state.activePhysicalZones;
@@ -905,7 +907,7 @@ class _LoadScreenState extends State<LoadScreen>{
         zone,
         label(zone),
         zonePackageGroups[zone]!,
-        _selected(),
+        selected,
         wide:true,
       ),
     );
@@ -914,7 +916,7 @@ class _LoadScreenState extends State<LoadScreen>{
       zone,
       label(zone),
       zonePackageGroups[zone]!,
-      _selected(),
+      selected,
       wide:true,
     );
 
@@ -1026,9 +1028,9 @@ class _LoadScreenState extends State<LoadScreen>{
   Widget _carDiagram(
     BuildContext context,
     List<DeliveryPackage> route,
+    DeliveryPackage? selected,
     Map<String, _ZonePackageGroup> zonePackageGroups,
   ){
-    final selected=_selected();
     final zones=widget.state.activePhysicalZones;
     final hasFrontZones=zones.contains('Frente esquerda')||zones.contains('Frente direita');
     final hasRearZones=zones.contains('Traseira esquerda')||zones.contains('Traseira direita');
