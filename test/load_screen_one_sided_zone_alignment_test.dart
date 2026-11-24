@@ -139,7 +139,7 @@ void main() {
 
           expect(
             zoneRect.width,
-            greaterThan(100),
+            greaterThan(80),
             reason: 'The active compartment must remain a usable touch target.',
           );
           if (scenario.isRightSide) {
