@@ -51,6 +51,16 @@ class _VehicleZoneScenario {
 DeliveryPackage _package(int number, String street) => DeliveryPackage(
       id: 'indexed-zone-$number',
       scanNumber: number,
+      trackingCode: number == 1
+          ? 'BR-TRACK-ALFA-01'
+          : number == 7
+              ? 'BR-TRACK-BETA-07'
+              : null,
+      recipient: number == 1
+          ? 'Maria Oliveira'
+          : number == 7
+              ? 'João Santos'
+              : null,
       address: AddressData(
         raw: '$street, $number',
         street: street,
@@ -209,6 +219,30 @@ void main() {
             of: secondCompartment,
             matching: find.text('0/6'),
           ),
+          findsOneWidget,
+        );
+
+        // Tracking codes are searchable even when the driver types separators.
+        await tester.enterText(find.byType(TextField), 'BR-TRACK-ALFA-01');
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: firstCompartment, matching: find.text('1/6')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: secondCompartment, matching: find.text('0/6')),
+          findsOneWidget,
+        );
+
+        // Recipient names use the same accent-insensitive search as addresses.
+        await tester.enterText(find.byType(TextField), 'joao');
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: firstCompartment, matching: find.text('0/6')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: secondCompartment, matching: find.text('1/6')),
           findsOneWidget,
         );
         expect(tester.takeException(), isNull);
