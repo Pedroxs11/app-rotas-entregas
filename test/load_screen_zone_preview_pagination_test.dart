@@ -135,11 +135,16 @@ void main() {
           of: find.byType(CustomScrollView),
           matching: find.byType(Scrollable),
         ).first;
-        await tester.scrollUntilVisible(
-          collapse,
-          250,
-          scrollable: scrollable,
+        final position = tester.state<ScrollableState>(scrollable).position;
+        final viewport = tester.getRect(find.byType(CustomScrollView));
+        final target = tester.getRect(collapse);
+        final scrollDelta = target.bottom - viewport.bottom + 8;
+        position.jumpTo(
+          (position.pixels + scrollDelta)
+              .clamp(position.minScrollExtent, position.maxScrollExtent)
+              .toDouble(),
         );
+        await tester.pumpAndSettle();
         await tester.tap(collapse);
         await tester.pumpAndSettle();
 
