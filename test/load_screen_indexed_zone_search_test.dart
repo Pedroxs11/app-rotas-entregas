@@ -173,6 +173,44 @@ void main() {
           findsOneWidget,
           reason: 'The second vehicle compartment must show only its own Beta matches.',
         );
+
+        // Address matching must ignore accents even though the stored city is
+        // "São Paulo". Both physical zones should independently show six hits.
+        await tester.enterText(find.byType(TextField), 'sao paulo');
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: firstCompartment,
+            matching: find.text('6/6'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: secondCompartment,
+            matching: find.text('6/6'),
+          ),
+          findsOneWidget,
+        );
+
+        // Padded scan identifiers remain searchable and must not leak into
+        // the other compartment's count.
+        await tester.enterText(find.byType(TextField), 'p01');
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: firstCompartment,
+            matching: find.text('1/6'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: secondCompartment,
+            matching: find.text('0/6'),
+          ),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
 
         await tester.pumpWidget(const SizedBox.shrink());
