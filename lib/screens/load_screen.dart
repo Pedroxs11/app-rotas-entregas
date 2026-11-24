@@ -52,7 +52,19 @@ class _LoadScreenState extends State<LoadScreen>{
 
   bool _active(DeliveryPackage p)=>p.status==DeliveryStatus.pending||p.status==DeliveryStatus.current||p.status==DeliveryStatus.absent||p.status==DeliveryStatus.addressProblem;
   List<DeliveryPackage> get _route=>widget.state.packages.where(_active).toList();
-  bool _hasActiveZone(DeliveryPackage p)=>p.physicalZone?.trim().isNotEmpty==true&&widget.state.activePhysicalZones.contains(p.physicalZone);
+
+  String? _normalizedPhysicalZone(DeliveryPackage package) {
+    final zone = package.physicalZone?.trim();
+    return zone == null || zone.isEmpty ? null : zone;
+  }
+
+  bool _isPackageInZone(DeliveryPackage package, String zone) =>
+      _normalizedPhysicalZone(package) == zone;
+
+  bool _hasActiveZone(DeliveryPackage package) {
+    final zone = _normalizedPhysicalZone(package);
+    return zone != null && widget.state.activePhysicalZones.contains(zone);
+  }
   bool get _organized=>_route.isNotEmpty&&_route.every(_hasActiveZone);
 
   String _normalizeSearchText(String value) => value.toLowerCase()
@@ -106,7 +118,7 @@ class _LoadScreenState extends State<LoadScreen>{
             : <String>{selectedPackage.id};
     if (ids.isEmpty) return;
     final targetZoneWasEmpty =
-        !_route.any((package) => package.physicalZone == zone);
+        !_route.any((package) => _isPackageInZone(package, zone));
 
     // Stop any active drag/autoscroll before locking the screen. The timer
     // runs independently of pointer hit-testing, so AbsorbPointer alone
@@ -1060,12 +1072,13 @@ class _LoadScreenState extends State<LoadScreen>{
   };
 
   Widget _zone(BuildContext context,String zone,String shortName,List<DeliveryPackage> route,DeliveryPackage? selected,{bool wide=false}){
-    final allPackages=route.where((p)=>p.physicalZone==zone).toList();
+    final allPackages=route.where((package)=>_isPackageInZone(package, zone)).toList();
     final normalizedSearch=_normalizeSearchText(search.trim());
     final packages=allPackages.where((package)=>_matchesSearch(package,normalizedSearch)).toList();
     final activeZone=multiSelect
-        ?route.any((p)=>p.physicalZone==zone&&selectedIds.contains(p.id))
-        :selected?.physicalZone==zone;
+        ?route.any((package)=>
+            _isPackageInZone(package, zone)&&selectedIds.contains(package.id))
+        :selected!=null&&_isPackageInZone(selected, zone);
     final highlighted=selected!=null||selectedIds.isNotEmpty;
     final hasSearch=search.trim().isNotEmpty;
     final visibleCount = (_visibleZonePackageCount[zone] ?? _initialZonePackageCount)
