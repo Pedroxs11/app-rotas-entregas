@@ -88,8 +88,15 @@ class _LoadScreenState extends State<LoadScreen>{
         ?normalizedQuery.substring(1)
         :'';
     final matchesCode=codeNumber==number||codeNumber==paddedNumber;
+    final normalizedTrackingCode = _normalizeSearchText(p.trackingCode ?? '')
+        .replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final matchesTrackingCode = normalizedQuery.isNotEmpty &&
+        normalizedTrackingCode.contains(normalizedQuery);
+    final matchesRecipient = _normalizeSearchText(p.recipient ?? '').contains(query);
     return _normalizeSearchText(p.label).contains(query)||
         matchesCode||
+        matchesTrackingCode||
+        matchesRecipient||
         number.contains(query)||
         paddedNumber.contains(query)||
         _normalizeSearchText(p.address.formatted).contains(query)||
@@ -610,7 +617,7 @@ class _LoadScreenState extends State<LoadScreen>{
                                     },
                                     icon: const Icon(Icons.close),
                                   ),
-                            hintText: 'Buscar pacote ou endereço',
+                            hintText: 'Buscar pacote, destinatário ou endereço',
                             border: const OutlineInputBorder(),
                             isDense: true,
                           ),
