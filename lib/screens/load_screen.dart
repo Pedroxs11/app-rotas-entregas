@@ -19,7 +19,9 @@ class _LoadScreenState extends State<LoadScreen>{
   // This keeps pointer hit-testing proportional to the visible rows, not the full load.
   final Map<String, RenderBox> _mountedTileBoxes = <String, RenderBox>{};
   final Map<String, int> _dragSelectionIndexById = <String, int>{};
-  final Set<String> _expandedZones=<String>{};
+  static const int _initialZonePackageCount = 8;
+  static const int _zonePackagePageSize = 24;
+  final Map<String, int> _visibleZonePackageCount = <String, int>{};
   ScrollController _scrollController=ScrollController(keepScrollOffset:false);
   GlobalKey _scrollViewportKey=GlobalKey();
   Timer? _autoScrollTimer;
@@ -176,7 +178,7 @@ class _LoadScreenState extends State<LoadScreen>{
       search = '';
       selectedId = null;
       selectedIds.clear();
-      _expandedZones.clear();
+      _visibleZonePackageCount.clear();
       _vehicleSwitching = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -800,8 +802,8 @@ class _LoadScreenState extends State<LoadScreen>{
                         }
                         if (mounted) {
                           setState(
-                            () => _expandedZones.removeWhere(
-                              (zone) => !selected.contains(zone),
+                            () => _visibleZonePackageCount.removeWhere(
+                              (zone, _) => !selected.contains(zone),
                             ),
                           );
                         }
@@ -1041,13 +1043,19 @@ class _LoadScreenState extends State<LoadScreen>{
     final allPackages=route.where((p)=>p.physicalZone==zone).toList();
     final normalizedSearch=_normalizeSearchText(search.trim());
     final packages=allPackages.where((package)=>_matchesSearch(package,normalizedSearch)).toList();
-    final expanded=_expandedZones.contains(zone);
-    final visiblePackages=expanded?packages:packages.take(8).toList();
     final activeZone=multiSelect
         ?route.any((p)=>p.physicalZone==zone&&selectedIds.contains(p.id))
         :selected?.physicalZone==zone;
     final highlighted=selected!=null||selectedIds.isNotEmpty;
     final hasSearch=search.trim().isNotEmpty;
+    final visibleCount = (_visibleZonePackageCount[zone] ?? _initialZonePackageCount)
+        .clamp(0, packages.length)
+        .toInt();
+    final visiblePackages = packages.take(visibleCount).toList(growable: false);
+    final remainingPackages = packages.length - visiblePackages.length;
+    final nextBatch = remainingPackages < _zonePackagePageSize
+        ? remainingPackages
+        : _zonePackagePageSize;
     return InkWell(
       onTap:()=>_assign(zone),
       borderRadius:BorderRadius.circular(18),
@@ -1097,19 +1105,44 @@ class _LoadScreenState extends State<LoadScreen>{
                   label:Text('P${p.scanNumber.toString().padLeft(2,'0')}'),
                 ),
             ]),
-            if(packages.length>8)
-              Align(
-                alignment:Alignment.centerLeft,
-                child:TextButton(
-                  style:TextButton.styleFrom(
-                    minimumSize:Size.zero,
-                    padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-                    tapTargetSize:MaterialTapTargetSize.shrinkWrap,
-                    visualDensity:VisualDensity.compact,
-                  ),
-                  onPressed:()=>setState(()=>expanded?_expandedZones.remove(zone):_expandedZones.add(zone)),
-                  child:Text(expanded?'Mostrar menos':'Ver todos (${packages.length})'),
-                ),
+            if (packages.length > _initialZonePackageCount)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (visiblePackages.length > _initialZonePackageCount)
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        minimumSize: Size.zero,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () => setState(
+                        () => _visibleZonePackageCount.remove(zone),
+                      ),
+                      child: const Text('Mostrar menos'),
+                    )
+                  else
+                    const SizedBox.shrink(),
+                  if (remainingPackages > 0)
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        minimumSize: Size.zero,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () => setState(() {
+                        _visibleZonePackageCount[zone] =
+                            (visiblePackages.length + _zonePackagePageSize)
+                                .clamp(_initialZonePackageCount, packages.length)
+                                .toInt();
+                      }),
+                      child: Text(
+                        'Ver mais $nextBatch ($remainingPackages restantes)',
+                      ),
+                    ),
+                ],
               ),
           ],
         ]),
