@@ -47,6 +47,51 @@ DeliveryPackage _package(int number) => DeliveryPackage(
       scannedAt: DateTime.utc(2026, 11, 24).add(Duration(minutes: number)),
     );
 
+Future<void> _ensureLoadItemVisible(WidgetTester tester, Finder finder) async {
+  final scrollable = find.descendant(
+    of: find.byType(CustomScrollView),
+    matching: find.byType(Scrollable),
+  ).first;
+  final position = tester.state<ScrollableState>(scrollable).position;
+  final viewportFinder = find.byType(CustomScrollView);
+
+  if (finder.evaluate().isEmpty && position.pixels > position.minScrollExtent) {
+    position.jumpTo(position.minScrollExtent);
+    await tester.pumpAndSettle();
+  }
+
+  for (var attempt = 0; attempt < 120; attempt++) {
+    if (finder.evaluate().isNotEmpty) {
+      final target = tester.getRect(finder.first);
+      final viewport = tester.getRect(viewportFinder);
+      if (target.top >= viewport.top && target.bottom <= viewport.bottom) {
+        return;
+      }
+      final delta = target.top < viewport.top
+          ? target.top - viewport.top
+          : target.bottom - viewport.bottom;
+      final next = (position.pixels + delta)
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if ((next - position.pixels).abs() < 0.5) break;
+      position.jumpTo(next);
+    } else {
+      final next = (position.pixels + 100)
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if (next <= position.pixels) break;
+      position.jumpTo(next);
+    }
+    await tester.pumpAndSettle();
+  }
+
+  expect(finder, findsWidgets);
+  final target = tester.getRect(finder.first);
+  final viewport = tester.getRect(viewportFinder);
+  expect(target.top, greaterThanOrEqualTo(viewport.top));
+  expect(target.bottom, lessThanOrEqualTo(viewport.bottom));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -85,7 +130,7 @@ void main() {
         await tester.pumpAndSettle();
 
         final targetCompartment = find.text(targetLabel);
-        await tester.ensureVisible(targetCompartment);
+        await _ensureLoadItemVisible(tester, targetCompartment);
         await tester.pumpAndSettle();
 
         // Only the first eight chips are built initially, even when one
@@ -95,7 +140,7 @@ void main() {
         expect(find.text('P09'), findsNothing);
 
         final firstBatch = find.text('Ver mais 24');
-        await tester.ensureVisible(firstBatch);
+        await _ensureLoadItemVisible(tester, firstBatch);
         await tester.tap(firstBatch);
         await tester.pumpAndSettle();
 
@@ -104,7 +149,7 @@ void main() {
         expect(find.text('P33'), findsNothing);
 
         final secondBatch = find.text('Ver mais 24');
-        await tester.ensureVisible(secondBatch);
+        await _ensureLoadItemVisible(tester, secondBatch);
         await tester.tap(secondBatch);
         await tester.pumpAndSettle();
 
@@ -114,7 +159,7 @@ void main() {
 
         // Searching a package assigned beyond the visible batch must still
         // reveal it without requiring the driver to expand hundreds of chips.
-        await tester.ensureVisible(find.byType(TextField));
+        await _ensureLoadItemVisible(tester, find.byType(TextField));
         await tester.enterText(find.byType(TextField), '600');
         await tester.pumpAndSettle();
 
