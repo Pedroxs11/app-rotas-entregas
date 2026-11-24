@@ -35,6 +35,7 @@ class _LoadScreenState extends State<LoadScreen>{
   String? _selectionPointerPackageId;
   bool _suppressNextTap=false;
   bool _vehicleSwitching=false;
+  bool _loadMutationInProgress=false;
   String search='';
   final TextEditingController _searchController=TextEditingController();
   bool get _isMoto=>widget.state.vehicleType==VehicleType.motorcycle;
@@ -93,15 +94,49 @@ class _LoadScreenState extends State<LoadScreen>{
     return null;
   }
 
-  Future<void> _assign(String zone)async{
-    final ids=selectedIds.isNotEmpty?selectedIds.toList():(_selected()==null?<String>[]:[_selected()!.id]);
-    if(ids.isEmpty)return;
-    try{await widget.state.setPhysicalZones(ids.toSet(),zone);if(mounted)setState((){selectedId=null;selectedIds.clear();});}
-    catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
+  Future<void> _assign(String zone) async {
+    if (_vehicleSwitching || _loadMutationInProgress) return;
+    final selectedPackage = _selected();
+    final ids = selectedIds.isNotEmpty
+        ? selectedIds.toSet()
+        : selectedPackage == null
+            ? <String>{}
+            : <String>{selectedPackage.id};
+    if (ids.isEmpty) return;
+
+    // Stop any active drag/autoscroll before locking the screen. The timer
+    // runs independently of pointer hit-testing, so AbsorbPointer alone
+    // would not stop it from scrolling the old load while persistence waits.
+    _cancelDragSelection();
+    _suppressNextTap = false;
+
+    // Do not queue a second UI mutation while the first save is pending. The
+    // state layer serializes writes, but without this screen-level lock two
+    // rapid compartment taps could move the same packages twice.
+    setState(() => _loadMutationInProgress = true);
+    try {
+      await widget.state.setPhysicalZones(ids, zone);
+      if (!mounted) return;
+      setState(() {
+        selectedId = null;
+        selectedIds.clear();
+        _loadMutationInProgress = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loadMutationInProgress = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$error')),
+      );
+    }
   }
 
   Future<void> _switchVehicle(VehicleType value) async {
-    if (value == widget.state.vehicleType || _vehicleSwitching) return;
+    if (value == widget.state.vehicleType ||
+        _vehicleSwitching ||
+        _loadMutationInProgress) {
+      return;
+    }
 
     // End the drag session and lock the organizer before asynchronous
     // persistence. Otherwise a second gesture could start against the old
@@ -148,8 +183,9 @@ class _LoadScreenState extends State<LoadScreen>{
       previousController.dispose();
     });
   }
-  void _togglePackage(String id){if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
+  void _togglePackage(String id){if(_loadMutationInProgress||_vehicleSwitching)return;if(_suppressNextTap){_suppressNextTap=false;return;}setState((){if(!multiSelect){selectedId=selectedId==id?null:id;return;}if(selectedIds.contains(id)){selectedIds.remove(id);}else{selectedIds.add(id);}});}
   void _toggleMulti(){
+    if (_loadMutationInProgress || _vehicleSwitching) return;
     // A second pointer can toggle multi-select while another finger is still
     // dragging. Stop its timer before changing modes so it cannot keep
     // scrolling or adding selections after multi-select has been disabled.
@@ -160,11 +196,19 @@ class _LoadScreenState extends State<LoadScreen>{
       selectedIds.clear();
     });
   }
+  void _updateSearch(String value) {
+    if (value == search) return;
+    if (_dragSelecting || _selectionPointerId != null) {
+      _cancelDragSelection();
+    }
+    setState(() => search = value);
+  }
+
   bool _allVisiblePackagesSelected(List<DeliveryPackage> visible) =>
       visible.isNotEmpty && visible.every((package) => selectedIds.contains(package.id));
 
   void _toggleSelectAll(List<DeliveryPackage> visible) {
-    if (visible.isEmpty) return;
+    if (visible.isEmpty || _loadMutationInProgress || _vehicleSwitching) return;
     setState(() {
       final ids = visible.map((package) => package.id).toSet();
       if (ids.every(selectedIds.contains)) {
@@ -356,8 +400,15 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   Future<void> _clearSelected() async {
+    if (_vehicleSwitching || _loadMutationInProgress) return;
     final ids = _selectedAssignedPackageIds(_route);
     if (ids.isEmpty) return;
+
+    // Cancel drag selection and its periodic auto-scroll before persistence.
+    _cancelDragSelection();
+    _suppressNextTap = false;
+
+    setState(() => _loadMutationInProgress = true);
     try {
       await widget.state.clearPhysicalZones(ids);
       if (!mounted) return;
@@ -369,13 +420,14 @@ class _LoadScreenState extends State<LoadScreen>{
         } else {
           selectedId = null;
         }
+        _loadMutationInProgress = false;
       });
     } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$error')),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _loadMutationInProgress = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$error')),
+      );
     }
   }
 
@@ -410,16 +462,16 @@ class _LoadScreenState extends State<LoadScreen>{
         textScale >= 1.2;
     return Scaffold(
       appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[
-        if(_vehicleSwitching)
+        if(_vehicleSwitching || _loadMutationInProgress)
           const Padding(
             padding:EdgeInsets.symmetric(horizontal:12),
             child:SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)),
           ),
-        IconButton(tooltip:'Configurar compartimentos',onPressed:_vehicleSwitching?null:_configureZones,icon:const Icon(Icons.tune)),
-        IconButton(tooltip:'Selecionar vários',onPressed:_vehicleSwitching?null:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),
-        PopupMenuButton<VehicleType>(tooltip:'Veículo',enabled:!_vehicleSwitching,onSelected:_switchVehicle,itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))]),
+        IconButton(tooltip:'Configurar compartimentos',onPressed:_vehicleSwitching||_loadMutationInProgress?null:_configureZones,icon:const Icon(Icons.tune)),
+        IconButton(tooltip:'Selecionar vários',onPressed:_vehicleSwitching||_loadMutationInProgress?null:_toggleMulti,icon:Icon(multiSelect?Icons.close:Icons.library_add_check)),
+        PopupMenuButton<VehicleType>(tooltip:'Veículo',enabled:!_vehicleSwitching&&!_loadMutationInProgress,onSelected:_switchVehicle,itemBuilder:(_)=>const [PopupMenuItem(value:VehicleType.car,child:Text('🚗 Carro')),PopupMenuItem(value:VehicleType.motorcycle,child:Text('🏍️ Moto'))]),
       ]),
-      body:AbsorbPointer(absorbing:_vehicleSwitching,child:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
+      body:AbsorbPointer(absorbing:_vehicleSwitching||_loadMutationInProgress,child:route.isEmpty?const Center(child:Text('Nenhum pacote ativo na rota.')):Column(children:[
         Padding(
           padding: EdgeInsets.fromLTRB(
             16,
@@ -516,7 +568,7 @@ class _LoadScreenState extends State<LoadScreen>{
                                     tooltip: 'Limpar busca',
                                     onPressed: () {
                                       _searchController.clear();
-                                      setState(() => search = '');
+                                      _updateSearch('');
                                     },
                                     icon: const Icon(Icons.close),
                                   ),
@@ -524,7 +576,7 @@ class _LoadScreenState extends State<LoadScreen>{
                             border: const OutlineInputBorder(),
                             isDense: true,
                           ),
-                          onChanged: (value) => setState(() => search = value),
+                          onChanged: _updateSearch,
                         ),
                         const SizedBox(height: 10),
                         if (search.trim().isNotEmpty && visibleRoute.isEmpty)
@@ -543,7 +595,7 @@ class _LoadScreenState extends State<LoadScreen>{
                                 TextButton.icon(
                                   onPressed: () {
                                     _searchController.clear();
-                                    setState(() => search = '');
+                                    _updateSearch('');
                                   },
                                   icon: const Icon(Icons.clear),
                                   label: const Text('Limpar busca'),
