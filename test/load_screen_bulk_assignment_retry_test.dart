@@ -121,14 +121,23 @@ Future<TestGesture> _startDragAutoScroll(
     matching: find.byType(Scrollable),
   ).first;
   await _ensureLoadItemVisible(tester, find.text(packageLabel));
+  final packageNumber = int.parse(RegExp(r'\d+').firstMatch(packageLabel)!.group(0)!);
+  final nextPackageLabel = 'Pacote \${(packageNumber + 1).toString().padLeft(2, '0')}';
+  await _ensureLoadItemVisible(tester, find.text(nextPackageLabel));
 
   final start = tester.getCenter(find.text(packageLabel));
+  final nextPackage = tester.getCenter(find.text(nextPackageLabel));
   final viewport = tester.getRect(find.byType(CustomScrollView));
   final gesture = await tester.startGesture(start, pointer: 1);
   await tester.pump(const Duration(milliseconds: 600));
   await gesture.moveTo(
-    Offset(start.dx, viewport.bottom - 30),
+    nextPackage,
     timeStamp: const Duration(milliseconds: 700),
+  );
+  await tester.pump(const Duration(milliseconds: 16));
+  await gesture.moveTo(
+    Offset(nextPackage.dx, viewport.bottom - 30),
+    timeStamp: const Duration(milliseconds: 716),
   );
   await tester.pump(const Duration(milliseconds: 160));
 
