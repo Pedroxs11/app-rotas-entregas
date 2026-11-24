@@ -66,7 +66,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'legacy compartment labels with surrounding whitespace stay assigned in car and motorcycle organizers',
+    'legacy compartment labels are normalized and remain assigned in car and motorcycle organizers',
     (tester) async {
       tester.view.physicalSize = const Size(320, 568);
       tester.view.devicePixelRatio = 1;
@@ -129,8 +129,13 @@ void main() {
         );
         expect(
           state.packages.single.physicalZone,
-          legacyZone,
-          reason: 'Rendering a legacy assignment must not mutate persisted package data.',
+          scenario.zone,
+          reason: 'Legacy compartment labels must be normalized in memory.',
+        );
+        expect(
+          store.items.single.physicalZone,
+          scenario.zone,
+          reason: 'The repaired compartment label must be persisted for the next launch.',
         );
         expect(tester.takeException(), isNull);
 
