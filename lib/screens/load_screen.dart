@@ -644,7 +644,7 @@ class _LoadScreenState extends State<LoadScreen>{
                         if (_isMoto)
                           _motoCard(context, route, selected, zonePackageGroups)
                         else
-                          _carDiagram(context, route, selected, zonePackageGroups),
+                          _carDiagram(context, selected, zonePackageGroups),
                         const SizedBox(height: 14),
                         SizedBox(
                           height: 48,
@@ -1027,7 +1027,6 @@ class _LoadScreenState extends State<LoadScreen>{
 
   Widget _carDiagram(
     BuildContext context,
-    List<DeliveryPackage> route,
     DeliveryPackage? selected,
     Map<String, _ZonePackageGroup> zonePackageGroups,
   ){
