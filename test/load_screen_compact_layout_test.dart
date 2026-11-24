@@ -154,6 +154,22 @@ void main() {
             expect(find.text('BOLSA DIREITA'), findsOneWidget);
             expect(find.text('BAÚ TRASEIRO'), findsOneWidget);
             expect(find.text('MOCHILA DE ENTREGA'), findsOneWidget);
+            final leftBag = find.ancestor(
+              of: find.text('BOLSA ESQUERDA'),
+              matching: find.byType(InkWell),
+            ).first;
+            final rightBag = find.ancestor(
+              of: find.text('BOLSA DIREITA'),
+              matching: find.byType(InkWell),
+            ).first;
+            final leftBagRect = tester.getRect(leftBag);
+            final rightBagRect = tester.getRect(rightBag);
+            expect(leftBagRect.width, greaterThan(100));
+            expect(rightBagRect.width, greaterThan(100));
+            expect(
+              (leftBagRect.top - rightBagRect.top).abs(),
+              lessThan(1),
+            );
           }
           expect(tester.takeException(), isNull);
 

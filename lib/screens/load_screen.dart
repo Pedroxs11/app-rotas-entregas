@@ -833,75 +833,106 @@ class _LoadScreenState extends State<LoadScreen>{
       'Mochila de entrega'=>'MOCHILA DE ENTREGA',
       _=>zone.toUpperCase(),
     };
-    return Card(
-      child:Padding(
-        padding:const EdgeInsets.all(14),
-        child:Column(children:[
-          const Text('MODO MOTO',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
-          const SizedBox(height:4),
-          const Text('Toque no espaço da moto onde cada pacote será transportado.',textAlign:TextAlign.center),
-          const SizedBox(height:12),
-          const Text('FRENTE DA MOTO',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1)),
-          const SizedBox(height:8),
-          Row(
-            crossAxisAlignment:CrossAxisAlignment.center,
-            children:[
-              Expanded(
-                child:leftSideZone==null
-                    ?const SizedBox.shrink()
-                    :Padding(
-                        padding:const EdgeInsets.symmetric(horizontal:3),
-                        child:_zone(context,leftSideZone,label(leftSideZone),route,_selected(),wide:true),
-                      ),
-              ),
-              Expanded(
-                flex:2,
-                child:Column(children:[
-                  Icon(Icons.two_wheeler,size:64,color:Theme.of(context).colorScheme.onSurfaceVariant),
-                  Text('MOTO',style:Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight:FontWeight.bold)),
-                ]),
-              ),
-              Expanded(
-                child:rightSideZone==null
-                    ?const SizedBox.shrink()
-                    :Padding(
-                        padding:const EdgeInsets.symmetric(horizontal:3),
-                        child:_zone(context,rightSideZone,label(rightSideZone),route,_selected(),wide:true),
-                      ),
-              ),
-            ],
-          ),
-          if(rearZones.isNotEmpty)...[
-            const SizedBox(height:10),
-            const Text('TRASEIRA E BAGAGEM',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1)),
-            const SizedBox(height:8),
-            if(rearZones.length==1)
-              _zone(context,rearZones.first,label(rearZones.first),route,_selected(),wide:true)
-            else
-              Wrap(
-                spacing:8,
-                runSpacing:8,
-                alignment:WrapAlignment.center,
-                children:[
-                  for(final zone in rearZones)
-                    SizedBox(
-                      width:145,
-                      child:_zone(context,zone,label(zone),route,_selected(),wide:true),
-                    ),
+    Widget sideZone(String zone)=>Padding(
+      padding:const EdgeInsets.symmetric(horizontal:3),
+      child:_zone(context,zone,label(zone),route,_selected(),wide:true),
+    );
+    Widget rearZone(String zone)=>_zone(
+      context,zone,label(zone),route,_selected(),wide:true,
+    );
+
+    return LayoutBuilder(
+      builder:(context,constraints){
+        // Side bags become narrow on 320–390 px Android phones when they flank
+        // the motorcycle icon. Stack the icon above a two-column bag row on
+        // compact screens (and whenever the user enlarges system text).
+        final compact=constraints.maxWidth<380||
+            MediaQuery.textScalerOf(context).scale(14)/14>=1.2;
+        final motorcycleGraphic=Column(children:[
+          Icon(Icons.two_wheeler,size:64,color:Theme.of(context).colorScheme.onSurfaceVariant),
+          Text('MOTO',style:Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight:FontWeight.bold)),
+        ]);
+
+        return Card(
+          child:Padding(
+            padding:const EdgeInsets.all(14),
+            child:Column(children:[
+              const Text('MODO MOTO',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
+              const SizedBox(height:4),
+              const Text('Toque no espaço da moto onde cada pacote será transportado.',textAlign:TextAlign.center),
+              const SizedBox(height:12),
+              const Text('FRENTE DA MOTO',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1)),
+              const SizedBox(height:8),
+              if(compact)...[
+                motorcycleGraphic,
+                if(leftSideZone!=null||rightSideZone!=null)...[
+                  const SizedBox(height:8),
+                  Row(
+                    crossAxisAlignment:CrossAxisAlignment.start,
+                    children:[
+                      if(leftSideZone!=null)Expanded(child:sideZone(leftSideZone)),
+                      if(leftSideZone!=null&&rightSideZone!=null)
+                        const SizedBox(width:8),
+                      if(rightSideZone!=null)Expanded(child:sideZone(rightSideZone)),
+                    ],
+                  ),
                 ],
-              ),
-          ],
-          if(route.any(_hasActiveZone))
-            Padding(
-              padding:const EdgeInsets.only(top:8),
-              child:Text(
-                'Cada pacote está identificado no compartimento correspondente.',
-                textAlign:TextAlign.center,
-                style:Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-        ]),
-      ),
+              ]else
+                Row(
+                  crossAxisAlignment:CrossAxisAlignment.center,
+                  children:[
+                    Expanded(
+                      child:leftSideZone==null
+                          ?const SizedBox.shrink()
+                          :sideZone(leftSideZone),
+                    ),
+                    Expanded(flex:2,child:motorcycleGraphic),
+                    Expanded(
+                      child:rightSideZone==null
+                          ?const SizedBox.shrink()
+                          :sideZone(rightSideZone),
+                    ),
+                  ],
+                ),
+              if(rearZones.isNotEmpty)...[
+                const SizedBox(height:10),
+                const Text('TRASEIRA E BAGAGEM',style:TextStyle(fontWeight:FontWeight.w800,letterSpacing:1)),
+                const SizedBox(height:8),
+                if(rearZones.length==1)
+                  rearZone(rearZones.first)
+                else if(compact)
+                  Row(
+                    crossAxisAlignment:CrossAxisAlignment.start,
+                    children:[
+                      Expanded(child:rearZone(rearZones[0])),
+                      const SizedBox(width:8),
+                      Expanded(child:rearZone(rearZones[1])),
+                    ],
+                  )
+                else
+                  Wrap(
+                    spacing:8,
+                    runSpacing:8,
+                    alignment:WrapAlignment.center,
+                    children:[
+                      for(final zone in rearZones)
+                        SizedBox(width:145,child:rearZone(zone)),
+                    ],
+                  ),
+              ],
+              if(route.any(_hasActiveZone))
+                Padding(
+                  padding:const EdgeInsets.only(top:8),
+                  child:Text(
+                    'Cada pacote está identificado no compartimento correspondente.',
+                    textAlign:TextAlign.center,
+                    style:Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+            ]),
+          ),
+        );
+      },
     );
   }
 
