@@ -131,7 +131,15 @@ void main() {
         expect(find.text('P57'), findsNothing);
 
         final collapse = find.text('Mostrar menos');
-        await tester.ensureVisible(collapse);
+        final scrollable = find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first;
+        await tester.scrollUntilVisible(
+          collapse,
+          250,
+          scrollable: scrollable,
+        );
         await tester.tap(collapse);
         await tester.pumpAndSettle();
 
