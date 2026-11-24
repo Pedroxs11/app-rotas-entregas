@@ -430,7 +430,7 @@ void main() {
         ).first;
         final assignToZone = tester.widget<InkWell>(zoneFinder).onTap!;
 
-        final gesture = await _startDragAutoScroll(tester, 'Pacote 01');
+        final gesture = await _startDragAutoScroll(tester, 'Pacote 10');
         final selectedForAssignment = _selectedPackageCount(tester);
         final scrollable = find.descendant(
           of: find.byType(CustomScrollView),
