@@ -394,7 +394,7 @@ void main() {
   testWidgets(
     'assignment stops active drag auto-scroll before persistence for car and motorcycle',
     (tester) async {
-      tester.view.physicalSize = const Size(400, 850);
+      tester.view.physicalSize = const Size(400, 1200);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -430,7 +430,7 @@ void main() {
         ).first;
         final assignToZone = tester.widget<InkWell>(zoneFinder).onTap!;
 
-        final gesture = await _startDragAutoScroll(tester, 'Pacote 10');
+        final gesture = await _startDragAutoScroll(tester, 'Pacote 01');
         final selectedForAssignment = _selectedPackageCount(tester);
         final scrollable = find.descendant(
           of: find.byType(CustomScrollView),
