@@ -487,6 +487,9 @@ class _LoadScreenState extends State<LoadScreen>{
     final visibleRoute=route
         .where((p)=>!_hasActiveZone(p)&&_matchesSearch(p,normalizedSearch))
         .toList(growable:false);
+    // Index every active compartment once per frame. This avoids scanning the
+    // full route and normalizing every address separately for each vehicle zone.
+    final zonePackageGroups = _groupPackagesByZone(route, normalizedSearch);
     final selected=_selected();
     final removableIds = _selectedAssignedPackageIds(route);
     final assigned=route.where(_hasActiveZone).length;
@@ -637,7 +640,10 @@ class _LoadScreenState extends State<LoadScreen>{
                               ],
                             ),
                           ),
-                        if (_isMoto) _motoCard(context, route) else _carDiagram(context, route),
+                        if (_isMoto)
+                          _motoCard(context, route, zonePackageGroups)
+                        else
+                          _carDiagram(context, route, zonePackageGroups),
                         const SizedBox(height: 14),
                         SizedBox(
                           height: 48,
@@ -723,6 +729,27 @@ class _LoadScreenState extends State<LoadScreen>{
         SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_organized?_startDeliveries:null,icon:const Icon(Icons.play_arrow),label:const Padding(padding:EdgeInsets.all(15),child:Text('INICIAR ENTREGAS')))))),
       ])),
     );
+  }
+
+  Map<String, _ZonePackageGroup> _groupPackagesByZone(
+    List<DeliveryPackage> route,
+    String normalizedSearch,
+  ) {
+    final groups = <String, _ZonePackageGroup>{
+      for (final zone in widget.state.activePhysicalZones)
+        zone: _ZonePackageGroup(),
+    };
+    for (final package in route) {
+      final zone = _normalizedPhysicalZone(package);
+      if (zone == null) continue;
+      final group = groups[zone];
+      if (group == null) continue;
+      group.allPackages.add(package);
+      if (_matchesSearch(package, normalizedSearch)) {
+        group.matchingPackages.add(package);
+      }
+    }
+    return groups;
   }
 
   Future<void> _configureZones() async {
@@ -855,7 +882,11 @@ class _LoadScreenState extends State<LoadScreen>{
     );
   }
 
-  Widget _motoCard(BuildContext context,List<DeliveryPackage> route){
+  Widget _motoCard(
+    BuildContext context,
+    List<DeliveryPackage> route,
+    Map<String, _ZonePackageGroup> zonePackageGroups,
+  ){
     final zones=widget.state.activePhysicalZones;
     final leftSideZone=zones.contains('Bolsa lateral esquerda')?'Bolsa lateral esquerda':null;
     final rightSideZone=zones.contains('Bolsa lateral direita')?'Bolsa lateral direita':null;
@@ -869,10 +900,22 @@ class _LoadScreenState extends State<LoadScreen>{
     };
     Widget sideZone(String zone)=>Padding(
       padding:const EdgeInsets.symmetric(horizontal:3),
-      child:_zone(context,zone,label(zone),route,_selected(),wide:true),
+      child:_zone(
+        context,
+        zone,
+        label(zone),
+        zonePackageGroups[zone]!,
+        _selected(),
+        wide:true,
+      ),
     );
     Widget rearZone(String zone)=>_zone(
-      context,zone,label(zone),route,_selected(),wide:true,
+      context,
+      zone,
+      label(zone),
+      zonePackageGroups[zone]!,
+      _selected(),
+      wide:true,
     );
 
     return LayoutBuilder(
@@ -980,7 +1023,11 @@ class _LoadScreenState extends State<LoadScreen>{
     );
   }
 
-  Widget _carDiagram(BuildContext context,List<DeliveryPackage> route){
+  Widget _carDiagram(
+    BuildContext context,
+    List<DeliveryPackage> route,
+    Map<String, _ZonePackageGroup> zonePackageGroups,
+  ){
     final selected=_selected();
     final zones=widget.state.activePhysicalZones;
     final hasFrontZones=zones.contains('Frente esquerda')||zones.contains('Frente direita');
@@ -994,13 +1041,25 @@ class _LoadScreenState extends State<LoadScreen>{
       children:[
         Expanded(
           child:zones.contains(leftZone)
-              ?_zone(context,leftZone,_carZoneLabel(leftZone),route,selected)
+              ?_zone(
+                  context,
+                  leftZone,
+                  _carZoneLabel(leftZone),
+                  zonePackageGroups[leftZone]!,
+                  selected,
+                )
               :const SizedBox.shrink(),
         ),
         const SizedBox(width:8),
         Expanded(
           child:zones.contains(rightZone)
-              ?_zone(context,rightZone,_carZoneLabel(rightZone),route,selected)
+              ?_zone(
+                  context,
+                  rightZone,
+                  _carZoneLabel(rightZone),
+                  zonePackageGroups[rightZone]!,
+                  selected,
+                )
               :const SizedBox.shrink(),
         ),
       ],
@@ -1041,7 +1100,14 @@ class _LoadScreenState extends State<LoadScreen>{
             ],
             if(hasTrunk)...[
               const SizedBox(height:8),
-              _zone(context,'Porta-malas','PORTA-MALAS',route,selected,wide:true),
+              _zone(
+                context,
+                'Porta-malas',
+                'PORTA-MALAS',
+                zonePackageGroups['Porta-malas']!,
+                selected,
+                wide:true,
+              ),
             ],
             const SizedBox(height:12),
             Container(
@@ -1071,13 +1137,18 @@ class _LoadScreenState extends State<LoadScreen>{
     _=>zone.toUpperCase(),
   };
 
-  Widget _zone(BuildContext context,String zone,String shortName,List<DeliveryPackage> route,DeliveryPackage? selected,{bool wide=false}){
-    final allPackages=route.where((package)=>_isPackageInZone(package, zone)).toList();
-    final normalizedSearch=_normalizeSearchText(search.trim());
-    final packages=allPackages.where((package)=>_matchesSearch(package,normalizedSearch)).toList();
+  Widget _zone(
+    BuildContext context,
+    String zone,
+    String shortName,
+    _ZonePackageGroup group,
+    DeliveryPackage? selected, {
+    bool wide = false,
+  }) {
+    final allPackages = group.allPackages;
+    final packages = group.matchingPackages;
     final activeZone=multiSelect
-        ?route.any((package)=>
-            _isPackageInZone(package, zone)&&selectedIds.contains(package.id))
+        ?allPackages.any((package)=>selectedIds.contains(package.id))
         :selected!=null&&_isPackageInZone(selected, zone);
     final highlighted=selected!=null||selectedIds.isNotEmpty;
     final hasSearch=search.trim().isNotEmpty;
@@ -1239,6 +1310,11 @@ class _LoadScreenState extends State<LoadScreen>{
 }
 
 
+
+class _ZonePackageGroup {
+  final List<DeliveryPackage> allPackages = <DeliveryPackage>[];
+  final List<DeliveryPackage> matchingPackages = <DeliveryPackage>[];
+}
 
 class _CarSilhouettePainter extends CustomPainter {
   final Color fill,outline,glass,tire;
