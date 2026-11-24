@@ -122,7 +122,8 @@ Future<TestGesture> _startDragAutoScroll(
   ).first;
   await _ensureLoadItemVisible(tester, find.text(packageLabel));
   final packageNumber = int.parse(RegExp(r'\d+').firstMatch(packageLabel)!.group(0)!);
-  final nextPackageLabel = 'Pacote \${(packageNumber + 1).toString().padLeft(2, '0')}';
+  final nextPackageLabel = 'Pacote ' +
+      (packageNumber + 1).toString().padLeft(2, '0');
   await _ensureLoadItemVisible(tester, find.text(nextPackageLabel));
 
   final start = tester.getCenter(find.text(packageLabel));
