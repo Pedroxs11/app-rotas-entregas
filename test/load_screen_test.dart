@@ -595,17 +595,17 @@ void main(){
         reason: 'All packages must be assigned in $vehicle mode.',
       );
       expect(find.text('200 de 200 pacotes posicionados'), findsOneWidget);
-      expect(find.text('Ver todos (200)'), findsOneWidget);
+      expect(find.text('Ver mais 24'), findsOneWidget);
       expect(
         tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
         isNotNull,
       );
       expect(tester.takeException(), isNull);
 
-      await _ensureLoadItemVisible(tester, find.text('Ver todos (200)'));
-      await tester.tap(find.text('Ver todos (200)'));
+      await _ensureLoadItemVisible(tester, find.text('Ver mais 24'));
+      await tester.tap(find.text('Ver mais 24'));
       await tester.pumpAndSettle();
-      expect(find.text('P200'), findsOneWidget);
+      expect(find.text('P32'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
@@ -661,17 +661,17 @@ void main(){
         reason: 'All 600 packages must be assigned in $vehicle mode.',
       );
       expect(find.text('600 de 600 pacotes posicionados'), findsOneWidget);
-      expect(find.text('Ver todos (600)'), findsOneWidget);
+      expect(find.text('Ver mais 24'), findsOneWidget);
       expect(
         tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
         isNotNull,
       );
       expect(tester.takeException(), isNull);
 
-      await _ensureLoadItemVisible(tester, find.text('Ver todos (600)'));
-      await tester.tap(find.text('Ver todos (600)'));
+      await _ensureLoadItemVisible(tester, find.text('Ver mais 24'));
+      await tester.tap(find.text('Ver mais 24'));
       await tester.pumpAndSettle();
-      expect(find.text('P600'), findsOneWidget);
+      expect(find.text('P32'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
@@ -857,10 +857,10 @@ void main(){
 
     expect(find.text('P08'), findsOneWidget);
     expect(find.text('P09'), findsNothing);
-    expect(find.text('Ver todos (12)'), findsOneWidget);
+    expect(find.text('Ver mais 4'), findsOneWidget);
 
-    await _ensureLoadItemVisible(tester, find.text('Ver todos (12)'));
-    await tester.tap(find.text('Ver todos (12)'));
+    await _ensureLoadItemVisible(tester, find.text('Ver mais 4'));
+    await tester.tap(find.text('Ver mais 4'));
     await tester.pumpAndSettle();
 
     expect(find.text('P12'), findsOneWidget);
@@ -937,10 +937,10 @@ void main(){
 
     expect(find.text('P08'), findsOneWidget);
     expect(find.text('P09'), findsNothing);
-    expect(find.text('Ver todos (12)'), findsOneWidget);
+    expect(find.text('Ver mais 4'), findsOneWidget);
 
-    await _ensureLoadItemVisible(tester, find.text('Ver todos (12)'));
-    await tester.tap(find.text('Ver todos (12)'));
+    await _ensureLoadItemVisible(tester, find.text('Ver mais 4'));
+    await tester.tap(find.text('Ver mais 4'));
     await tester.pumpAndSettle();
 
     expect(find.text('P12'), findsOneWidget);

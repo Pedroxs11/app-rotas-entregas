@@ -53,7 +53,7 @@ void main() {
   testWidgets(
     'large car and motorcycle compartments reveal assigned packages in bounded batches',
     (tester) async {
-      tester.view.physicalSize = const Size(400, 1200);
+      tester.view.physicalSize = const Size(320, 1200);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -94,7 +94,7 @@ void main() {
         expect(find.text('P08'), findsOneWidget);
         expect(find.text('P09'), findsNothing);
 
-        final firstBatch = find.text('Ver mais 24 (592 restantes)');
+        final firstBatch = find.text('Ver mais 24');
         await tester.ensureVisible(firstBatch);
         await tester.tap(firstBatch);
         await tester.pumpAndSettle();
@@ -103,7 +103,7 @@ void main() {
         expect(find.text('P32'), findsOneWidget);
         expect(find.text('P33'), findsNothing);
 
-        final secondBatch = find.text('Ver mais 24 (568 restantes)');
+        final secondBatch = find.text('Ver mais 24');
         await tester.ensureVisible(secondBatch);
         await tester.tap(secondBatch);
         await tester.pumpAndSettle();

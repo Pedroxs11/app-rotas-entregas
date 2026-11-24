@@ -1106,8 +1106,10 @@ class _LoadScreenState extends State<LoadScreen>{
                 ),
             ]),
             if (packages.length > _initialZonePackageCount)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                spacing: 4,
+                runSpacing: 0,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   if (visiblePackages.length > _initialZonePackageCount)
                     TextButton(
@@ -1121,9 +1123,7 @@ class _LoadScreenState extends State<LoadScreen>{
                         () => _visibleZonePackageCount.remove(zone),
                       ),
                       child: const Text('Mostrar menos'),
-                    )
-                  else
-                    const SizedBox.shrink(),
+                    ),
                   if (remainingPackages > 0)
                     TextButton(
                       style: TextButton.styleFrom(
@@ -1138,8 +1138,14 @@ class _LoadScreenState extends State<LoadScreen>{
                                 .clamp(_initialZonePackageCount, packages.length)
                                 .toInt();
                       }),
+                      child: Text('Ver mais $nextBatch'),
+                    ),
+                  if (remainingPackages > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
-                        'Ver mais $nextBatch ($remainingPackages restantes)',
+                        '$remainingPackages restantes',
+                        style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ),
                 ],
