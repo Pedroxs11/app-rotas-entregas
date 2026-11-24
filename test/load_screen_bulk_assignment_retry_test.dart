@@ -265,7 +265,7 @@ void main() {
   testWidgets(
     'rapid compartment taps do not queue a second assignment while the first save is pending',
     (tester) async {
-      tester.view.physicalSize = const Size(400, 850);
+      tester.view.physicalSize = const Size(400, 1200);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
