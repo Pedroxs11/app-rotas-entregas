@@ -249,11 +249,9 @@ void main() {
             ? 'FRENTE E'
             : 'BAÚ TRASEIRO';
         final targetCompartment = find.text(targetLabel);
-        await tester.scrollUntilVisible(
-          targetCompartment,
-          -80,
-          scrollable: scrollable,
-        );
+        // Return to the known start boundary so the diagram sliver is
+        // mounted before tapping the destination compartment.
+        scrollPosition.jumpTo(scrollPosition.minScrollExtent);
         await tester.pumpAndSettle();
         expect(targetCompartment, findsOneWidget);
         await tester.tap(targetCompartment);
