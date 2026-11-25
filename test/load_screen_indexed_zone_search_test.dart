@@ -203,6 +203,25 @@ void main() {
           findsOneWidget,
         );
 
+        // Address search accepts punctuation that differs from the stored
+        // street/number separators, without mixing the vehicle compartments.
+        await tester.enterText(find.byType(TextField), 'rua-alfa-1');
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: firstCompartment,
+            matching: find.text('1/6'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: secondCompartment,
+            matching: find.text('0/6'),
+          ),
+          findsOneWidget,
+        );
+
         // Padded scan identifiers remain searchable and must not leak into
         // the other compartment's count.
         await tester.enterText(find.byType(TextField), 'p01');
