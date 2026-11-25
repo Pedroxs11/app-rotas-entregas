@@ -132,8 +132,16 @@ void main() {
             ? 'FRENTE E'
             : 'BAÚ TRASEIRO';
         final targetCompartment = find.text(targetLabel);
-        await tester.ensureVisible(targetCompartment);
+        // The diagram is the first SliverToBoxAdapter and may be unmounted
+        // after auto-scroll moves the lazy viewport far down the package list.
+        // Scroll back until the target zone is built again before tapping it.
+        await tester.scrollUntilVisible(
+          targetCompartment,
+          -80,
+          scrollable: scrollable,
+        );
         await tester.pumpAndSettle();
+        expect(targetCompartment, findsOneWidget);
         await tester.tap(targetCompartment);
         await tester.pumpAndSettle();
 
