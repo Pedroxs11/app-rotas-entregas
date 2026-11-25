@@ -490,10 +490,10 @@ void main() {
         await switching;
 
         expect(state.vehicleType, VehicleType.motorcycle);
-expect(
-            state.activePhysicalZones,
-            ['Baú traseiro', 'Bolsa lateral direita'],
-          );
+        expect(
+          state.activePhysicalZones,
+          ['Baú traseiro', 'Bolsa lateral direita'],
+        );
         expect(state.packages.single.physicalZone, isNull);
         expect(store.items.single.physicalZone, isNull);
         expect(store.saveCalls, 2);
