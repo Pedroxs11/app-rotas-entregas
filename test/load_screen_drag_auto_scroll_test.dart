@@ -143,6 +143,11 @@ void main() {
         scrollPosition.jumpTo(scrollPosition.minScrollExtent);
         await tester.pumpAndSettle();
         expect(targetCompartment, findsOneWidget);
+        // The vehicle diagram can begin just below the root viewport on a
+        // compact test device even at minScrollExtent. Bring the actual
+        // destination tile into the hit-testable area before tapping it.
+        await tester.ensureVisible(targetCompartment);
+        await tester.pumpAndSettle();
         await tester.tap(targetCompartment);
         await tester.pumpAndSettle();
 
@@ -256,6 +261,11 @@ void main() {
         scrollPosition.jumpTo(scrollPosition.minScrollExtent);
         await tester.pumpAndSettle();
         expect(targetCompartment, findsOneWidget);
+        // The vehicle diagram can begin just below the root viewport on a
+        // compact test device even at minScrollExtent. Bring the actual
+        // destination tile into the hit-testable area before tapping it.
+        await tester.ensureVisible(targetCompartment);
+        await tester.pumpAndSettle();
         await tester.tap(targetCompartment);
         await tester.pumpAndSettle();
 
