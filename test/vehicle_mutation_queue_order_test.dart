@@ -13,6 +13,7 @@ class _QueuedMutationStore implements PackageStore {
   Completer<void>? nextSaveGate;
   Completer<void>? saveStarted;
   int saveCalls = 0;
+  bool failNextSave = false;
 
   @override
   Future<void> clear() async {
@@ -37,6 +38,10 @@ class _QueuedMutationStore implements PackageStore {
       final started = saveStarted;
       if (started != null && !started.isCompleted) started.complete();
       await gate.future;
+    }
+    if (failNextSave) {
+      failNextSave = false;
+      throw StateError('Falha simulada ao salvar uma alteração da carga.');
     }
     items = [...value];
   }
@@ -146,4 +151,52 @@ void main() {
       }
     },
   );
+
+  test(
+    'a failed queued assignment releases the next compartment mutation',
+    () async {
+      SharedPreferences.setMockInitialValues({'load_vehicle_type': 'car'});
+      final store = _QueuedMutationStore([_package()]);
+      final state = AppState(store: store);
+      await state.init();
+
+      final saveGate = Completer<void>();
+      final saveStarted = Completer<void>();
+      store.nextSaveGate = saveGate;
+      store.saveStarted = saveStarted;
+      store.failNextSave = true;
+
+      try {
+        final failingAssignment = state.setPhysicalZones(
+          {'queued-package'},
+          'Porta-malas',
+        );
+        await saveStarted.future;
+
+        // Queue a valid retry before the first persistence operation fails.
+        // The failure must roll back only its own mutation and release the
+        // queue so the following operation can commit against fresh state.
+        final succeedingAssignment = state.setPhysicalZones(
+          {'queued-package'},
+          'Frente esquerda',
+        );
+
+        saveGate.complete();
+        await expectLater(
+          failingAssignment,
+          throwsA(isA<StateError>()),
+        );
+        await succeedingAssignment;
+
+        expect(state.vehicleType, VehicleType.car);
+        expect(state.packages.single.physicalZone, 'Frente esquerda');
+        expect(store.items.single.physicalZone, 'Frente esquerda');
+        expect(store.saveCalls, 2);
+      } finally {
+        if (!saveGate.isCompleted) saveGate.complete();
+        state.dispose();
+      }
+    },
+  );
+
 }
