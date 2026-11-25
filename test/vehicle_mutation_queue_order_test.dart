@@ -391,4 +391,71 @@ void main() {
     },
   );
 
+
+  test(
+    'a compartment configuration queued during a failed vehicle switch applies to the restored car',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': 'car',
+        'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+        'load_zones_motorcycle': ['Baú traseiro', 'Bolsa lateral direita'],
+      });
+      final store = _QueuedMutationStore([
+        _package(zone: 'Porta-malas'),
+      ]);
+      final state = AppState(store: store);
+      await state.init();
+
+      final saveGate = Completer<void>();
+      final saveStarted = Completer<void>();
+      store.nextSaveGate = saveGate;
+      store.saveStarted = saveStarted;
+      store.failNextSave = true;
+
+      try {
+        final switching = state.setVehicleType(VehicleType.motorcycle);
+        await saveStarted.future;
+
+        // A configuration change queued behind a failed switch must use the
+        // restored car, not the motorcycle whose persistence was rejected.
+        final configuring = state.setActivePhysicalZones([
+          'Frente esquerda',
+        ]);
+
+        expect(state.vehicleType, VehicleType.car);
+        expect(
+          state.activePhysicalZones,
+          ['Frente esquerda', 'Porta-malas'],
+        );
+
+        saveGate.complete();
+        await expectLater(
+          switching,
+          throwsA(isA<StateError>()),
+        );
+        await configuring;
+
+        expect(state.vehicleType, VehicleType.car);
+        expect(state.activePhysicalZones, ['Frente esquerda']);
+        expect(state.packages.single.physicalZone, isNull);
+        expect(store.items.single.physicalZone, isNull);
+        expect(store.saveCalls, 2);
+
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getString('load_vehicle_type'), 'car');
+        expect(
+          prefs.getStringList('load_zones_car'),
+          ['Frente esquerda'],
+        );
+        expect(
+          prefs.getStringList('load_zones_motorcycle'),
+          ['Baú traseiro', 'Bolsa lateral direita'],
+        );
+      } finally {
+        if (!saveGate.isCompleted) saveGate.complete();
+        state.dispose();
+      }
+    },
+  );
+
 }
