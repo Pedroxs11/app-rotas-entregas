@@ -271,4 +271,58 @@ void main() {
     },
   );
 
+
+  test(
+    'a failed compartment configuration restores preferences and releases the next mutation',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': 'car',
+        'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+      });
+      final store = _QueuedMutationStore([
+        _package(zone: 'Porta-malas'),
+      ]);
+      final state = AppState(store: store);
+      await state.init();
+
+      store.failNextSave = true;
+
+      try {
+        // Disabling the trunk requires clearing its package assignment. If
+        // that SQLite/store write fails, the old configuration and package
+        // position must both be restored before the next queued mutation.
+        final failingConfiguration = state.setActivePhysicalZones([
+          'Frente esquerda',
+        ]);
+        final succeedingAssignment = state.setPhysicalZones(
+          {'queued-package'},
+          'Frente esquerda',
+        );
+
+        await expectLater(
+          failingConfiguration,
+          throwsA(isA<StateError>()),
+        );
+        await succeedingAssignment;
+
+        expect(state.vehicleType, VehicleType.car);
+        expect(
+          state.activePhysicalZones,
+          ['Frente esquerda', 'Porta-malas'],
+        );
+        expect(state.packages.single.physicalZone, 'Frente esquerda');
+        expect(store.items.single.physicalZone, 'Frente esquerda');
+        expect(store.saveCalls, 2);
+
+        final prefs = await SharedPreferences.getInstance();
+        expect(
+          prefs.getStringList('load_zones_car'),
+          ['Frente esquerda', 'Porta-malas'],
+        );
+      } finally {
+        state.dispose();
+      }
+    },
+  );
+
 }
