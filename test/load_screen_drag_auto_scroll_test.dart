@@ -135,11 +135,10 @@ void main() {
         // The diagram is the first SliverToBoxAdapter and may be unmounted
         // after auto-scroll moves the lazy viewport far down the package list.
         // Scroll back until the target zone is built again before tapping it.
-        await tester.scrollUntilVisible(
-          targetCompartment,
-          -80,
-          scrollable: scrollable,
-        );
+        // The vehicle diagram is at the beginning of the same scroll view.
+        // Jump to its known boundary instead of asking scrollUntilVisible to
+        // locate a possibly unmounted sliver child.
+        scrollPosition.jumpTo(scrollPosition.minScrollExtent);
         await tester.pumpAndSettle();
         expect(targetCompartment, findsOneWidget);
         await tester.tap(targetCompartment);
@@ -198,12 +197,14 @@ void main() {
           matching: find.byType(Scrollable),
         ).first;
         final lastPackage = find.text('Pacote 80');
-        await tester.scrollUntilVisible(
-          lastPackage,
-          80,
-          scrollable: scrollable,
-        );
+        final scrollPosition =
+            tester.state<ScrollableState>(scrollable).position;
+        // scrollUntilVisible cannot discover a lazy child that has not been
+        // built yet. Move to the end of this viewport first, then assert that
+        // the final package is mounted and visible before starting the drag.
+        scrollPosition.jumpTo(scrollPosition.maxScrollExtent);
         await tester.pumpAndSettle();
+        expect(lastPackage, findsOneWidget);
 
         final viewport = tester.getRect(find.byType(CustomScrollView));
         final lastRect = tester.getRect(lastPackage);
