@@ -165,4 +165,116 @@ void main() {
       }
     },
   );
+
+
+  testWidgets(
+    'drag selection auto-scrolls upward through long package lists for car and motorcycle',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': vehicle.name,
+        });
+        final store = _AutoScrollStore(
+          List.generate(80, (index) => _package(index + 1)),
+        );
+        final state = AppState(store: store);
+        await state.init();
+
+        await tester.pumpWidget(
+          MaterialApp(home: LoadScreen(state: state)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Selecionar vários'));
+        await tester.pumpAndSettle();
+
+        final scrollable = find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first;
+        final lastPackage = find.text('Pacote 80');
+        await tester.scrollUntilVisible(
+          lastPackage,
+          80,
+          scrollable: scrollable,
+        );
+        await tester.pumpAndSettle();
+
+        final viewport = tester.getRect(find.byType(CustomScrollView));
+        final lastRect = tester.getRect(lastPackage);
+        expect(lastRect.top, greaterThanOrEqualTo(viewport.top));
+        expect(lastRect.bottom, lessThanOrEqualTo(viewport.bottom));
+
+        final gesture = await tester.startGesture(
+          tester.getCenter(lastPackage),
+        );
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+
+        // Holding near the upper edge must scroll toward the start of the
+        // lazy list and select every row that passes under the pointer.
+        await gesture.moveTo(
+          Offset(viewport.center.dx, viewport.top + 20),
+          timeStamp: const Duration(milliseconds: 700),
+        );
+        for (var frame = 0; frame < 60; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        final selectionLabel = find.textContaining(
+          'pacote(s) selecionado(s)',
+        );
+        expect(selectionLabel, findsOneWidget);
+        final selectedText = tester.widget<Text>(selectionLabel).data!;
+        final selectedCount = int.parse(selectedText.split(' ').first);
+        expect(
+          selectedCount,
+          greaterThan(1),
+          reason: 'Holding a drag at the upper edge must select rows while scrolling in $vehicle mode.',
+        );
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        final targetZone = vehicle == VehicleType.car
+            ? 'Frente esquerda'
+            : 'Baú traseiro';
+        final targetLabel = vehicle == VehicleType.car
+            ? 'FRENTE E'
+            : 'BAÚ TRASEIRO';
+        final targetCompartment = find.text(targetLabel);
+        await tester.scrollUntilVisible(
+          targetCompartment,
+          -80,
+          scrollable: scrollable,
+        );
+        await tester.pumpAndSettle();
+        expect(targetCompartment, findsOneWidget);
+        await tester.tap(targetCompartment);
+        await tester.pumpAndSettle();
+
+        final assigned = state.packages
+            .where((package) => package.physicalZone == targetZone)
+            .toList(growable: false);
+        expect(assigned.length, selectedCount);
+        expect(
+          assigned.map((package) => package.scanNumber).toSet(),
+          containsAll(
+            List.generate(selectedCount, (index) => 80 - index),
+          ),
+        );
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        state.dispose();
+      }
+    },
+  );
+
 }
