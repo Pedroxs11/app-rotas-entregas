@@ -335,8 +335,15 @@ class _LoadScreenState extends State<LoadScreen>{
       return;
     }
     _scrollController.jumpTo(next);
-    final pointer=_lastSelectionPointer;
-    if(pointer!=null)_selectAt(pointer);
+
+    // jumpTo changes the scroll offset immediately, but lazy-list RenderBoxes
+    // are only repositioned during the next layout. Hit-test the pointer after
+    // that frame so selection never relies on stale tile coordinates.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_dragSelecting) return;
+      final pointer = _lastSelectionPointer;
+      if (pointer != null) _selectAt(pointer);
+    });
   }
 
   void _stopSelectionAutoScroll(){
