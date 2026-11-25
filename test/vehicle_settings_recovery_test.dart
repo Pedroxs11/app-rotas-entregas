@@ -147,4 +147,55 @@ void main() {
       );
     },
   );
+
+  test(
+    'disabling a compartment clears active assignments but preserves delivered history',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': 'car',
+        'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+      });
+      final store = _VehicleSettingsStore([
+        _package('active', 1, zone: 'Porta-malas'),
+        _package(
+          'delivered',
+          2,
+          zone: 'Porta-malas',
+          status: DeliveryStatus.delivered,
+        ),
+      ]);
+      final state = AppState(store: store);
+
+      await state.init();
+      expect(state.activePhysicalZones, ['Frente esquerda', 'Porta-malas']);
+
+      await state.setActivePhysicalZones(['Frente esquerda']);
+
+      final active = state.packages.firstWhere(
+        (package) => package.id == 'active',
+      );
+      final delivered = state.packages.firstWhere(
+        (package) => package.id == 'delivered',
+      );
+      expect(state.activePhysicalZones, ['Frente esquerda']);
+      expect(active.physicalZone, isNull);
+      expect(delivered.status, DeliveryStatus.delivered);
+      expect(delivered.physicalZone, 'Porta-malas');
+      expect(delivered.completedAt, DateTime.utc(2026, 11, 24, 12, 2));
+      expect(store.items.firstWhere((p) => p.id == 'active').physicalZone, isNull);
+      expect(
+        store.items.firstWhere((p) => p.id == 'delivered').physicalZone,
+        'Porta-malas',
+      );
+      expect(store.saves, 1);
+
+      final preferences = await SharedPreferences.getInstance();
+      expect(
+        preferences.getStringList('load_zones_car'),
+        ['Frente esquerda'],
+      );
+      state.dispose();
+    },
+  );
+
 }
