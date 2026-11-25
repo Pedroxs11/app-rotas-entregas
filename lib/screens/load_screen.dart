@@ -25,8 +25,9 @@ class _LoadScreenState extends State<LoadScreen>{
   ScrollController _scrollController=ScrollController(keepScrollOffset:false);
   GlobalKey _scrollViewportKey=GlobalKey();
   Timer? _autoScrollTimer;
-  // Coalesce auto-scroll hit-tests so each frame uses the latest laid-out tiles.
-  bool _selectionHitTestScheduled = false;
+  // Coalesce hit-tests per drag generation. A canceled drag must not block
+  // the next pointer session while its stale post-frame callback is pending.
+  int? _selectionHitTestScheduledGeneration;
   int _dragSelectionGeneration = 0;
   Offset? _lastSelectionPointer;
   List<DeliveryPackage> _dragSelectionPackages = const [];
@@ -347,11 +348,16 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   void _scheduleSelectionHitTestAfterLayout() {
-    if (_selectionHitTestScheduled) return;
-    _selectionHitTestScheduled = true;
     final generation = _dragSelectionGeneration;
+    if (_selectionHitTestScheduledGeneration == generation) return;
+    _selectionHitTestScheduledGeneration = generation;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _selectionHitTestScheduled = false;
+      // An older callback must never clear the pending marker for a newer
+      // drag session. Otherwise a rapid cancel/restart can lose its first
+      // post-layout hit-test and leave the selection one frame behind.
+      if (_selectionHitTestScheduledGeneration == generation) {
+        _selectionHitTestScheduledGeneration = null;
+      }
       if (!mounted ||
           !_dragSelecting ||
           generation != _dragSelectionGeneration) {
