@@ -199,4 +199,76 @@ void main() {
     },
   );
 
+
+  test(
+    'compartment configuration queued during vehicle switch is saved for the new vehicle only',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': 'car',
+        'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+      });
+      final store = _QueuedMutationStore([
+        _package(zone: 'Porta-malas'),
+      ]);
+      final state = AppState(store: store);
+      await state.init();
+
+      final saveGate = Completer<void>();
+      final saveStarted = Completer<void>();
+      store.nextSaveGate = saveGate;
+      store.saveStarted = saveStarted;
+
+      try {
+        final switching = state.setVehicleType(VehicleType.motorcycle);
+        await saveStarted.future;
+
+        // The configuration request arrives while the car-to-moto switch is
+        // persisting. It must run after the switch and target the motorcycle,
+        // rather than accidentally replacing the car's saved compartments.
+        final configuring = state.setActivePhysicalZones([
+          'Baú traseiro',
+          'Bolsa lateral esquerda',
+        ]);
+
+        expect(state.vehicleType, VehicleType.car);
+        expect(state.activePhysicalZones, ['Frente esquerda', 'Porta-malas']);
+
+        saveGate.complete();
+        await switching;
+        await configuring;
+
+        expect(state.vehicleType, VehicleType.motorcycle);
+        expect(
+          state.activePhysicalZones,
+          ['Baú traseiro', 'Bolsa lateral esquerda'],
+        );
+        expect(state.packages.single.physicalZone, isNull);
+
+        final prefs = await SharedPreferences.getInstance();
+        expect(
+          prefs.getStringList('load_zones_car'),
+          ['Frente esquerda', 'Porta-malas'],
+        );
+        expect(
+          prefs.getStringList('load_zones_motorcycle'),
+          ['Baú traseiro', 'Bolsa lateral esquerda'],
+        );
+
+        await state.setVehicleType(VehicleType.car);
+        expect(
+          state.activePhysicalZones,
+          ['Frente esquerda', 'Porta-malas'],
+        );
+        await state.setVehicleType(VehicleType.motorcycle);
+        expect(
+          state.activePhysicalZones,
+          ['Baú traseiro', 'Bolsa lateral esquerda'],
+        );
+      } finally {
+        if (!saveGate.isCompleted) saveGate.complete();
+        state.dispose();
+      }
+    },
+  );
+
 }
