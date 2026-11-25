@@ -80,6 +80,8 @@ void main() {
           of: find.byType(CustomScrollView),
           matching: find.byType(Scrollable),
         ).first;
+        final scrollPosition =
+            tester.state<ScrollableState>(scrollable).position;
         final firstPackage = find.text('Pacote 01');
         await tester.scrollUntilVisible(
           firstPackage,
