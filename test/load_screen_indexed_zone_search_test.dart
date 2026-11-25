@@ -52,7 +52,7 @@ DeliveryPackage _package(int number, String street) => DeliveryPackage(
       id: 'indexed-zone-$number',
       scanNumber: number,
       trackingCode: number == 1
-          ? 'BR-TRACK-ALFA-01'
+          ? 'track-alfa'
           : number == 7
               ? 'BR-TRACK-BETA-07'
               : null,
@@ -222,7 +222,7 @@ void main() {
           findsOneWidget,
         );
 
-        // Tracking codes are searchable even when the driver types separators.
+        // Partial tracking-code fragments are searchable without separators.
         await tester.enterText(find.byType(TextField), 'BR-TRACK-ALFA-01');
         await tester.pumpAndSettle();
         expect(
