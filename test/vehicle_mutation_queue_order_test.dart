@@ -325,4 +325,70 @@ void main() {
     },
   );
 
+
+  test(
+    'a failed vehicle switch releases the queue and applies the next mutation to the restored vehicle',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': 'car',
+        'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+        'load_zones_motorcycle': ['Bolsa lateral esquerda'],
+      });
+      final store = _QueuedMutationStore([
+        _package(zone: 'Porta-malas'),
+      ]);
+      final state = AppState(store: store);
+      await state.init();
+
+      final saveGate = Completer<void>();
+      final saveStarted = Completer<void>();
+      store.nextSaveGate = saveGate;
+      store.saveStarted = saveStarted;
+      store.failNextSave = true;
+
+      try {
+        final switching = state.setVehicleType(VehicleType.motorcycle);
+        await saveStarted.future;
+
+        // This car-only assignment is queued while the switch is saving.
+        // If the switch fails, the queue must continue using the restored
+        // car configuration instead of leaving a stale motorcycle state.
+        final assigning = state.setPhysicalZones(
+          {'queued-package'},
+          'Frente esquerda',
+        );
+
+        expect(state.vehicleType, VehicleType.car);
+        expect(state.activePhysicalZones, ['Frente esquerda', 'Porta-malas']);
+
+        saveGate.complete();
+        await expectLater(
+          switching,
+          throwsA(isA<StateError>()),
+        );
+        await assigning;
+
+        expect(state.vehicleType, VehicleType.car);
+        expect(state.activePhysicalZones, ['Frente esquerda', 'Porta-malas']);
+        expect(state.packages.single.physicalZone, 'Frente esquerda');
+        expect(store.items.single.physicalZone, 'Frente esquerda');
+        expect(store.saveCalls, 2);
+
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getString('load_vehicle_type'), 'car');
+        expect(
+          prefs.getStringList('load_zones_car'),
+          ['Frente esquerda', 'Porta-malas'],
+        );
+        expect(
+          prefs.getStringList('load_zones_motorcycle'),
+          ['Bolsa lateral esquerda'],
+        );
+      } finally {
+        if (!saveGate.isCompleted) saveGate.complete();
+        state.dispose();
+      }
+    },
+  );
+
 }
