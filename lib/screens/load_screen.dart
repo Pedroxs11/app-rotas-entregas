@@ -76,31 +76,37 @@ class _LoadScreenState extends State<LoadScreen>{
       .replaceAll('ñ', 'n')
       .replaceAll(RegExp(r'[ýÿ]'), 'y');
 
+  String _compactSearchText(String value) =>
+      _normalizeSearchText(value).replaceAll(RegExp(r'[^a-z0-9]'), '');
+
   bool _matchesSearch(DeliveryPackage p, String query){
     // The query is normalized once per filtering pass, not once per package.
-    // Drivers often type addresses without accents, so "Sao Paulo" still finds
-    // "São Paulo" without changing the displayed address.
+    // Accent and punctuation differences should not hide recipients,
+    // addresses, labels, or tracking codes from the driver.
     if(query.isEmpty)return true;
     final number=p.scanNumber.toString();
     final paddedNumber=number.padLeft(2,'0');
-    final normalizedQuery=query.replaceAll(RegExp(r'[^a-z0-9]'),'');
-    final codeNumber=normalizedQuery.startsWith('p')
-        ?normalizedQuery.substring(1)
+    final compactQuery=_compactSearchText(query);
+    final codeNumber=compactQuery.startsWith('p')
+        ?compactQuery.substring(1)
         :'';
     final matchesCode=codeNumber==number||codeNumber==paddedNumber;
-    final normalizedTrackingCode = _normalizeSearchText(p.trackingCode ?? '')
-        .replaceAll(RegExp(r'[^a-z0-9]'), '');
-    final matchesTrackingCode = normalizedQuery.isNotEmpty &&
-        normalizedTrackingCode.contains(normalizedQuery);
-    final matchesRecipient = _normalizeSearchText(p.recipient ?? '').contains(query);
-    return _normalizeSearchText(p.label).contains(query)||
+    final matchesTrackingCode = compactQuery.isNotEmpty &&
+        _compactSearchText(p.trackingCode ?? '').contains(compactQuery);
+    bool matchesText(String value) {
+      final normalized = _normalizeSearchText(value);
+      return normalized.contains(query) ||
+          (compactQuery.isNotEmpty &&
+              _compactSearchText(normalized).contains(compactQuery));
+    }
+    return matchesText(p.label)||
         matchesCode||
         matchesTrackingCode||
-        matchesRecipient||
+        matchesText(p.recipient ?? '')||
         number.contains(query)||
         paddedNumber.contains(query)||
-        _normalizeSearchText(p.address.formatted).contains(query)||
-        _normalizeSearchText(p.address.raw).contains(query);
+        matchesText(p.address.formatted)||
+        matchesText(p.address.raw);
   }
   List<DeliveryPackage> _visibleRouteForQuery(String query)=>_route
       .where((p)=>!_hasActiveZone(p)&&_matchesSearch(p,query))
