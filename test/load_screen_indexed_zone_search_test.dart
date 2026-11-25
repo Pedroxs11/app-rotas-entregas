@@ -245,6 +245,18 @@ void main() {
           find.descendant(of: secondCompartment, matching: find.text('1/6')),
           findsOneWidget,
         );
+
+        // Recipient search also ignores punctuation typed by the driver.
+        await tester.enterText(find.byType(TextField), 'joao-santos');
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: firstCompartment, matching: find.text('0/6')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: secondCompartment, matching: find.text('1/6')),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
 
         await tester.pumpWidget(const SizedBox.shrink());
