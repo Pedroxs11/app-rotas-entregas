@@ -25,6 +25,9 @@ class _LoadScreenState extends State<LoadScreen>{
   ScrollController _scrollController=ScrollController(keepScrollOffset:false);
   GlobalKey _scrollViewportKey=GlobalKey();
   Timer? _autoScrollTimer;
+  // Coalesce auto-scroll hit-tests so each frame uses the latest laid-out tiles.
+  bool _selectionHitTestScheduled = false;
+  int _dragSelectionGeneration = 0;
   Offset? _lastSelectionPointer;
   List<DeliveryPackage> _dragSelectionPackages = const [];
   int? _lastSelectionIndex;
@@ -269,6 +272,7 @@ class _LoadScreenState extends State<LoadScreen>{
         _dragSelecting) {
       return;
     }
+    _dragSelectionGeneration++;
     _dragSelectionPackages = _visibleRoute;
     _dragSelectionIndexById.clear();
     for (var index = 0; index < _dragSelectionPackages.length; index++) {
@@ -339,8 +343,20 @@ class _LoadScreenState extends State<LoadScreen>{
     // jumpTo changes the scroll offset immediately, but lazy-list RenderBoxes
     // are only repositioned during the next layout. Hit-test the pointer after
     // that frame so selection never relies on stale tile coordinates.
+    _scheduleSelectionHitTestAfterLayout();
+  }
+
+  void _scheduleSelectionHitTestAfterLayout() {
+    if (_selectionHitTestScheduled) return;
+    _selectionHitTestScheduled = true;
+    final generation = _dragSelectionGeneration;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_dragSelecting) return;
+      _selectionHitTestScheduled = false;
+      if (!mounted ||
+          !_dragSelecting ||
+          generation != _dragSelectionGeneration) {
+        return;
+      }
       final pointer = _lastSelectionPointer;
       if (pointer != null) _selectAt(pointer);
     });
@@ -354,6 +370,8 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   void _cancelDragSelection() {
+    // Invalidate callbacks queued by the previous pointer session.
+    _dragSelectionGeneration++;
     _stopSelectionAutoScroll();
     _selectionStartPackageId = null;
     _lastSelectionPointer = null;

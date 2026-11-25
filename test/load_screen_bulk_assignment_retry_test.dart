@@ -140,6 +140,9 @@ Future<TestGesture> _startDragAutoScroll(
     timeStamp: const Duration(milliseconds: 716),
   );
   await tester.pump(const Duration(milliseconds: 160));
+  // The auto-scroll hit-test updates selection after layout; rebuild the
+  // counter before the assignment callback reads the selected IDs.
+  await tester.pump();
 
   final selectedCount = find.byWidgetPredicate(
     (widget) =>

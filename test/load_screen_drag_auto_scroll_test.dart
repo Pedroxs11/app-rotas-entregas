@@ -111,6 +111,9 @@ void main() {
         for (var frame = 0; frame < 60; frame++) {
           await tester.pump(const Duration(milliseconds: 16));
         }
+        // Auto-scroll hit-testing runs after layout; pump once more so the
+        // selected-count label reflects that final post-frame selection.
+        await tester.pump();
 
         final selectionLabel = find.textContaining(
           'pacote(s) selecionado(s)',
@@ -233,6 +236,9 @@ void main() {
         for (var frame = 0; frame < 60; frame++) {
           await tester.pump(const Duration(milliseconds: 16));
         }
+        // Auto-scroll hit-testing runs after layout; pump once more so the
+        // selected-count label reflects that final post-frame selection.
+        await tester.pump();
 
         final selectionLabel = find.textContaining(
           'pacote(s) selecionado(s)',
