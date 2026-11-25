@@ -458,4 +458,57 @@ void main() {
     },
   );
 
+
+  test(
+    'vehicle switch queued behind a failed compartment configuration uses restored car settings',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'load_vehicle_type': 'car',
+        'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+        'load_zones_motorcycle': ['Baú traseiro', 'Bolsa lateral direita'],
+      });
+      final store = _QueuedMutationStore([
+        _package(zone: 'Porta-malas'),
+      ]);
+      final state = AppState(store: store);
+      await state.init();
+      store.failNextSave = true;
+
+      try {
+        // Disabling an occupied car compartment fails first. The queued
+        // vehicle switch must observe the rolled-back car configuration and
+        // clear its physical assignment only as part of the successful switch.
+        final configuring = state.setActivePhysicalZones([
+          'Frente esquerda',
+        ]);
+        final switching = state.setVehicleType(VehicleType.motorcycle);
+
+        await expectLater(
+          configuring,
+          throwsA(isA<StateError>()),
+        );
+        await switching;
+
+        expect(state.vehicleType, VehicleType.motorcycle);
+        expect(state.activePhysicalZones, AppState.motorcyclePhysicalZones);
+        expect(state.packages.single.physicalZone, isNull);
+        expect(store.items.single.physicalZone, isNull);
+        expect(store.saveCalls, 2);
+
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getString('load_vehicle_type'), 'motorcycle');
+        expect(
+          prefs.getStringList('load_zones_car'),
+          ['Frente esquerda', 'Porta-malas'],
+        );
+        expect(
+          prefs.getStringList('load_zones_motorcycle'),
+          ['Baú traseiro', 'Bolsa lateral direita'],
+        );
+      } finally {
+        state.dispose();
+      }
+    },
+  );
+
 }
