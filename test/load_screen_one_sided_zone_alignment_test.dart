@@ -85,6 +85,18 @@ void main() {
           isRightSide: true,
         ),
         _ZoneScenario(
+          VehicleType.car,
+          ['Traseira esquerda'],
+          'TRASEIRA E',
+          isRightSide: false,
+        ),
+        _ZoneScenario(
+          VehicleType.car,
+          ['Traseira direita'],
+          'TRASEIRA D',
+          isRightSide: true,
+        ),
+        _ZoneScenario(
           VehicleType.motorcycle,
           ['Bolsa lateral esquerda'],
           'BOLSA ESQUERDA',
