@@ -63,9 +63,13 @@ Future<void> _selectAssignedChip(
   final chip = find.widgetWithText(InputChip, label);
   expect(chip, findsOneWidget);
   // Assigned chips live inside the vehicle diagram, below the fixed
-  // summary card. Center them in the scroll viewport before tapping so the
-  // hit target cannot remain clipped at the viewport edge on CI-sized screens.
-  await tester.ensureVisible(chip, alignment: 0.5);
+  // summary card. Scroll the organizer until the chip is fully visible before
+  // tapping; this avoids false misses when CI uses a shorter viewport.
+  final scrollable = find.descendant(
+    of: find.byType(CustomScrollView),
+    matching: find.byType(Scrollable),
+  ).first;
+  await tester.scrollUntilVisible(chip, 120, scrollable: scrollable);
   await tester.pumpAndSettle();
   await tester.tap(chip);
   await tester.pumpAndSettle();
