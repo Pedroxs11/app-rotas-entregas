@@ -52,7 +52,7 @@ void main() {
   testWidgets(
     'motorcycle side bag keeps its physical side with enlarged system text',
     (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
+      tester.view.physicalSize = const Size(320, 568);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -118,6 +118,38 @@ void main() {
             lessThan(organizerRect.center.dx),
             reason: 'The left bag must not move to the right at 130% text scale.',
           );
+        }
+        // Exercise the real assignment flow at the smallest supported width.
+        // The selected package must land in the exact physical side that remains
+        // enabled, even after the compact diagram stacks the motorcycle above it.
+        final packageRow = find.text('Pacote 01');
+        final scrollable = find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first;
+        await tester.scrollUntilVisible(
+          packageRow,
+          120,
+          scrollable: scrollable,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(packageRow);
+        await tester.pump();
+        await tester.ensureVisible(zone);
+        await tester.pumpAndSettle();
+        await tester.tap(zone);
+        await tester.pumpAndSettle();
+
+        expect(state.packages.single.physicalZone, scenario.zone);
+        expect(
+          find.descendant(of: zone, matching: find.text('P01')),
+          findsOneWidget,
+        );
+        final assignedZoneRect = tester.getRect(zone);
+        if (scenario.isRightSide) {
+          expect(assignedZoneRect.center.dx, greaterThan(organizerRect.center.dx));
+        } else {
+          expect(assignedZoneRect.center.dx, lessThan(organizerRect.center.dx));
         }
         expect(tester.takeException(), isNull);
 
