@@ -1896,3 +1896,88 @@ void main(){
   });
 
 }
+
+  testWidgets(
+    'canceling compartment removal confirmation preserves car and motorcycle assignments',
+    (tester) async {
+      for (final vehicle in VehicleType.values) {
+        final isMotorcycle = vehicle == VehicleType.motorcycle;
+        final zone = isMotorcycle ? 'Baú traseiro' : 'Porta-malas';
+        final preferenceKey = isMotorcycle ? 'load_zones_motorcycle' : 'load_zones_car';
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': vehicle.name,
+        });
+
+        final active = _package(1, physicalZone: zone);
+        final delivered = _package(2, physicalZone: zone).copyWith(
+          status: DeliveryStatus.delivered,
+        );
+        final store = _LoadStore([active, delivered]);
+        final state = AppState(store: store);
+        await state.init();
+
+        await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Configurar compartimentos'));
+        await tester.pumpAndSettle();
+
+        final zoneTitle = find.text(zone);
+        expect(zoneTitle, findsOneWidget);
+        await tester.tap(zoneTitle);
+        await tester.pump();
+
+        final save = find.widgetWithText(FilledButton, 'Salvar');
+        expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Confirmar alteração dos compartimentos'),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('1 pacote não entregue perderá sua posição atual.'),
+          findsOneWidget,
+        );
+
+        // Returning from the destructive confirmation must leave the
+        // configuration dialog open, but must not persist the unchecked zone.
+        await tester.tap(find.text('Voltar'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(isMotorcycle
+              ? 'Compartimentos da moto'
+              : 'Compartimentos do carro'),
+          findsOneWidget,
+        );
+        final zoneTile = find.ancestor(
+          of: zoneTitle,
+          matching: find.byType(CheckboxListTile),
+        );
+        expect(tester.widget<CheckboxListTile>(zoneTile).value, isFalse);
+        expect(state.activePhysicalZones, contains(zone));
+        expect(state.packages.first.physicalZone, zone);
+        expect(state.packages.last.physicalZone, zone);
+        expect(store.saves, 0);
+
+        final preferences = await SharedPreferences.getInstance();
+        expect(preferences.getStringList(preferenceKey), isNull);
+
+        // Canceling the outer dialog must also keep the original state intact.
+        await tester.tap(find.text('Cancelar'));
+        await tester.pumpAndSettle();
+        expect(state.activePhysicalZones, contains(zone));
+        expect(state.packages.first.physicalZone, zone);
+        expect(state.packages.last.physicalZone, zone);
+        expect(store.saves, 0);
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        state.dispose();
+      }
+    },
+  );
+
