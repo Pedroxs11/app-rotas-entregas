@@ -62,7 +62,11 @@ Future<void> _selectAssignedChip(
 ) async {
   final chip = find.widgetWithText(InputChip, label);
   expect(chip, findsOneWidget);
-  await tester.ensureVisible(chip);
+  // Assigned chips live inside the vehicle diagram, below the fixed
+  // summary card. Center them in the scroll viewport before tapping so the
+  // hit target cannot remain clipped at the viewport edge on CI-sized screens.
+  await tester.ensureVisible(chip, alignment: 0.5);
+  await tester.pumpAndSettle();
   await tester.tap(chip);
   await tester.pumpAndSettle();
 }
