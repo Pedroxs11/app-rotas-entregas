@@ -1225,7 +1225,7 @@ class _LoadScreenState extends State<LoadScreen>{
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       constraints: BoxConstraints(minHeight: wide ? 78 : 126),
-      padding: const EdgeInsets.all(9),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 9),
       decoration: BoxDecoration(
         color: activeZone
             ? Theme.of(context).colorScheme.primaryContainer
@@ -1250,48 +1250,48 @@ class _LoadScreenState extends State<LoadScreen>{
             width: double.infinity,
             child: InkWell(
               onTap: () => _assign(zone),
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          shortName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            shortName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        if (allPackages.isNotEmpty)
+                          Text(
+                            hasSearch
+                                ? '${packages.length}/${allPackages.length}'
+                                : '${allPackages.length}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                      ],
+                    ),
+                    if (packages.isEmpty) ...[
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        height: allPackages.isEmpty ? 72 : 40,
+                        child: Center(
+                          child: Text(
+                            allPackages.isEmpty ? 'Vazio' : 'Sem resultados',
+                            style: const TextStyle(fontSize: 12),
                           ),
                         ),
                       ),
-                      if (allPackages.isNotEmpty)
-                        Text(
-                          hasSearch
-                              ? '${packages.length}/${allPackages.length}'
-                              : '${allPackages.length}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
                     ],
-                  ),
-                  if (packages.isEmpty) ...[
-                    const SizedBox(height: 6),
-                    SizedBox(
-                      height: allPackages.isEmpty ? 72 : 40,
-                      child: Center(
-                        child: Text(
-                          allPackages.isEmpty ? 'Vazio' : 'Sem resultados',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ),
                   ],
-                ],
+                ),
               ),
             ),
-          ),
           ),
           if (packages.isNotEmpty) ...[
             const SizedBox(height: 6),
