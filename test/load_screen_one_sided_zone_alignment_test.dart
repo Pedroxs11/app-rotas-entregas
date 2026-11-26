@@ -146,6 +146,9 @@ void main() {
           final zone = find
               .ancestor(of: label, matching: find.byType(InkWell))
               .first;
+          final compartment = find
+              .ancestor(of: label, matching: find.byType(AnimatedContainer))
+              .first;
           final zoneRect = tester.getRect(zone);
           final organizerRect = tester.getRect(find.byType(CustomScrollView));
 
@@ -193,7 +196,7 @@ void main() {
 
           expect(state.packages.single.physicalZone, scenario.zones.single);
           expect(
-            find.descendant(of: zone, matching: find.text('P01')),
+            find.descendant(of: compartment, matching: find.text('P01')),
             findsOneWidget,
             reason: 'The package must be stored in the selected physical side.',
           );

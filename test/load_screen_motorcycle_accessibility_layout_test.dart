@@ -98,6 +98,9 @@ void main() {
         final zone = find
             .ancestor(of: label, matching: find.byType(InkWell))
             .first;
+        final compartment = find
+            .ancestor(of: label, matching: find.byType(AnimatedContainer))
+            .first;
         final zoneRect = tester.getRect(zone);
         final organizerRect = tester.getRect(find.byType(CustomScrollView));
 
@@ -142,7 +145,7 @@ void main() {
 
         expect(state.packages.single.physicalZone, scenario.zone);
         expect(
-          find.descendant(of: zone, matching: find.text('P01')),
+          find.descendant(of: compartment, matching: find.text('P01')),
           findsOneWidget,
         );
         final assignedZoneRect = tester.getRect(zone);

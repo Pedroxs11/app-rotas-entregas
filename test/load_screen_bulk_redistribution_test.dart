@@ -170,7 +170,13 @@ void main() {
         // only its physical position, not delete it or affect the other load.
         await _selectAssignedChip(tester, 'P01');
         final removeButton = find.text('RETIRAR PACOTE SELECIONADO');
-        await tester.ensureVisible(removeButton);
+        await Scrollable.ensureVisible(
+          tester.element(removeButton),
+          alignment: 0.5,
+          duration: Duration.zero,
+        );
+        await tester.pumpAndSettle();
+        expect(removeButton.hitTestable(), findsOneWidget);
         await tester.tap(removeButton);
         await tester.pumpAndSettle();
 

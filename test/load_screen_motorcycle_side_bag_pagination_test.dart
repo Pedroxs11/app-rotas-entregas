@@ -132,6 +132,10 @@ void main() {
           of: find.text(label),
           matching: find.byType(InkWell),
         ).first;
+        final compartment = find.ancestor(
+          of: find.text(label),
+          matching: find.byType(AnimatedContainer),
+        ).first;
         final viewport = tester.getRect(find.byType(CustomScrollView));
         final bagRect = tester.getRect(bag);
 
@@ -160,7 +164,7 @@ void main() {
         expect(find.text('P09'), findsNothing);
 
         final more = find.descendant(
-          of: bag,
+          of: compartment,
           matching: find.text('Ver mais 24'),
         );
         await _ensureVisible(tester, more);
@@ -168,7 +172,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.descendant(of: bag, matching: find.byType(InputChip)),
+          find.descendant(of: compartment, matching: find.byType(InputChip)),
           findsNWidgets(32),
         );
         expect(find.text('P32'), findsOneWidget);
@@ -183,11 +187,11 @@ void main() {
           findsOneWidget,
         );
         expect(
-          find.descendant(of: bag, matching: find.text('P600')),
+          find.descendant(of: compartment, matching: find.text('P600')),
           findsOneWidget,
         );
         expect(
-          find.descendant(of: bag, matching: find.text('1/600')),
+          find.descendant(of: compartment, matching: find.text('1/600')),
           findsOneWidget,
         );
 
@@ -203,7 +207,7 @@ void main() {
         expect(find.text('P32'), findsOneWidget);
 
         final collapse = find.descendant(
-          of: bag,
+          of: compartment,
           matching: find.text('Mostrar menos'),
         );
         await _ensureVisible(tester, collapse);

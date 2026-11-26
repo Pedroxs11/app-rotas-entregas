@@ -1246,8 +1246,10 @@ class _LoadScreenState extends State<LoadScreen>{
           // Keep the assignment tap target separate from package chips.
           // A chip tap must only select that package; it must never bubble
           // into the compartment action and move the current selection.
-          InkWell(
-            onTap: () => _assign(zone),
+          SizedBox(
+            width: double.infinity,
+            child: InkWell(
+              onTap: () => _assign(zone),
             borderRadius: BorderRadius.circular(10),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
@@ -1289,6 +1291,7 @@ class _LoadScreenState extends State<LoadScreen>{
                 ],
               ),
             ),
+          ),
           ),
           if (packages.isNotEmpty) ...[
             const SizedBox(height: 6),

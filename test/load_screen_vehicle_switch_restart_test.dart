@@ -226,7 +226,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Selecionar vários'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       final loadScrollable = find.descendant(
         of: find.byType(CustomScrollView),
@@ -237,16 +237,26 @@ void main() {
         120,
         scrollable: loadScrollable,
       );
-      final first = tester.getCenter(find.text('Pacote 01'));
+      await tester.pumpAndSettle();
+      final firstPackage = find.text('Pacote 01');
+      final firstRect = tester.getRect(firstPackage);
+      final initialViewport = tester.getRect(find.byType(CustomScrollView));
+      expect(firstRect.top, greaterThanOrEqualTo(initialViewport.top));
+      expect(firstRect.bottom, lessThanOrEqualTo(initialViewport.bottom));
+      final first = tester.getCenter(firstPackage);
       final viewport = tester.getRect(find.byType(CustomScrollView));
       final gesture = await tester.startGesture(first, pointer: 1);
       await tester.pump(const Duration(milliseconds: 600));
-      final edge = Offset(first.dx, viewport.bottom - 30);
+      expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+      final edge = Offset(viewport.center.dx, viewport.bottom - 20);
       await gesture.moveTo(
         edge,
         timeStamp: const Duration(milliseconds: 700),
       );
-      await tester.pump(const Duration(milliseconds: 160));
+      for (var frame = 0; frame < 60; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await tester.pump();
 
       final selectedCountFinder = find.byWidgetPredicate(
         (widget) =>

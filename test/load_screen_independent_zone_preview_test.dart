@@ -124,7 +124,7 @@ void main() {
       Finder compartment(String label) => find
           .ancestor(
             of: find.text(label),
-            matching: find.byType(InkWell),
+            matching: find.byType(AnimatedContainer),
           )
           .first;
 

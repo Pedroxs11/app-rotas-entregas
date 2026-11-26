@@ -107,7 +107,7 @@ void main() {
         final zoneLabel = find.text(scenario.label);
         expect(zoneLabel, findsOneWidget);
         final compartment = find
-            .ancestor(of: zoneLabel, matching: find.byType(InkWell))
+            .ancestor(of: zoneLabel, matching: find.byType(AnimatedContainer))
             .first;
         final assignedChip = find.descendant(
           of: compartment,
