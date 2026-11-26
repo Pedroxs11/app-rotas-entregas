@@ -33,28 +33,34 @@ class _ZoneConfirmationStore implements PackageStore {
   }
 }
 
-DeliveryPackage _assignedPackage(String zone) => DeliveryPackage(
-      id: 'confirmation-package',
-      scanNumber: 1,
+DeliveryPackage _assignedPackage(
+  String zone, {
+  String id = 'confirmation-package',
+  bool delivered = false,
+}) =>
+    DeliveryPackage(
+      id: id,
+      scanNumber: delivered ? 2 : 1,
       physicalZone: zone,
-      status: DeliveryStatus.pending,
+      status: delivered ? DeliveryStatus.delivered : DeliveryStatus.pending,
       address: AddressData(
-        raw: 'Rua da Confirmação, 1',
+        raw: 'Rua da Confirmação, ${delivered ? 2 : 1}',
         street: 'Rua da Confirmação',
-        number: '1',
+        number: delivered ? '2' : '1',
         city: 'São Paulo',
         state: 'SP',
         confidence: 1,
         validation: ValidationStatus.confirmed,
       ),
       scannedAt: DateTime.utc(2026, 11, 25, 12),
+      completedAt: delivered ? DateTime.utc(2026, 11, 25, 13) : null,
     );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'disabling an occupied car or motorcycle compartment requires confirmation',
+    'disabling an occupied car or motorcycle compartment requires confirmation and preserves delivered history',
     (tester) async {
       tester.view.physicalSize = const Size(400, 1000);
       tester.view.devicePixelRatio = 1;
@@ -77,7 +83,15 @@ void main() {
           'load_vehicle_type': scenario.vehicle.name,
         });
         final store = _ZoneConfirmationStore([
-          _assignedPackage(scenario.zone),
+          _assignedPackage(
+            scenario.zone,
+            id: 'active-confirmation-package',
+          ),
+          _assignedPackage(
+            scenario.zone,
+            id: 'delivered-confirmation-package',
+            delivered: true,
+          ),
         ]);
         final state = AppState(store: store);
         await state.init();
@@ -87,7 +101,17 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(state.packages.single.physicalZone, scenario.zone);
+        DeliveryPackage activePackage() => state.packages.singleWhere(
+              (package) => package.id == 'active-confirmation-package',
+            );
+        DeliveryPackage deliveredPackage() => state.packages.singleWhere(
+              (package) => package.id == 'delivered-confirmation-package',
+            );
+
+        expect(activePackage().physicalZone, scenario.zone);
+        expect(deliveredPackage().physicalZone, scenario.zone);
+        expect(deliveredPackage().completedAt, DateTime.utc(2026, 11, 25, 13));
+
         await tester.tap(find.byTooltip('Configurar compartimentos'));
         await tester.pumpAndSettle();
         expect(find.text(scenario.dialogTitle), findsOneWidget);
@@ -102,26 +126,32 @@ void main() {
         await tester.tap(find.text('Salvar'));
         await tester.pumpAndSettle();
 
-        // Canceling the destructive confirmation must keep both the saved
-        // compartment configuration and the package's physical position.
+        // Only the active package should be counted as losing its position.
+        // Delivered packages keep their historical compartment and completion.
         expect(
-          find.text('Confirmar alteração dos compartimentos'),
+          find.text('1 pacote não entregue perderá sua posição atual.'),
           findsOneWidget,
         );
         await tester.tap(find.text('Voltar'));
         await tester.pumpAndSettle();
 
+        // Canceling the destructive confirmation must keep both records intact.
         expect(find.text(scenario.dialogTitle), findsOneWidget);
         expect(state.activePhysicalZones, contains(scenario.zone));
-        expect(state.packages.single.physicalZone, scenario.zone);
-        expect(store.items.single.physicalZone, scenario.zone);
+        expect(activePackage().physicalZone, scenario.zone);
+        expect(deliveredPackage().physicalZone, scenario.zone);
+        expect(
+          deliveredPackage().completedAt,
+          DateTime.utc(2026, 11, 25, 13),
+        );
+        expect(store.items.firstWhere((p) => p.id == 'active-confirmation-package').physicalZone, scenario.zone);
+        expect(store.items.firstWhere((p) => p.id == 'delivered-confirmation-package').physicalZone, scenario.zone);
         expect(store.saves, 0);
 
         await tester.tap(find.text('Cancelar'));
         await tester.pumpAndSettle();
 
-        // Confirming the same change must clear only the active package's
-        // position and persist the new configuration for the selected vehicle.
+        // Confirming the same change clears only the active package's position.
         await tester.tap(find.byTooltip('Configurar compartimentos'));
         await tester.pumpAndSettle();
         final secondCompartment = find.widgetWithText(
@@ -141,9 +171,28 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(state.activePhysicalZones, isNot(contains(scenario.zone)));
-        expect(state.packages.single.physicalZone, isNull);
-        expect(store.items.single.physicalZone, isNull);
+        expect(activePackage().physicalZone, isNull);
+        expect(deliveredPackage().physicalZone, scenario.zone);
+        expect(
+          deliveredPackage().status,
+          DeliveryStatus.delivered,
+        );
+        expect(
+          deliveredPackage().completedAt,
+          DateTime.utc(2026, 11, 25, 13),
+        );
+        expect(
+          store.items.firstWhere((p) => p.id == 'active-confirmation-package').physicalZone,
+          isNull,
+        );
+        final storedDelivered = store.items.firstWhere(
+          (p) => p.id == 'delivered-confirmation-package',
+        );
+        expect(storedDelivered.physicalZone, scenario.zone);
+        expect(storedDelivered.status, DeliveryStatus.delivered);
+        expect(storedDelivered.completedAt, DateTime.utc(2026, 11, 25, 13));
         expect(store.saves, 1);
+
         final preferences = await SharedPreferences.getInstance();
         final preferenceKey = scenario.vehicle == VehicleType.car
             ? 'load_zones_car'
