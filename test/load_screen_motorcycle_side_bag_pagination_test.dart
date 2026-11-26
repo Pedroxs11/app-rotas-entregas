@@ -183,7 +183,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.descendant(of: bag, matching: find.byType(InputChip)),
+          find.descendant(of: compartment, matching: find.byType(InputChip)),
           findsOneWidget,
         );
         expect(
@@ -201,7 +201,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.descendant(of: bag, matching: find.byType(InputChip)),
+          find.descendant(of: compartment, matching: find.byType(InputChip)),
           findsNWidgets(32),
         );
         expect(find.text('P32'), findsOneWidget);
@@ -215,7 +215,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.descendant(of: bag, matching: find.byType(InputChip)),
+          find.descendant(of: compartment, matching: find.byType(InputChip)),
           findsNWidgets(8),
         );
         expect(find.text('P08'), findsOneWidget);
