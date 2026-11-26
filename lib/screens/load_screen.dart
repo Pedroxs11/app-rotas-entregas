@@ -1355,8 +1355,12 @@ class _LoadScreenState extends State<LoadScreen>{
           title: Text(p.label, style: const TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text(
             _isMoto
-                ? address
-                : (_hasActiveZone(p) ? '$zone\n$address' : 'Sem posição no carro\n$address'),
+                ? (_hasActiveZone(p)
+                    ? '$zone\n$address'
+                    : 'Sem posição na moto\n$address')
+                : (_hasActiveZone(p)
+                    ? '$zone\n$address'
+                    : 'Sem posição no carro\n$address'),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
