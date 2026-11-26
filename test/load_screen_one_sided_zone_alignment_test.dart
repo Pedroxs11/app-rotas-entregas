@@ -157,6 +157,32 @@ void main() {
                   'at viewport ${viewportSize.width} px.',
             );
           }
+          // Verify the physical-side invariant through the real assignment
+          // flow, not only through diagram geometry. This covers one-sided
+          // car seats and motorcycle bags on both compact and wider layouts.
+          final packageRow = find.text('Pacote 01');
+          await tester.ensureVisible(packageRow);
+          await tester.pumpAndSettle();
+          await tester.tap(packageRow);
+          await tester.pump();
+
+          await tester.ensureVisible(zone);
+          await tester.pumpAndSettle();
+          await tester.tap(zone);
+          await tester.pumpAndSettle();
+
+          expect(state.packages.single.physicalZone, scenario.zones.single);
+          expect(
+            find.descendant(of: zone, matching: find.text('P01')),
+            findsOneWidget,
+            reason: 'The package must be stored in the selected physical side.',
+          );
+          final assignedRect = tester.getRect(zone);
+          if (scenario.isRightSide) {
+            expect(assignedRect.center.dx, greaterThan(organizerRect.center.dx));
+          } else {
+            expect(assignedRect.center.dx, lessThan(organizerRect.center.dx));
+          }
           expect(tester.takeException(), isNull);
 
           await tester.pumpWidget(const SizedBox.shrink());
