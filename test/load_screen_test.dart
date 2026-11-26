@@ -1895,7 +1895,6 @@ void main(){
     restarted.dispose();
   });
 
-}
 
   testWidgets(
     'canceling compartment removal confirmation preserves car and motorcycle assignments',
@@ -1981,3 +1980,4 @@ void main(){
     },
   );
 
+}
