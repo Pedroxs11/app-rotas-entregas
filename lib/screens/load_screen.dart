@@ -1222,55 +1222,92 @@ class _LoadScreenState extends State<LoadScreen>{
     final nextBatch = remainingPackages < _zonePackagePageSize
         ? remainingPackages
         : _zonePackagePageSize;
-    return InkWell(
-      onTap:()=>_assign(zone),
-      borderRadius:BorderRadius.circular(18),
-      child:AnimatedContainer(
-        duration:const Duration(milliseconds:160),
-        constraints:BoxConstraints(minHeight:wide?78:126),
-        padding:const EdgeInsets.all(9),
-        decoration:BoxDecoration(
-          color:activeZone
-              ?Theme.of(context).colorScheme.primaryContainer
-              :Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius:BorderRadius.circular(18),
-          border:Border.all(
-            color:activeZone
-                ?Theme.of(context).colorScheme.primary
-                :highlighted
-                    ?Theme.of(context).colorScheme.outline
-                    :Theme.of(context).colorScheme.outlineVariant,
-            width:activeZone?2:1,
-          ),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      constraints: BoxConstraints(minHeight: wide ? 78 : 126),
+      padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(
+        color: activeZone
+            ? Theme.of(context).colorScheme.primaryContainer
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: activeZone
+              ? Theme.of(context).colorScheme.primary
+              : highlighted
+                  ? Theme.of(context).colorScheme.outline
+                  : Theme.of(context).colorScheme.outlineVariant,
+          width: activeZone ? 2 : 1,
         ),
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Row(children:[
-            Expanded(child:Text(shortName,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12))),
-            if(allPackages.isNotEmpty)Text(
-              hasSearch?'${packages.length}/${allPackages.length}':'${allPackages.length}',
-              style:const TextStyle(fontWeight:FontWeight.bold),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Keep the assignment tap target separate from package chips.
+          // A chip tap must only select that package; it must never bubble
+          // into the compartment action and move the current selection.
+          InkWell(
+            onTap: () => _assign(zone),
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          shortName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      if (allPackages.isNotEmpty)
+                        Text(
+                          hasSearch
+                              ? '${packages.length}/${allPackages.length}'
+                              : '${allPackages.length}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                    ],
+                  ),
+                  if (packages.isEmpty) ...[
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      height: allPackages.isEmpty ? 72 : 40,
+                      child: Center(
+                        child: Text(
+                          allPackages.isEmpty ? 'Vazio' : 'Sem resultados',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ]),
-          const SizedBox(height:6),
-          if(packages.isEmpty)
-            SizedBox(
-              height:allPackages.isEmpty?72:40,
-              child:Center(child:Text(
-                allPackages.isEmpty?'Vazio':'Sem resultados',
-                style:const TextStyle(fontSize:12),
-              )),
-            )
-          else ...[
-            Wrap(spacing:3,runSpacing:3,children:[
-              for(final p in visiblePackages)
-                InputChip(
-                  visualDensity:VisualDensity.compact,
-                  padding:EdgeInsets.zero,
-                  selected:multiSelect?selectedIds.contains(p.id):selected?.id==p.id,
-                  onSelected:(_)=>_togglePackage(p.id),
-                  label:Text('P${p.scanNumber.toString().padLeft(2,'0')}'),
-                ),
-            ]),
+          ),
+          if (packages.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 3,
+              runSpacing: 3,
+              children: [
+                for (final p in visiblePackages)
+                  InputChip(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    selected: multiSelect
+                        ? selectedIds.contains(p.id)
+                        : selected?.id == p.id,
+                    onSelected: (_) => _togglePackage(p.id),
+                    label: Text('P${p.scanNumber.toString().padLeft(2, '0')}'),
+                  ),
+              ],
+            ),
             if (packages.length > _initialZonePackageCount)
               Wrap(
                 spacing: 4,
@@ -1281,7 +1318,10 @@ class _LoadScreenState extends State<LoadScreen>{
                     TextButton(
                       style: TextButton.styleFrom(
                         minimumSize: Size.zero,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
                       ),
@@ -1294,14 +1334,20 @@ class _LoadScreenState extends State<LoadScreen>{
                     TextButton(
                       style: TextButton.styleFrom(
                         minimumSize: Size.zero,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
                       ),
                       onPressed: () => setState(() {
                         _visibleZonePackageCount[zone] =
                             (visiblePackages.length + _zonePackagePageSize)
-                                .clamp(_initialZonePackageCount, packages.length)
+                                .clamp(
+                                  _initialZonePackageCount,
+                                  packages.length,
+                                )
                                 .toInt();
                       }),
                       child: Text('Ver mais $nextBatch'),
@@ -1317,7 +1363,7 @@ class _LoadScreenState extends State<LoadScreen>{
                 ],
               ),
           ],
-        ]),
+        ],
       ),
     );
   }
