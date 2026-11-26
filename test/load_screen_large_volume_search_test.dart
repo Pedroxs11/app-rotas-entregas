@@ -81,6 +81,22 @@ void main() {
         await tester.enterText(find.byType(TextField), 'joao-ultimo');
         await tester.pumpAndSettle();
 
+        // The package list is lazy and sits below the vehicle diagram. Scroll
+        // to the filtered row before asserting that the end-of-route match is
+        // mounted in the viewport.
+        final scrollable = find
+            .descendant(
+              of: find.byType(CustomScrollView),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        await tester.scrollUntilVisible(
+          find.text('Pacote 600'),
+          300,
+          scrollable: scrollable,
+        );
+        await tester.pumpAndSettle();
+
         expect(find.text('Pacote 600'), findsOneWidget);
         expect(
           find.text('Nenhum pacote encontrado para essa busca.'),
