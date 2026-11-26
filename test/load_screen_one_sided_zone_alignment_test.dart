@@ -161,7 +161,15 @@ void main() {
           // flow, not only through diagram geometry. This covers one-sided
           // car seats and motorcycle bags on both compact and wider layouts.
           final packageRow = find.text('Pacote 01');
-          await tester.ensureVisible(packageRow);
+          final scrollable = find.descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          ).first;
+          await tester.scrollUntilVisible(
+            packageRow,
+            120,
+            scrollable: scrollable,
+          );
           await tester.pumpAndSettle();
           await tester.tap(packageRow);
           await tester.pump();
