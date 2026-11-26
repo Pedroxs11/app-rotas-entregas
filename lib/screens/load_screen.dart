@@ -80,43 +80,60 @@ class _LoadScreenState extends State<LoadScreen>{
       .replaceAll('ñ', 'n')
       .replaceAll(RegExp(r'[ýÿ]'), 'y');
 
-  String _compactSearchText(String value) =>
-      _normalizeSearchText(value).replaceAll(RegExp(r'[^a-z0-9]'), '');
+  String _compactNormalizedSearchText(String value) =>
+      value.replaceAll(RegExp(r'[^a-z0-9]'), '');
 
-  bool _matchesSearch(DeliveryPackage p, String query){
-    // The query is normalized once per filtering pass, not once per package.
+  String _compactSearchText(String value) =>
+      _compactNormalizedSearchText(_normalizeSearchText(value));
+
+  _LoadSearchQuery _createSearchQuery(String value) {
+    final normalized = _normalizeSearchText(value.trim());
+    return _LoadSearchQuery(
+      normalized: normalized,
+      compact: _compactNormalizedSearchText(normalized),
+    );
+  }
+
+  bool _matchesSearch(DeliveryPackage p, _LoadSearchQuery query) {
+    // Normalize and compact the query once per filtering pass, rather than
+    // repeating that work for every package in a large route.
     // Accent and punctuation differences should not hide recipients,
     // addresses, labels, or tracking codes from the driver.
-    if(query.isEmpty)return true;
-    final number=p.scanNumber.toString();
-    final paddedNumber=number.padLeft(2,'0');
-    final compactQuery=_compactSearchText(query);
-    final codeNumber=compactQuery.startsWith('p')
-        ?compactQuery.substring(1)
-        :'';
-    final matchesCode=codeNumber==number||codeNumber==paddedNumber;
+    final normalizedQuery = query.normalized;
+    if (normalizedQuery.isEmpty) return true;
+    final compactQuery = query.compact;
+    final number = p.scanNumber.toString();
+    final paddedNumber = number.padLeft(2, '0');
+    final codeNumber = compactQuery.startsWith('p')
+        ? compactQuery.substring(1)
+        : '';
+    final matchesCode = codeNumber == number || codeNumber == paddedNumber;
     final matchesTrackingCode = compactQuery.isNotEmpty &&
         _compactSearchText(p.trackingCode ?? '').contains(compactQuery);
     bool matchesText(String value) {
       final normalized = _normalizeSearchText(value);
-      return normalized.contains(query) ||
+      return normalized.contains(normalizedQuery) ||
           (compactQuery.isNotEmpty &&
-              _compactSearchText(normalized).contains(compactQuery));
+              _compactNormalizedSearchText(normalized).contains(compactQuery));
     }
-    return matchesText(p.label)||
-        matchesCode||
-        matchesTrackingCode||
-        matchesText(p.recipient ?? '')||
-        number.contains(query)||
-        paddedNumber.contains(query)||
-        matchesText(p.address.formatted)||
+
+    return matchesText(p.label) ||
+        matchesCode ||
+        matchesTrackingCode ||
+        matchesText(p.recipient ?? '') ||
+        number.contains(normalizedQuery) ||
+        paddedNumber.contains(normalizedQuery) ||
+        matchesText(p.address.formatted) ||
         matchesText(p.address.raw);
   }
-  List<DeliveryPackage> _visibleRouteForQuery(String query)=>_route
-      .where((p)=>!_hasActiveZone(p)&&_matchesSearch(p,query))
-      .toList(growable:false);
-  List<DeliveryPackage> get _visibleRoute=>
-      _visibleRouteForQuery(_normalizeSearchText(search.trim()));
+
+  List<DeliveryPackage> _visibleRouteForQuery(_LoadSearchQuery query) =>
+      _route
+          .where((p) => !_hasActiveZone(p) && _matchesSearch(p, query))
+          .toList(growable: false);
+
+  List<DeliveryPackage> get _visibleRoute =>
+      _visibleRouteForQuery(_createSearchQuery(search));
   DeliveryPackage? _selected(List<DeliveryPackage> route){
     final id=selectedId;
     if(id==null)return null;
@@ -527,13 +544,13 @@ class _LoadScreenState extends State<LoadScreen>{
     final route=_route;
     // Build the filtered list once per frame. Recomputing this getter for every
     // lazy SliverList child would repeatedly scan all packages on large loads.
-    final normalizedSearch=_normalizeSearchText(search.trim());
-    final visibleRoute=route
-        .where((p)=>!_hasActiveZone(p)&&_matchesSearch(p,normalizedSearch))
-        .toList(growable:false);
+    final searchQuery = _createSearchQuery(search);
+    final visibleRoute = route
+        .where((p) => !_hasActiveZone(p) && _matchesSearch(p, searchQuery))
+        .toList(growable: false);
     // Index every active compartment once per frame. This avoids scanning the
     // full route and normalizing every address separately for each vehicle zone.
-    final zonePackageGroups = _groupPackagesByZone(route, normalizedSearch);
+    final zonePackageGroups = _groupPackagesByZone(route, searchQuery);
     final selected=_selected(route);
     final removableIds = _selectedAssignedPackageIds(route);
     final assigned=route.where(_hasActiveZone).length;
@@ -669,7 +686,7 @@ class _LoadScreenState extends State<LoadScreen>{
                                 const Icon(Icons.search_off, size: 36),
                                 const SizedBox(height: 8),
                                 Text(
-                                  route.any((package)=>_matchesSearch(package,normalizedSearch))
+                                  route.any((package) => _matchesSearch(package, searchQuery))
                                       ? 'O pacote encontrado já está posicionado em um compartimento.'
                                       : 'Nenhum pacote encontrado para essa busca.',
                                   textAlign: TextAlign.center,
@@ -778,7 +795,7 @@ class _LoadScreenState extends State<LoadScreen>{
 
   Map<String, _ZonePackageGroup> _groupPackagesByZone(
     List<DeliveryPackage> route,
-    String normalizedSearch,
+    _LoadSearchQuery searchQuery,
   ) {
     final groups = <String, _ZonePackageGroup>{
       for (final zone in widget.state.activePhysicalZones)
@@ -790,7 +807,7 @@ class _LoadScreenState extends State<LoadScreen>{
       final group = groups[zone];
       if (group == null) continue;
       group.allPackages.add(package);
-      if (_matchesSearch(package, normalizedSearch)) {
+      if (_matchesSearch(package, searchQuery)) {
         group.matchingPackages.add(package);
       }
     }
@@ -1355,6 +1372,16 @@ class _LoadScreenState extends State<LoadScreen>{
 }
 
 
+
+class _LoadSearchQuery {
+  const _LoadSearchQuery({
+    required this.normalized,
+    required this.compact,
+  });
+
+  final String normalized;
+  final String compact;
+}
 
 class _ZonePackageGroup {
   final List<DeliveryPackage> allPackages = <DeliveryPackage>[];
