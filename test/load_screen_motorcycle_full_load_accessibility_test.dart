@@ -148,7 +148,7 @@ void main() {
         expect(
           rect.width,
           greaterThan(100),
-          reason: entry.value + ' must keep a usable touch width.',',
+          reason: '${entry.value} must keep a usable touch width.',
         );
 
         final more = find.descendant(
