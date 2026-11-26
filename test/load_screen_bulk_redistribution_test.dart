@@ -65,12 +65,13 @@ Future<void> _selectAssignedChip(
   // Assigned chips live inside the vehicle diagram, below the fixed
   // summary card. Scroll the organizer until the chip is fully visible before
   // tapping; this avoids false misses when CI uses a shorter viewport.
-  final scrollable = find.descendant(
-    of: find.byType(CustomScrollView),
-    matching: find.byType(Scrollable),
-  ).first;
-  await tester.scrollUntilVisible(chip, 120, scrollable: scrollable);
+  await Scrollable.ensureVisible(
+    tester.element(chip),
+    alignment: 0.5,
+    duration: Duration.zero,
+  );
   await tester.pumpAndSettle();
+  expect(chip.hitTestable(), findsOneWidget);
   await tester.tap(chip);
   await tester.pumpAndSettle();
 }
@@ -129,11 +130,23 @@ void main() {
         // Select packages from two different compartments, then move both
         // through the same compartment tap used by the driver.
         await _selectAssignedChip(tester, 'P01');
+        expect(store.saves, 0,
+            reason: 'Selecting a chip must not assign its parent compartment.');
         await _selectAssignedChip(tester, 'P04');
         expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
+        expect(store.saves, 0,
+            reason: 'Selecting packages from different compartments must not move them.');
+        expect(state.packages[0].physicalZone, firstZone);
+        expect(state.packages[3].physicalZone, secondZone);
 
         final targetCompartment = find.text(targetLabel);
-        await tester.ensureVisible(targetCompartment);
+        await Scrollable.ensureVisible(
+          tester.element(targetCompartment),
+          alignment: 0.5,
+          duration: Duration.zero,
+        );
+        await tester.pumpAndSettle();
+        expect(targetCompartment.hitTestable(), findsOneWidget);
         await tester.tap(targetCompartment);
         await tester.pumpAndSettle();
 
