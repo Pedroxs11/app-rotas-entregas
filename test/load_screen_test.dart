@@ -1831,4 +1831,68 @@ void main(){
     },
   );
 
+
+  test('car and motorcycle compartment selections persist independently and restore in physical order', () async {
+    SharedPreferences.setMockInitialValues({});
+    final firstRun = AppState(store: _LoadStore([]));
+    await firstRun.init();
+
+    // Save a deliberately reversed car selection. AppState must persist it
+    // using the canonical left/right order used by the physical diagram.
+    await firstRun.setActivePhysicalZones([
+      'Porta-malas',
+      'Frente direita',
+    ]);
+    expect(firstRun.activePhysicalZones, [
+      'Frente direita',
+      'Porta-malas',
+    ]);
+
+    await firstRun.setVehicleType(VehicleType.motorcycle);
+    await firstRun.setActivePhysicalZones([
+      'Bolsa lateral direita',
+      'Baú traseiro',
+    ]);
+    expect(firstRun.activePhysicalZones, [
+      'Baú traseiro',
+      'Bolsa lateral direita',
+    ]);
+
+    // Switching back must restore the car configuration rather than reusing
+    // the motorcycle selection (and vice versa).
+    await firstRun.setVehicleType(VehicleType.car);
+    expect(firstRun.activePhysicalZones, [
+      'Frente direita',
+      'Porta-malas',
+    ]);
+    await firstRun.setVehicleType(VehicleType.motorcycle);
+    firstRun.dispose();
+
+    // Simulate a fresh app process reading the saved preferences.
+    final restarted = AppState(store: _LoadStore([]));
+    await restarted.init();
+    expect(restarted.vehicleType, VehicleType.motorcycle);
+    expect(restarted.activePhysicalZones, [
+      'Baú traseiro',
+      'Bolsa lateral direita',
+    ]);
+
+    await restarted.setVehicleType(VehicleType.car);
+    expect(restarted.activePhysicalZones, [
+      'Frente direita',
+      'Porta-malas',
+    ]);
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getStringList('load_zones_car'),
+      ['Frente direita', 'Porta-malas'],
+    );
+    expect(
+      preferences.getStringList('load_zones_motorcycle'),
+      ['Baú traseiro', 'Bolsa lateral direita'],
+    );
+    restarted.dispose();
+  });
+
 }
