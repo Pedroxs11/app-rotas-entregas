@@ -140,6 +140,28 @@ void main() {
             expect(delivered.physicalZone, 'HISTORICO');
             expect(delivered.completedAt, DateTime.utc(2026, 11, 23, 12));
 
+            // Capture the exact package-to-compartment mapping, not just the
+            // aggregate count of the first two compartments. This catches a
+            // restart that silently swaps package positions while preserving
+            // the total number of assigned packages.
+            final expectedZonesByPackage = <String, String?>{
+              for (final package in state.packages)
+                package.id: package.physicalZone,
+            };
+            final expectedZoneCounts = <String, int>{
+              for (final zone in zones)
+                zone: state.packages
+                    .where((package) => package.physicalZone == zone)
+                    .length,
+            };
+            for (final zone in zones) {
+              expect(
+                expectedZoneCounts[zone],
+                greaterThan(0),
+                reason: 'Every configured compartment should contain load.',
+              );
+            }
+
             await store.close();
             store = null;
 
@@ -156,6 +178,23 @@ void main() {
             expect(reopened.packages, hasLength(600));
             expect(reopened.packages.map((package) => package.id).toSet(),
                 originalIds);
+            expect(
+              <String, String?>{
+                for (final package in reopened.packages)
+                  package.id: package.physicalZone,
+              },
+              expectedZonesByPackage,
+              reason: 'Every package must recover its exact compartment.',
+            );
+            for (final zone in zones) {
+              expect(
+                reopened.packages
+                    .where((package) => package.physicalZone == zone)
+                    .length,
+                expectedZoneCounts[zone],
+                reason: '$zone must retain its package count after restart.',
+              );
+            }
             expect(
               reopened.packages.where(
                 (package) => package.status != DeliveryStatus.delivered &&
