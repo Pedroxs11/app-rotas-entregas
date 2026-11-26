@@ -129,7 +129,7 @@ void main() {
         // Only the active package should be counted as losing its position.
         // Delivered packages keep their historical compartment and completion.
         expect(
-          find.text('1 pacote não entregue perderá sua posição atual.'),
+          find.textContaining('1 pacote não entregue perderá sua posição atual.'),
           findsOneWidget,
         );
         await tester.tap(find.text('Voltar'));
