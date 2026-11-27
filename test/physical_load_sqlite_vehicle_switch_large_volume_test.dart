@@ -38,7 +38,7 @@ void main() {
   });
 
   test(
-    'SQLite preserves a 600-package load while switching car and motorcycle and restarting',
+    'SQLite preserves a 1000-package load while switching car and motorcycle and restarting',
     () async {
       final root = await Directory.systemTemp.createTemp(
         'rotas-sqlite-vehicle-switch-',
@@ -64,10 +64,10 @@ void main() {
           store = SqlitePackageStore();
           await store.save(
             List.generate(
-              600,
+              1000,
               (index) => _switchPackage(
                 index + 1,
-                delivered: index == 599,
+                delivered: index == 999,
               ),
             ),
             routeOptimized: true,
@@ -81,7 +81,7 @@ void main() {
             state.activePhysicalZones,
             ['Frente esquerda', 'Porta-malas'],
           );
-          expect(state.packages, hasLength(600));
+          expect(state.packages, hasLength(1000));
 
           final carZones = [...state.activePhysicalZones];
           for (var zoneIndex = 0; zoneIndex < carZones.length; zoneIndex++) {
@@ -175,7 +175,7 @@ void main() {
             resumed.activePhysicalZones,
             AppState.motorcyclePhysicalZones,
           );
-          expect(resumed.packages, hasLength(600));
+          expect(resumed.packages, hasLength(1000));
           expect(
             <String, String?>{
               for (final package in resumed.packages)
