@@ -197,58 +197,77 @@ void main() {
   );
 
   testWidgets(
-    'failed compartment persistence unlocks the dialog and allows retry',
+    'failed compartment persistence unlocks the dialog and allows retry for car and motorcycle',
     (tester) async {
       tester.view.physicalSize = const Size(400, 1000);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final scenario = _scenarios.first;
-      _setVehiclePreferences(scenario);
-      final store = _ZoneSaveStore([_package(scenario.zone)])
-        ..failNextSave = true;
-      final state = AppState(store: store);
-      await state.init();
+      for (final scenario in _scenarios) {
+        _setVehiclePreferences(scenario);
+        final store = _ZoneSaveStore([_package(scenario.zone)])
+          ..failNextSave = true;
+        final state = AppState(store: store);
+        await state.init();
 
-      await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
-      await tester.pumpAndSettle();
+        final dialogTitle = scenario.vehicle == VehicleType.car
+            ? 'Compartimentos do carro'
+            : 'Compartimentos da moto';
+        final preferenceKey = scenario.vehicle == VehicleType.car
+            ? 'load_zones_car'
+            : 'load_zones_motorcycle';
 
-      await _openAndDisableZone(tester, scenario);
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(MaterialApp(home: LoadScreen(state: state)));
+        await tester.pumpAndSettle();
 
-      expect(store.saveAttempts, 1);
-      expect(store.successfulSaves, 0);
-      expect(state.activePhysicalZones, contains(scenario.zone));
-      expect(state.packages.single.physicalZone, scenario.zone);
-      expect(find.textContaining('Falha simulada ao salvar compartimentos'), findsOneWidget);
-      expect(find.widgetWithText(FilledButton, 'Salvar'), findsOneWidget);
-      expect(
-        tester.widget<FilledButton>(
-          find.widgetWithText(FilledButton, 'Salvar'),
-        ).onPressed,
-        isNotNull,
-      );
+        await _openAndDisableZone(tester, scenario);
+        await tester.pumpAndSettle();
 
-      // Retry the same selection. The warning must be requested again because
-      // the failed transaction restored the original package position.
-      await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Desativar e continuar'), findsOneWidget);
-      await tester.tap(find.text('Desativar e continuar'));
-      await tester.pumpAndSettle();
+        expect(store.saveAttempts, 1);
+        expect(store.successfulSaves, 0);
+        expect(state.activePhysicalZones, contains(scenario.zone));
+        expect(state.packages.single.physicalZone, scenario.zone);
+        expect(store.items.single.physicalZone, scenario.zone);
+        expect(find.textContaining('Falha simulada ao salvar compartimentos'), findsOneWidget);
+        expect(find.text(dialogTitle), findsOneWidget);
+        expect(find.widgetWithText(FilledButton, 'Salvar'), findsOneWidget);
+        expect(
+          tester.widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Salvar'),
+          ).onPressed,
+          isNotNull,
+        );
 
-      expect(store.saveAttempts, 2);
-      expect(store.successfulSaves, 1);
-      expect(state.activePhysicalZones, isNot(contains(scenario.zone)));
-      expect(state.packages.single.physicalZone, isNull);
-      expect(store.items.single.physicalZone, isNull);
-      expect(find.text('Compartimentos do carro'), findsNothing);
-      expect(tester.takeException(), isNull);
+        // The preference rollback must restore the active vehicle's original
+        // compartment list, not just the in-memory selection.
+        final preferences = await SharedPreferences.getInstance();
+        expect(preferences.getStringList(preferenceKey), contains(scenario.zone));
 
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pumpAndSettle();
-      state.dispose();
+        // Retry the same selection. The warning must be requested again because
+        // the failed transaction restored the original package position.
+        await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('Desativar e continuar'), findsOneWidget);
+        await tester.tap(find.text('Desativar e continuar'));
+        await tester.pumpAndSettle();
+
+        expect(store.saveAttempts, 2);
+        expect(store.successfulSaves, 1);
+        expect(state.activePhysicalZones, isNot(contains(scenario.zone)));
+        expect(state.packages.single.physicalZone, isNull);
+        expect(store.items.single.physicalZone, isNull);
+        expect(find.text(dialogTitle), findsNothing);
+        expect(
+          preferences.getStringList(preferenceKey),
+          isNot(contains(scenario.zone)),
+        );
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        state.dispose();
+      }
     },
   );
 }
