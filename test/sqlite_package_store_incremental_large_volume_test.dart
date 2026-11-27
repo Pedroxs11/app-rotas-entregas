@@ -31,7 +31,7 @@ void main() {
   });
 
   test(
-    'incremental SQLite save writes only the 25 changed rows in a 600-package load',
+    'incremental SQLite save writes only the 25 changed rows in a 1000-package load',
     () async {
       final directory = await Directory.systemTemp.createTemp(
         'rotas-sqlite-incremental-large-',
@@ -42,7 +42,7 @@ void main() {
         await databaseFactory.setDatabasesPath(directory.path);
         store = SqlitePackageStore();
 
-        final original = List.generate(600, (index) => _package(index + 1));
+        final original = List.generate(1000, (index) => _package(index + 1));
         await store.save(original, routeOptimized: true);
 
         // sqflite_common_ffi reuses open handles for a database path. Keep this
@@ -91,7 +91,7 @@ void main() {
           END
         ''');
 
-        // A no-op save must not rewrite any of the 600 packages or route
+        // A no-op save must not rewrite any of the 1000 packages or route
         // metadata, even when the same route optimization flag is supplied.
         await store.save(original, routeOptimized: true);
         expect(await database.query('package_write_audit'), isEmpty);
@@ -125,7 +125,7 @@ void main() {
         expect(await database.query('metadata_write_audit'), isEmpty);
 
         final loaded = await store.load();
-        expect(loaded, hasLength(600));
+        expect(loaded, hasLength(1000));
         expect(
           loaded.take(25).every(
                 (package) => package.physicalZone == 'Baú traseiro',
@@ -146,7 +146,7 @@ void main() {
         final reopenedStore = SqlitePackageStore();
         try {
           final reopened = await reopenedStore.load();
-          expect(reopened, hasLength(600));
+          expect(reopened, hasLength(1000));
           expect(
             reopened.map((package) => package.id).toList(),
             original.map((package) => package.id).toList(),
