@@ -930,7 +930,14 @@ class _LoadScreenState extends State<LoadScreen>{
                             selected.toList(),
                           );
                           if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext);
+                            // Re-enable route popping before closing the dialog.
+                            // PopScope must observe canPop=true for the programmatic
+                            // close after the persistence operation succeeds.
+                            setDialogState(() => saving = false);
+                            await WidgetsBinding.instance.endOfFrame;
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
                           }
                           if (mounted) {
                             setState(
