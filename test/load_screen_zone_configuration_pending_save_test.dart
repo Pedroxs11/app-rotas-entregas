@@ -116,6 +116,7 @@ Future<void> _openAndDisableZone(
   expect(tester.widget<CheckboxListTile>(checkbox).value, isTrue);
   await tester.tap(checkbox);
   await tester.pumpAndSettle();
+  expect(tester.widget<CheckboxListTile>(checkbox).value, isFalse);
 
   await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
   // The parent dialog shows an indeterminate progress indicator while the
@@ -149,7 +150,7 @@ void main() {
         await tester.pumpAndSettle();
 
         await _openAndDisableZone(tester, scenario);
-        await store.saveStarted.future;
+        await store.saveStarted.future.timeout(const Duration(seconds: 5));
         await tester.pump();
 
         expect(find.byTooltip('Salvando...'), findsOneWidget);
