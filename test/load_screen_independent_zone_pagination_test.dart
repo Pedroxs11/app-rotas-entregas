@@ -127,12 +127,23 @@ void main() {
               matching: find.byType(InputChip),
             );
 
+        void expectAccessibleTapTarget(Finder labelFinder) {
+          final button = find.ancestor(
+            of: labelFinder,
+            matching: find.byType(TextButton),
+          ).first;
+          final size = tester.getSize(button);
+          expect(size.width, greaterThanOrEqualTo(48));
+          expect(size.height, greaterThanOrEqualTo(48));
+        }
+
         // Each compartment starts with its own compact eight-package preview.
         expect(chips(scenario.labels[0]), findsNWidgets(8));
         expect(chips(scenario.labels[1]), findsNWidgets(8));
 
         // Expanding the first compartment must not expand the second one.
         final firstMore = moreButton(scenario.labels[0]);
+        expectAccessibleTapTarget(firstMore);
         await _ensureVisible(tester, firstMore);
         await tester.tap(firstMore);
         await tester.pumpAndSettle();
@@ -142,6 +153,7 @@ void main() {
 
         // The second compartment has an independent page counter.
         final secondMore = moreButton(scenario.labels[1]);
+        expectAccessibleTapTarget(secondMore);
         await _ensureVisible(tester, secondMore);
         await tester.tap(secondMore);
         await tester.pumpAndSettle();
@@ -151,6 +163,7 @@ void main() {
 
         // Collapsing the first compartment must leave the second expanded.
         final firstLess = lessButton(scenario.labels[0]);
+        expectAccessibleTapTarget(firstLess);
         await _ensureVisible(tester, firstLess);
         await tester.tap(firstLess);
         await tester.pumpAndSettle();

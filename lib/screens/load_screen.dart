@@ -1371,13 +1371,13 @@ class _LoadScreenState extends State<LoadScreen>{
                       child: ExcludeSemantics(
                         child: TextButton(
                           style: TextButton.styleFrom(
-                            minimumSize: Size.zero,
+                            minimumSize: const Size(48, 48),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
-                              vertical: 4,
+                              vertical: 8,
                             ),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
+                            tapTargetSize: MaterialTapTargetSize.padded,
+                            visualDensity: VisualDensity.standard,
                           ),
                           onPressed: showFewerPackages,
                           child: const Text('Mostrar menos'),
@@ -1392,13 +1392,13 @@ class _LoadScreenState extends State<LoadScreen>{
                       child: ExcludeSemantics(
                         child: TextButton(
                           style: TextButton.styleFrom(
-                            minimumSize: Size.zero,
+                            minimumSize: const Size(48, 48),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
-                              vertical: 4,
+                              vertical: 8,
                             ),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
+                            tapTargetSize: MaterialTapTargetSize.padded,
+                            visualDensity: VisualDensity.standard,
                           ),
                           onPressed: showMorePackages,
                           child: Text('Ver mais $nextBatch'),
