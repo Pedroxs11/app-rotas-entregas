@@ -119,11 +119,11 @@ Future<void> _openAndDisableZone(
 
   await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
   // The parent dialog shows an indeterminate progress indicator while the
-  // confirmation dialog is open; pump one frame instead of waiting for it to settle.
-  await tester.pump();
+  // confirmation dialog is open, so advance the route transition explicitly.
+  await tester.pump(const Duration(milliseconds: 300));
   expect(find.text('Desativar e continuar'), findsOneWidget);
   await tester.tap(find.text('Desativar e continuar'));
-  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 void main() {
@@ -234,7 +234,7 @@ void main() {
       // Retry the same selection. The warning must be requested again because
       // the failed transaction restored the original package position.
       await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Desativar e continuar'), findsOneWidget);
       await tester.tap(find.text('Desativar e continuar'));
       await tester.pumpAndSettle();
