@@ -35,8 +35,8 @@ class _LargeSearchStore implements PackageStore {
 DeliveryPackage _largeSearchPackage(int number) => DeliveryPackage(
       id: 'large-search-$number',
       scanNumber: number,
-      trackingCode: number == 600 ? 'BR-TRACK-FIM-600' : 'BR-TRACK-$number',
-      recipient: number == 600 ? 'João Último' : 'Destinatário $number',
+      trackingCode: number == 1000 ? 'BR-TRACK-FIM-1000' : 'BR-TRACK-$number',
+      recipient: number == 1000 ? 'João Último' : 'Destinatário $number',
       address: AddressData(
         raw: 'Rua das Entregas, $number',
         street: 'Rua das Entregas',
@@ -53,7 +53,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'search finds the last package in a 600-package car and motorcycle load',
+    'search finds the last package in a 1000-package car and motorcycle load',
     (tester) async {
       tester.view.physicalSize = const Size(360, 800);
       tester.view.devicePixelRatio = 1;
@@ -66,7 +66,7 @@ void main() {
         });
         final state = AppState(
           store: _LargeSearchStore(
-            List.generate(600, (index) => _largeSearchPackage(index + 1)),
+            List.generate(1000, (index) => _largeSearchPackage(index + 1)),
           ),
         );
         await state.init();
@@ -76,7 +76,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // The match is deliberately at the end of the 600-package route and
+        // The match is deliberately at the end of the 1000-package route and
         // differs by accents and punctuation from the stored recipient name.
         await tester.enterText(find.byType(TextField), 'joao-ultimo');
         await tester.pumpAndSettle();
@@ -91,13 +91,13 @@ void main() {
             )
             .first;
         await tester.scrollUntilVisible(
-          find.text('Pacote 600'),
+          find.text('Pacote 1000'),
           300,
           scrollable: scrollable,
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Pacote 600'), findsOneWidget);
+        expect(find.text('Pacote 1000'), findsOneWidget);
         expect(
           find.text('Nenhum pacote encontrado para essa busca.'),
           findsNothing,
