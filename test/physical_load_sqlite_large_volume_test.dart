@@ -65,7 +65,7 @@ void main() {
               1000,
               (index) => _largePackage(
                 index + 1,
-                delivered: index == 599,
+                delivered: index == 999,
               ),
             );
             final originalIds = original.map((package) => package.id).toSet();
