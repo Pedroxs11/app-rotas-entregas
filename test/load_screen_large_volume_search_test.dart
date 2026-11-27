@@ -102,7 +102,24 @@ void main() {
           find.text('Nenhum pacote encontrado para essa busca.'),
           findsNothing,
         );
-        expect(tester.takeException(), isNull);
+
+        // The same last package must also be discoverable by its tracking
+        // code and by the compact scan-code notation used by drivers.
+        for (final query in ['br-track-fim-1000', 'p1000']) {
+          await tester.enterText(find.byType(TextField), query);
+          await tester.pumpAndSettle();
+
+          expect(
+            find.text('Pacote 1000'),
+            findsOneWidget,
+            reason: 'The final package must match the search "$query".',
+          );
+          expect(
+            find.text('Nenhum pacote encontrado para essa busca.'),
+            findsNothing,
+          );
+          expect(tester.takeException(), isNull);
+        }
 
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pumpAndSettle();
