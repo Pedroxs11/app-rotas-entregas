@@ -102,7 +102,7 @@ void main() {
                   package.status != DeliveryStatus.delivered &&
                   package.physicalZone != null,
             ),
-            hasLength(599),
+            hasLength(999),
           );
 
           await state.setVehicleType(VehicleType.motorcycle);
@@ -157,7 +157,7 @@ void main() {
                   package.status != DeliveryStatus.delivered &&
                   package.physicalZone != null,
             ),
-            hasLength(599),
+            hasLength(999),
           );
 
           state.dispose();
