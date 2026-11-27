@@ -72,16 +72,8 @@ void main() {
           });
 
           final original = [
-            _package(
-              'active-to-clear',
-              1,
-              zone: disabledZone,
-            ),
-            _package(
-              'forced-failure',
-              2,
-              zone: retainedZone,
-            ),
+            _package('active-to-clear', 1, zone: disabledZone),
+            _package('forced-failure', 2, zone: retainedZone),
             _package(
               'delivered-history',
               3,
@@ -94,15 +86,15 @@ void main() {
           await seedStore.save(original, routeOptimized: true);
           await seedStore.close();
 
-          // Fail on the second package replacement. The first replacement
-          // has already entered the batch, so this exercises the real SQLite
-          // transaction rather than a store wrapper that fails before writing.
+          // Fail on the second package update. The first update has already
+          // entered the batch, so this exercises the real SQLite transaction
+          // and proves that the earlier row is rolled back as well.
           final database = await databaseFactory.openDatabase(
             p.join(directory.path, 'delivery_routes.db'),
           );
           await database.execute('''
             CREATE TRIGGER abort_compartment_update
-            BEFORE INSERT ON packages
+            BEFORE UPDATE ON packages
             WHEN NEW.id = 'forced-failure'
             BEGIN
               SELECT RAISE(ABORT, 'forced compartment persistence failure');
@@ -134,7 +126,7 @@ void main() {
                 .map((package) => package.physicalZone)
                 .toList(),
             [disabledZone, retainedZone, disabledZone],
-            reason: 'The earlier package write must roll back with the failed row.',
+            reason: 'The earlier package update must roll back with the failed row.',
           );
           expect(await store.loadRouteOptimized(), isTrue);
           expect(preferences.getStringList(preferenceKey), configuredZones);
