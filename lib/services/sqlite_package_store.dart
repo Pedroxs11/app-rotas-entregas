@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -40,6 +41,12 @@ class SqlitePackageStore implements PackageStore {
       },
     );
   }
+
+  /// Exposes the store's own connection to tests that install SQLite triggers.
+  /// Using this handle avoids sqflite FFI replacing a cached connection when a
+  /// test opens the same database path a second time.
+  @visibleForTesting
+  Future<Database> get databaseForTesting => _db();
 
   @override
   Future<List<DeliveryPackage>> load() async {
