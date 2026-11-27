@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/sqlite_package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 DeliveryPackage _package(
@@ -68,9 +67,7 @@ void main() {
         // handle open for the lifetime of SqlitePackageStore; closing it here
         // would close the same connection held by the store and make the next
         // save fail with database_closed before the triggers can be exercised.
-        final database = await databaseFactory.openDatabase(
-          p.join(directory.path, 'delivery_routes.db'),
-        );
+        final database = await store.databaseForTesting;
         // These triggers fail if a save attempts to replace or update an
         // unchanged row. A targeted save must leave both rows untouched.
         await database.execute('''
