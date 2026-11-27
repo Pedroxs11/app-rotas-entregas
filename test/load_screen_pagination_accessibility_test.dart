@@ -48,11 +48,24 @@ DeliveryPackage _package(int number) => DeliveryPackage(
       scannedAt: DateTime.utc(2026, 11, 27).add(Duration(minutes: number)),
     );
 
+const _vehicleScenarios = [
+  (
+    vehicle: VehicleType.car,
+    zone: 'Porta-malas',
+    label: 'PORTA-MALAS',
+  ),
+  (
+    vehicle: VehicleType.motorcycle,
+    zone: 'Baú traseiro',
+    label: 'BAÚ TRASEIRO',
+  ),
+];
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'compartment pagination announces its vehicle-specific action to screen readers',
+    'compartment pagination announces its singular action to screen readers',
     (tester) async {
       tester.view.physicalSize = const Size(400, 900);
       tester.view.devicePixelRatio = 1;
@@ -60,93 +73,190 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       final semantics = tester.ensureSemantics();
 
-      const scenarios = [
-        (
-          vehicle: VehicleType.car,
-          zone: 'Porta-malas',
-          label: 'PORTA-MALAS',
-        ),
-        (
-          vehicle: VehicleType.motorcycle,
-          zone: 'Baú traseiro',
-          label: 'BAÚ TRASEIRO',
-        ),
-      ];
-
       try {
-        for (final scenario in scenarios) {
-        SharedPreferences.setMockInitialValues({
-          'load_vehicle_type': scenario.vehicle.name,
-        });
-        final store = _PaginationSemanticsStore(
-          List.generate(9, (index) => _package(index + 1)),
-        );
-        final state = AppState(store: store);
-        await state.init();
-        await state.setPhysicalZones(
-          state.packages.map((package) => package.id).toSet(),
-          scenario.zone,
-        );
+        for (final scenario in _vehicleScenarios) {
+          SharedPreferences.setMockInitialValues({
+            'load_vehicle_type': scenario.vehicle.name,
+          });
+          final store = _PaginationSemanticsStore(
+            List.generate(9, (index) => _package(index + 1)),
+          );
+          final state = AppState(store: store);
+          await state.init();
+          await state.setPhysicalZones(
+            state.packages.map((package) => package.id).toSet(),
+            scenario.zone,
+          );
 
-        await tester.pumpWidget(
-          MaterialApp(home: LoadScreen(state: state)),
-        );
-        await tester.pumpAndSettle();
+          await tester.pumpWidget(
+            MaterialApp(home: LoadScreen(state: state)),
+          );
+          await tester.pumpAndSettle();
 
-        final showMoreLabel =
-            'Mostrar o próximo pacote em ${scenario.label}';
-        final showMore = find.bySemanticsLabel(showMoreLabel);
-        expect(showMore, findsOneWidget);
-        expect(
-          tester.getSemantics(showMore).getSemanticsData().hasAction(
-                SemanticsAction.tap,
-              ),
-          isTrue,
-          reason: 'The next-page action must be available to TalkBack.',
-        );
+          final showMoreLabel =
+              'Mostrar o próximo pacote em ${scenario.label}';
+          final showMore = find.bySemanticsLabel(showMoreLabel);
+          expect(showMore, findsOneWidget);
+          expect(
+            tester.getSemantics(showMore).getSemanticsData().hasAction(
+                  SemanticsAction.tap,
+                ),
+            isTrue,
+            reason: 'The next-page action must be available to TalkBack.',
+          );
 
-        final visibleMoreButton = find.text('Ver mais 1');
-        await Scrollable.ensureVisible(
-          tester.element(visibleMoreButton),
-          alignment: 0.5,
-          duration: Duration.zero,
-        );
-        await tester.pumpAndSettle();
-        await tester.tap(visibleMoreButton);
-        await tester.pumpAndSettle();
+          final visibleMoreButton = find.text('Ver mais 1');
+          await Scrollable.ensureVisible(
+            tester.element(visibleMoreButton),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(visibleMoreButton);
+          await tester.pumpAndSettle();
 
-        final showLessLabel = 'Mostrar menos pacotes em ${scenario.label}';
-        final showLess = find.bySemanticsLabel(showLessLabel);
-        expect(showLess, findsOneWidget);
-        expect(
-          tester.getSemantics(showLess).getSemanticsData().hasAction(
-                SemanticsAction.tap,
-              ),
-          isTrue,
-          reason: 'The collapse action must be available to TalkBack.',
-        );
+          final showLessLabel =
+              'Mostrar menos pacotes em ${scenario.label}';
+          final showLess = find.bySemanticsLabel(showLessLabel);
+          expect(showLess, findsOneWidget);
+          expect(
+            tester.getSemantics(showLess).getSemanticsData().hasAction(
+                  SemanticsAction.tap,
+                ),
+            isTrue,
+            reason: 'The collapse action must be available to TalkBack.',
+          );
 
-        final visibleLessButton = find.text('Mostrar menos');
-        await Scrollable.ensureVisible(
-          tester.element(visibleLessButton),
-          alignment: 0.5,
-          duration: Duration.zero,
-        );
-        await tester.pumpAndSettle();
-        await tester.tap(visibleLessButton);
-        await tester.pumpAndSettle();
+          final visibleLessButton = find.text('Mostrar menos');
+          await Scrollable.ensureVisible(
+            tester.element(visibleLessButton),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(visibleLessButton);
+          await tester.pumpAndSettle();
 
-        expect(find.bySemanticsLabel(showMoreLabel), findsOneWidget);
-        expect(find.bySemanticsLabel(showLessLabel), findsNothing);
-        expect(tester.takeException(), isNull);
+          expect(find.bySemanticsLabel(showMoreLabel), findsOneWidget);
+          expect(find.bySemanticsLabel(showLessLabel), findsNothing);
+          expect(tester.takeException(), isNull);
 
-        await tester.pumpWidget(const SizedBox.shrink());
-        await tester.pumpAndSettle();
-        state.dispose();
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pumpAndSettle();
+          state.dispose();
         }
       } finally {
-        // Flutter verifies active semantics handles before running addTearDown.
-        // Dispose here so the handle is closed before the widget test completes.
+        // Dispose before the test completes; Flutter checks active semantics
+        // handles before running addTearDown callbacks.
+        semantics.dispose();
+      }
+    },
+  );
+
+  testWidgets(
+    'compartment pagination announces each plural page size for car and motorcycle',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final semantics = tester.ensureSemantics();
+
+      try {
+        for (final scenario in _vehicleScenarios) {
+          SharedPreferences.setMockInitialValues({
+            'load_vehicle_type': scenario.vehicle.name,
+          });
+          final store = _PaginationSemanticsStore(
+            List.generate(40, (index) => _package(index + 1)),
+          );
+          final state = AppState(store: store);
+          await state.init();
+          await state.setPhysicalZones(
+            state.packages.map((package) => package.id).toSet(),
+            scenario.zone,
+          );
+
+          await tester.pumpWidget(
+            MaterialApp(home: LoadScreen(state: state)),
+          );
+          await tester.pumpAndSettle();
+
+          final firstPageLabel =
+              'Mostrar os próximos 24 pacotes em ${scenario.label}';
+          final firstPageAction = find.bySemanticsLabel(firstPageLabel);
+          expect(firstPageAction, findsOneWidget);
+          expect(
+            tester.getSemantics(firstPageAction).getSemanticsData().hasAction(
+                  SemanticsAction.tap,
+                ),
+            isTrue,
+          );
+
+          final showFirstPage = find.text('Ver mais 24');
+          await Scrollable.ensureVisible(
+            tester.element(showFirstPage),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(showFirstPage);
+          await tester.pumpAndSettle();
+          expect(find.byType(InputChip), findsNWidgets(32));
+
+          final secondPageLabel =
+              'Mostrar os próximos 8 pacotes em ${scenario.label}';
+          final secondPageAction = find.bySemanticsLabel(secondPageLabel);
+          expect(secondPageAction, findsOneWidget);
+          expect(
+            tester.getSemantics(secondPageAction).getSemanticsData().hasAction(
+                  SemanticsAction.tap,
+                ),
+            isTrue,
+          );
+
+          final showSecondPage = find.text('Ver mais 8');
+          await Scrollable.ensureVisible(
+            tester.element(showSecondPage),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(showSecondPage);
+          await tester.pumpAndSettle();
+          expect(find.byType(InputChip), findsNWidgets(40));
+          expect(find.bySemanticsLabel(secondPageLabel), findsNothing);
+
+          final showLessLabel =
+              'Mostrar menos pacotes em ${scenario.label}';
+          final showLess = find.bySemanticsLabel(showLessLabel);
+          expect(showLess, findsOneWidget);
+          expect(
+            tester.getSemantics(showLess).getSemanticsData().hasAction(
+                  SemanticsAction.tap,
+                ),
+            isTrue,
+          );
+
+          final collapse = find.text('Mostrar menos');
+          await Scrollable.ensureVisible(
+            tester.element(collapse),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(collapse);
+          await tester.pumpAndSettle();
+
+          expect(find.byType(InputChip), findsNWidgets(8));
+          expect(find.bySemanticsLabel(firstPageLabel), findsOneWidget);
+          expect(tester.takeException(), isNull);
+
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pumpAndSettle();
+          state.dispose();
+        }
+      } finally {
         semantics.dispose();
       }
     },
