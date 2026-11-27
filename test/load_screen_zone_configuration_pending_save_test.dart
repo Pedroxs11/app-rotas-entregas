@@ -152,9 +152,9 @@ void main() {
         await store.saveStarted.future;
         await tester.pump();
 
-        expect(find.text('Salvando...'), findsOneWidget);
+        expect(find.byTooltip('Salvando...'), findsOneWidget);
         final saveButton = find.ancestor(
-          of: find.text('Salvando...'),
+          of: find.byTooltip('Salvando...'),
           matching: find.byType(FilledButton),
         ).first;
         final cancelButton = find.widgetWithText(TextButton, 'Cancelar');
@@ -170,7 +170,7 @@ void main() {
         await tester.tap(saveButton, warnIfMissed: false);
         await tester.pump();
         expect(store.saveAttempts, 1);
-        expect(find.text('Salvando...'), findsOneWidget);
+        expect(find.byTooltip('Salvando...'), findsOneWidget);
         expect(find.text(scenario.vehicle == VehicleType.car
             ? 'Compartimentos do carro'
             : 'Compartimentos da moto'), findsOneWidget);
@@ -178,7 +178,7 @@ void main() {
         gate.complete();
         await tester.pumpAndSettle();
 
-        expect(find.text('Salvando...'), findsNothing);
+        expect(find.byTooltip('Salvando...'), findsNothing);
         expect(find.text(scenario.vehicle == VehicleType.car
             ? 'Compartimentos do carro'
             : 'Compartimentos da moto'), findsNothing);

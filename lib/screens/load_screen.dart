@@ -957,17 +957,13 @@ class _LoadScreenState extends State<LoadScreen>{
                         }
                       },
                 child: saving
-                    ? const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          SizedBox(width: 8),
-                          Text('Salvando...'),
-                        ],
+                    ? const Tooltip(
+                        message: 'Salvando...',
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       )
                     : const Text('Salvar'),
               ),
