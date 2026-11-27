@@ -64,6 +64,10 @@ void main() {
         ];
         await store.save(original, routeOptimized: true);
 
+        // sqflite_common_ffi caches open handles by database path. Keep this
+        // handle open for the lifetime of SqlitePackageStore; closing it here
+        // would close the same connection held by the store and make the next
+        // save fail with database_closed before the triggers can be exercised.
         final database = await databaseFactory.openDatabase(
           p.join(directory.path, 'delivery_routes.db'),
         );
@@ -85,7 +89,6 @@ void main() {
             SELECT RAISE(ABORT, 'unchanged package was updated');
           END
         ''');
-        await database.close();
 
         // A no-op save should not touch package rows or route metadata.
         await store.save(original, routeOptimized: true);
@@ -113,16 +116,14 @@ void main() {
         );
         expect(await store.loadRouteOptimized(), isTrue);
 
-        final repairDatabase = await databaseFactory.openDatabase(
-          p.join(directory.path, 'delivery_routes.db'),
-        );
-        await repairDatabase.execute(
+        // Reuse the same open handle so the store's cached connection stays
+        // valid while the temporary triggers are removed.
+        await database.execute(
           'DROP TRIGGER reject_unchanged_package_insert',
         );
-        await repairDatabase.execute(
+        await database.execute(
           'DROP TRIGGER reject_unchanged_package_update',
         );
-        await repairDatabase.close();
 
         // Reordering updates only the affected sort positions; removing a
         // package deletes the missing id without replacing the retained rows.
