@@ -867,7 +867,6 @@ class _LoadScreenState extends State<LoadScreen>{
                 onPressed: selected.isEmpty || saving
                     ? null
                     : () async {
-                        setDialogState(() => saving = true);
                         try {
                           final knownZones = <String>{
                             ...AppState.carPhysicalZones,
@@ -919,13 +918,15 @@ class _LoadScreenState extends State<LoadScreen>{
                               ),
                             );
                             if (confirmed != true || !dialogContext.mounted) {
-                              if (dialogContext.mounted) {
-                                setDialogState(() => saving = false);
-                              }
                               return;
                             }
                           }
 
+                          if (!dialogContext.mounted) return;
+                          // Do not show an indeterminate spinner while the
+                          // confirmation dialog is on top; it would keep the
+                          // parent route's widget tests from settling.
+                          setDialogState(() => saving = true);
                           await widget.state.setActivePhysicalZones(
                             selected.toList(),
                           );
