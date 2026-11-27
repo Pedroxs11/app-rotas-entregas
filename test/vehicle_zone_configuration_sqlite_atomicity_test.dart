@@ -72,11 +72,12 @@ void main() {
           });
 
           final original = [
-            _package('active-to-clear', 1, zone: disabledZone),
-            _package('forced-failure', 2, zone: retainedZone),
+            _package('active-to-clear-first', 1, zone: disabledZone),
+            _package('forced-failure', 2, zone: disabledZone),
+            _package('active-retained', 3, zone: retainedZone),
             _package(
               'delivered-history',
-              3,
+              4,
               zone: disabledZone,
               status: DeliveryStatus.delivered,
             ),
@@ -86,7 +87,7 @@ void main() {
           await seedStore.save(original, routeOptimized: true);
           await seedStore.close();
 
-          // Fail on the second package update. The first update has already
+          // Fail on the second changed package. The first update has already
           // entered the batch, so this exercises the real SQLite transaction
           // and proves that the earlier row is rolled back as well.
           final database = await databaseFactory.openDatabase(
@@ -116,16 +117,26 @@ void main() {
           );
 
           final preferences = await SharedPreferences.getInstance();
+          const originalZones = [
+            'active-to-clear-first',
+            'forced-failure',
+            'active-retained',
+            'delivered-history',
+          ];
           expect(state.activePhysicalZones, configuredZones);
           expect(
+            state.packages.map((package) => package.id).toList(),
+            originalZones,
+          );
+          expect(
             state.packages.map((package) => package.physicalZone).toList(),
-            [disabledZone, retainedZone, disabledZone],
+            [disabledZone, disabledZone, retainedZone, disabledZone],
           );
           expect(
             (await store.load())
                 .map((package) => package.physicalZone)
                 .toList(),
-            [disabledZone, retainedZone, disabledZone],
+            [disabledZone, disabledZone, retainedZone, disabledZone],
             reason: 'The earlier package update must roll back with the failed row.',
           );
           expect(await store.loadRouteOptimized(), isTrue);
@@ -154,7 +165,7 @@ void main() {
           expect(state.activePhysicalZones, configuredZones);
           expect(
             state.packages.map((package) => package.physicalZone).toList(),
-            [disabledZone, retainedZone, disabledZone],
+            [disabledZone, disabledZone, retainedZone, disabledZone],
           );
 
           await state.setActivePhysicalZones([retainedZone]);
@@ -162,14 +173,14 @@ void main() {
           expect(state.activePhysicalZones, [retainedZone]);
           expect(
             state.packages.map((package) => package.physicalZone).toList(),
-            [null, retainedZone, disabledZone],
-            reason: 'Only the active package loses its disabled compartment; delivered history stays intact.',
+            [null, null, retainedZone, disabledZone],
+            reason: 'Only active packages lose the disabled compartment; delivered history stays intact.',
           );
           expect(
             (await store.load())
                 .map((package) => package.physicalZone)
                 .toList(),
-            [null, retainedZone, disabledZone],
+            [null, null, retainedZone, disabledZone],
           );
           expect(await store.loadRouteOptimized(), isTrue);
           expect(preferences.getStringList(preferenceKey), [retainedZone]);
