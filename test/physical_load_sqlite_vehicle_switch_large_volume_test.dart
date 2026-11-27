@@ -240,4 +240,91 @@ void main() {
       }
     },
   );
+
+  test(
+    'SQLite preserves custom package labels across vehicle switches and restart',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'rotas-sqlite-custom-label-switch-',
+      );
+
+      try {
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': VehicleType.car.name,
+          'load_zones_car': ['Frente esquerda', 'Porta-malas'],
+          'load_zones_motorcycle': AppState.motorcyclePhysicalZones,
+        });
+
+        await databaseFactory.setDatabasesPath(
+          p.join(root.path, 'database'),
+        );
+
+        SqlitePackageStore? store;
+        SqlitePackageStore? reopenedStore;
+        AppState? state;
+        AppState? resumed;
+
+        try {
+          store = SqlitePackageStore();
+          await store.save([
+            _switchPackage(1).copyWith(physicalZone: 'A-01'),
+            _switchPackage(2).copyWith(physicalZone: 'Porta-malas'),
+            _switchPackage(3, delivered: true),
+          ], routeOptimized: true);
+
+          state = AppState(store: store);
+          await state.init();
+
+          expect(state.startupError, isNull);
+          expect(state.packages[0].physicalZone, 'A-01');
+          expect(state.packages[1].physicalZone, 'Porta-malas');
+
+          await state.setVehicleType(VehicleType.motorcycle);
+
+          expect(state.vehicleType, VehicleType.motorcycle);
+          expect(state.packages[0].physicalZone, 'A-01');
+          expect(
+            state.packages[1].physicalZone,
+            isNull,
+            reason: 'Car-only positions must be cleared on motorcycle switch.',
+          );
+          expect(state.packages[2].physicalZone, 'HISTORICO');
+
+          state.dispose();
+          state = null;
+          await store.close();
+          store = null;
+
+          reopenedStore = SqlitePackageStore();
+          resumed = AppState(store: reopenedStore);
+          await resumed.init();
+
+          expect(resumed.startupError, isNull);
+          expect(resumed.vehicleType, VehicleType.motorcycle);
+          expect(resumed.packages[0].physicalZone, 'A-01');
+          expect(resumed.packages[1].physicalZone, isNull);
+          expect(resumed.packages[2].physicalZone, 'HISTORICO');
+
+          await resumed.setVehicleType(VehicleType.car);
+
+          expect(resumed.vehicleType, VehicleType.car);
+          expect(
+            resumed.packages[0].physicalZone,
+            'A-01',
+            reason: 'Custom metadata must not be mistaken for a vehicle zone.',
+          );
+          expect(resumed.packages[1].physicalZone, isNull);
+          expect(resumed.packages[2].physicalZone, 'HISTORICO');
+        } finally {
+          state?.dispose();
+          resumed?.dispose();
+          await store?.close();
+          await reopenedStore?.close();
+        }
+      } finally {
+        await root.delete(recursive: true);
+      }
+    },
+  );
+
 }
