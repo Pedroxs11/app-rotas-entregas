@@ -1252,6 +1252,22 @@ class _LoadScreenState extends State<LoadScreen>{
     final nextBatch = remainingPackages < _zonePackagePageSize
         ? remainingPackages
         : _zonePackagePageSize;
+    void showFewerPackages() {
+      setState(() => _visibleZonePackageCount.remove(zone));
+    }
+
+    void showMorePackages() {
+      setState(() {
+        _visibleZonePackageCount[zone] =
+            (visiblePackages.length + _zonePackagePageSize)
+                .clamp(_initialZonePackageCount, packages.length)
+                .toInt();
+      });
+    }
+
+    final showMoreSemanticLabel = nextBatch == 1
+        ? 'Mostrar o próximo pacote em $shortName'
+        : 'Mostrar os próximos $nextBatch pacotes em $shortName';
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       constraints: BoxConstraints(minHeight: wide ? 78 : 126),
@@ -1348,42 +1364,46 @@ class _LoadScreenState extends State<LoadScreen>{
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   if (visiblePackages.length > _initialZonePackageCount)
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        minimumSize: Size.zero,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                    Semantics(
+                      label: 'Mostrar menos pacotes em $shortName',
+                      button: true,
+                      onTap: showFewerPackages,
+                      child: ExcludeSemantics(
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            minimumSize: Size.zero,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: showFewerPackages,
+                          child: const Text('Mostrar menos'),
                         ),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
                       ),
-                      onPressed: () => setState(
-                        () => _visibleZonePackageCount.remove(zone),
-                      ),
-                      child: const Text('Mostrar menos'),
                     ),
                   if (remainingPackages > 0)
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        minimumSize: Size.zero,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                    Semantics(
+                      label: showMoreSemanticLabel,
+                      button: true,
+                      onTap: showMorePackages,
+                      child: ExcludeSemantics(
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            minimumSize: Size.zero,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: showMorePackages,
+                          child: Text('Ver mais $nextBatch'),
                         ),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
                       ),
-                      onPressed: () => setState(() {
-                        _visibleZonePackageCount[zone] =
-                            (visiblePackages.length + _zonePackagePageSize)
-                                .clamp(
-                                  _initialZonePackageCount,
-                                  packages.length,
-                                )
-                                .toInt();
-                      }),
-                      child: Text('Ver mais $nextBatch'),
                     ),
                   if (remainingPackages > 0)
                     Padding(
