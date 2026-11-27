@@ -14,7 +14,6 @@ class _ZoneSaveStore implements PackageStore {
 
   List<DeliveryPackage> items;
   Completer<void>? saveGate;
-  final Completer<void> saveStarted = Completer<void>();
   bool failNextSave = false;
   int saveAttempts = 0;
   int successfulSaves = 0;
@@ -36,7 +35,6 @@ class _ZoneSaveStore implements PackageStore {
     bool? routeOptimized,
   }) async {
     saveAttempts++;
-    if (!saveStarted.isCompleted) saveStarted.complete();
     final gate = saveGate;
     saveGate = null;
     if (gate != null) await gate.future;
@@ -150,7 +148,7 @@ void main() {
         await tester.pumpAndSettle();
 
         await _openAndDisableZone(tester, scenario);
-        await store.saveStarted.future.timeout(const Duration(seconds: 5));
+        expect(store.saveAttempts, 1, reason: 'The confirmed compartment change must start persistence.');
         await tester.pump();
 
         expect(find.byTooltip('Salvando...'), findsOneWidget);
