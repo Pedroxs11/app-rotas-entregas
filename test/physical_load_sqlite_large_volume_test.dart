@@ -119,7 +119,7 @@ void main() {
                 (package) => package.status != DeliveryStatus.delivered &&
                     package.physicalZone != null,
               ),
-              hasLength(599),
+              hasLength(999),
             );
             expect(
               state.packages.where(
@@ -200,7 +200,7 @@ void main() {
                 (package) => package.status != DeliveryStatus.delivered &&
                     package.physicalZone != null,
               ),
-              hasLength(599),
+              hasLength(999),
             );
             expect(
               reopened.packages.where(
