@@ -59,7 +59,6 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
 
       const scenarios = [
         (
@@ -74,7 +73,8 @@ void main() {
         ),
       ];
 
-      for (final scenario in scenarios) {
+      try {
+        for (final scenario in scenarios) {
         SharedPreferences.setMockInitialValues({
           'load_vehicle_type': scenario.vehicle.name,
         });
@@ -143,6 +143,11 @@ void main() {
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pumpAndSettle();
         state.dispose();
+        }
+      } finally {
+        // Flutter verifies active semantics handles before running addTearDown.
+        // Dispose here so the handle is closed before the widget test completes.
+        semantics.dispose();
       }
     },
   );
