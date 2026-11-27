@@ -98,7 +98,9 @@ void main() {
         final showMore = find.bySemanticsLabel(showMoreLabel);
         expect(showMore, findsOneWidget);
         expect(
-          tester.getSemantics(showMore).hasAction(SemanticsAction.tap),
+          tester.getSemantics(showMore).getSemanticsData().hasAction(
+                SemanticsAction.tap,
+              ),
           isTrue,
           reason: 'The next-page action must be available to TalkBack.',
         );
@@ -117,7 +119,9 @@ void main() {
         final showLess = find.bySemanticsLabel(showLessLabel);
         expect(showLess, findsOneWidget);
         expect(
-          tester.getSemantics(showLess).hasAction(SemanticsAction.tap),
+          tester.getSemantics(showLess).getSemanticsData().hasAction(
+                SemanticsAction.tap,
+              ),
           isTrue,
           reason: 'The collapse action must be available to TalkBack.',
         );
