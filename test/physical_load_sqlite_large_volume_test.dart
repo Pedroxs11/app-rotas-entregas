@@ -38,7 +38,7 @@ void main() {
   });
 
   test(
-    'SQLite keeps a 600-package organized load for car and motorcycle after restart',
+    'SQLite keeps a 1000-package organized load for car and motorcycle after restart',
     () async {
       final root = await Directory.systemTemp.createTemp(
         'rotas-sqlite-large-load-',
@@ -62,7 +62,7 @@ void main() {
           try {
             store = SqlitePackageStore();
             final original = List.generate(
-              600,
+              1000,
               (index) => _largePackage(
                 index + 1,
                 delivered: index == 599,
@@ -80,7 +80,7 @@ void main() {
                 : AppState.motorcyclePhysicalZones;
             expect(state.vehicleType, vehicle);
             expect(state.routeOptimized, isTrue);
-            expect(state.packages, hasLength(600));
+            expect(state.packages, hasLength(1000));
 
             // Assign every active package through the same bulk mutation used
             // by the organizer, distributing the load across real vehicle
@@ -111,7 +111,7 @@ void main() {
 
             await state.setPhysicalZones(movedIds, zones[1]);
 
-            expect(state.packages, hasLength(600));
+            expect(state.packages, hasLength(1000));
             expect(state.packages.map((package) => package.id).toSet(),
                 originalIds);
             expect(
@@ -166,7 +166,7 @@ void main() {
             store = null;
 
             // Re-open the actual SQLite database, rather than reusing the
-            // in-memory AppState, to verify that all 600 rows and their
+            // in-memory AppState, to verify that all 1000 rows and their
             // physical compartments survive a process-style restart.
             reopenedStore = SqlitePackageStore();
             final reopened = AppState(store: reopenedStore);
@@ -175,7 +175,7 @@ void main() {
             expect(reopened.vehicleType, vehicle);
             expect(reopened.activePhysicalZones, zones);
             expect(reopened.routeOptimized, isTrue);
-            expect(reopened.packages, hasLength(600));
+            expect(reopened.packages, hasLength(1000));
             expect(reopened.packages.map((package) => package.id).toSet(),
                 originalIds);
             expect(
