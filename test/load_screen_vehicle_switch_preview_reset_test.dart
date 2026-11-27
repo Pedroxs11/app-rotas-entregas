@@ -121,6 +121,12 @@ Future<void> _assignAll(
   WidgetTester tester,
   String zoneLabel,
 ) async {
+  // The organizer starts in single-select mode. Enable bulk selection only
+  // when the select-all action is not already present after a vehicle switch.
+  if (find.text('Selecionar lista').evaluate().isEmpty) {
+    await tester.tap(find.byTooltip('Selecionar vários'));
+    await tester.pumpAndSettle();
+  }
   final selectAll = find.text('Selecionar lista');
   await _ensureVisible(tester, selectAll);
   await tester.tap(selectAll);
