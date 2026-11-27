@@ -162,9 +162,13 @@ void main() {
               matching: find.byType(AnimatedContainer),
             )
             .first;
-        await tester.tap(
-          find.widgetWithText(TextButton, 'Ver mais 24').hitTestable().first,
+        final nextPageButton = find.descendant(
+          of: firstCompartment,
+          matching: find.widgetWithText(TextButton, 'Ver mais 24'),
         );
+        await tester.ensureVisible(nextPageButton);
+        await tester.pumpAndSettle();
+        await tester.tap(nextPageButton);
         await tester.pumpAndSettle();
 
         expect(
@@ -192,12 +196,13 @@ void main() {
           );
         }
 
-        await tester.tap(
-          find.descendant(
-            of: firstCompartment,
-            matching: find.text('Mostrar menos'),
-          ),
+        final collapseButton = find.descendant(
+          of: firstCompartment,
+          matching: find.widgetWithText(TextButton, 'Mostrar menos'),
         );
+        await tester.ensureVisible(collapseButton);
+        await tester.pumpAndSettle();
+        await tester.tap(collapseButton);
         await tester.pumpAndSettle();
         expect(
           find.descendant(
