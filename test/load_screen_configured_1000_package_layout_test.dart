@@ -67,6 +67,8 @@ DeliveryPackage _largeConfiguredPackage(int number, String zone) =>
       scannedAt: DateTime.utc(2026, 11, 27).add(Duration(minutes: number)),
     );
 
+const _initialVisiblePackageCount = 8;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -149,6 +151,66 @@ void main() {
             reason: '${entry.value} must render the bounded first page.',
           );
         }
+
+        // Pagination must be isolated per physical compartment. Expanding
+        // one zone should reveal only its next 24 packages, leaving every
+        // other configured zone on the compact first page.
+        final firstZone = labels.entries.first;
+        final firstCompartment = find
+            .ancestor(
+              of: find.text(firstZone.value),
+              matching: find.byType(AnimatedContainer),
+            )
+            .first;
+        await tester.tap(
+          find.widgetWithText(TextButton, 'Ver mais 24').hitTestable().first,
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.descendant(
+            of: firstCompartment,
+            matching: find.byType(InputChip),
+          ),
+          findsNWidgets(32),
+          reason: 'Only the expanded compartment should show its next page.',
+        );
+        for (final entry in labels.entries.skip(1)) {
+          final compartment = find
+              .ancestor(
+                of: find.text(entry.value),
+                matching: find.byType(AnimatedContainer),
+              )
+              .first;
+          expect(
+            find.descendant(
+              of: compartment,
+              matching: find.byType(InputChip),
+            ),
+            findsNWidgets(8),
+            reason: '${entry.value} must remain on its own first page.',
+          );
+        }
+
+        await tester.tap(
+          find.descendant(
+            of: firstCompartment,
+            matching: find.text('Mostrar menos'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: firstCompartment,
+            matching: find.byType(InputChip),
+          ),
+          findsNWidgets(8),
+          reason: 'Collapsing a compartment must restore its compact preview.',
+        );
+        expect(
+          find.byType(InputChip),
+          findsNWidgets(zones.length * _initialVisiblePackageCount),
+        );
 
         expect(tester.takeException(), isNull);
 
