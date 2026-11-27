@@ -815,130 +815,156 @@ class _LoadScreenState extends State<LoadScreen>{
   }
 
   Future<void> _configureZones() async {
+    if (_vehicleSwitching || _loadMutationInProgress) return;
+
     final defaults = _isMoto
         ? AppState.motorcyclePhysicalZones
         : AppState.carPhysicalZones;
     final selected = widget.state.activePhysicalZones.toSet();
+    var saving = false;
 
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-          scrollable: true,
-          title: Text(
-            _isMoto ? 'Compartimentos da moto' : 'Compartimentos do carro',
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Ative apenas os espaços que existem no seu veículo.'),
-              const SizedBox(height: 8),
-              for (final zone in defaults)
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  title: Text(zone),
-                  value: selected.contains(zone),
-                  onChanged: (value) => setDialogState(
-                    () => value == true
-                        ? selected.add(zone)
-                        : selected.remove(zone),
+        builder: (context, setDialogState) => PopScope<void>(
+          canPop: !saving,
+          child: AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            scrollable: true,
+            title: Text(
+              _isMoto ? 'Compartimentos da moto' : 'Compartimentos do carro',
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Ative apenas os espaços que existem no seu veículo.'),
+                const SizedBox(height: 8),
+                for (final zone in defaults)
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(zone),
+                    value: selected.contains(zone),
+                    onChanged: saving
+                        ? null
+                        : (value) => setDialogState(
+                              () => value == true
+                                  ? selected.add(zone)
+                                  : selected.remove(zone),
+                            ),
                   ),
-                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(dialogContext),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: selected.isEmpty || saving
+                    ? null
+                    : () async {
+                        setDialogState(() => saving = true);
+                        try {
+                          final knownZones = <String>{
+                            ...AppState.carPhysicalZones,
+                            ...AppState.motorcyclePhysicalZones,
+                          };
+                          final affectedCount = widget.state.packages.where(
+                            (package) {
+                              if (package.status == DeliveryStatus.delivered) {
+                                return false;
+                              }
+                              final zone = package.physicalZone?.trim();
+                              return zone != null &&
+                                  knownZones.contains(zone) &&
+                                  !selected.contains(zone);
+                            },
+                          ).length;
+
+                          if (affectedCount > 0) {
+                            final packageMessage = affectedCount == 1
+                                ? '1 pacote não entregue perderá sua posição atual.'
+                                : '$affectedCount pacotes não entregues perderão suas posições atuais.';
+                            final confirmed = await showDialog<bool>(
+                              context: dialogContext,
+                              builder: (confirmationContext) => AlertDialog(
+                                title: const Text(
+                                  'Confirmar alteração dos compartimentos',
+                                ),
+                                content: Text(
+                                  '$packageMessage Os pacotes não serão excluídos; '
+                                  'ficarão sem compartimento e poderão ser '
+                                  'organizados novamente.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(
+                                      confirmationContext,
+                                      false,
+                                    ),
+                                    child: const Text('Voltar'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () => Navigator.pop(
+                                      confirmationContext,
+                                      true,
+                                    ),
+                                    child: const Text('Desativar e continuar'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed != true || !dialogContext.mounted) {
+                              if (dialogContext.mounted) {
+                                setDialogState(() => saving = false);
+                              }
+                              return;
+                            }
+                          }
+
+                          await widget.state.setActivePhysicalZones(
+                            selected.toList(),
+                          );
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                          if (mounted) {
+                            setState(
+                              () => _visibleZonePackageCount.removeWhere(
+                                (zone, _) => !selected.contains(zone),
+                              ),
+                            );
+                          }
+                        } catch (error) {
+                          if (dialogContext.mounted) {
+                            setDialogState(() => saving = false);
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              SnackBar(content: Text('$error')),
+                            );
+                          }
+                        }
+                      },
+                child: saving
+                    ? const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text('Salvando...'),
+                        ],
+                      )
+                    : const Text('Salvar'),
+              ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: selected.isEmpty
-                  ? null
-                  : () async {
-                      final knownZones = <String>{
-                        ...AppState.carPhysicalZones,
-                        ...AppState.motorcyclePhysicalZones,
-                      };
-                      final affectedCount = widget.state.packages.where(
-                        (package) {
-                          if (package.status == DeliveryStatus.delivered) {
-                            return false;
-                          }
-                          final zone = package.physicalZone?.trim();
-                          return zone != null &&
-                              knownZones.contains(zone) &&
-                              !selected.contains(zone);
-                        },
-                      ).length;
-
-                      if (affectedCount > 0) {
-                        final packageMessage = affectedCount == 1
-                            ? '1 pacote não entregue perderá sua posição atual.'
-                            : '$affectedCount pacotes não entregues perderão suas posições atuais.';
-                        final confirmed = await showDialog<bool>(
-                          context: dialogContext,
-                          builder: (confirmationContext) => AlertDialog(
-                            title: const Text(
-                              'Confirmar alteração dos compartimentos',
-                            ),
-                            content: Text(
-                              '$packageMessage Os pacotes não serão excluídos; '
-                              'ficarão sem compartimento e poderão ser '
-                              'organizados novamente.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(
-                                  confirmationContext,
-                                  false,
-                                ),
-                                child: const Text('Voltar'),
-                              ),
-                              FilledButton(
-                                onPressed: () => Navigator.pop(
-                                  confirmationContext,
-                                  true,
-                                ),
-                                child: const Text('Desativar e continuar'),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirmed != true || !dialogContext.mounted) {
-                          return;
-                        }
-                      }
-
-                      try {
-                        await widget.state.setActivePhysicalZones(
-                          selected.toList(),
-                        );
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext);
-                        }
-                        if (mounted) {
-                          setState(
-                            () => _visibleZonePackageCount.removeWhere(
-                              (zone, _) => !selected.contains(zone),
-                            ),
-                          );
-                        }
-                      } catch (error) {
-                        if (dialogContext.mounted) {
-                          ScaffoldMessenger.of(dialogContext).showSnackBar(
-                            SnackBar(content: Text('$error')),
-                          );
-                        }
-                      }
-                    },
-              child: const Text('Salvar'),
-            ),
-          ],
         ),
       ),
     );
