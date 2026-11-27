@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:app_rotas_entregas/domain/models.dart';
 import 'package:app_rotas_entregas/services/sqlite_package_store.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 DeliveryPackage _package(int number) => DeliveryPackage(
@@ -49,9 +48,7 @@ void main() {
         // sqflite_common_ffi reuses open handles for a database path. Keep this
         // handle alive while the store performs its writes and close the store
         // before deleting the temporary database directory.
-        final database = await databaseFactory.openDatabase(
-          p.join(directory.path, 'delivery_routes.db'),
-        );
+        final database = await store.databaseForTesting;
         await database.execute(
           'CREATE TABLE package_write_audit (package_id TEXT NOT NULL)',
         );
