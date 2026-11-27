@@ -106,7 +106,24 @@ void main() {
         // The same last package must also be discoverable by its tracking
         // code and by the compact scan-code notation used by drivers.
         for (final query in ['br-track-fim-1000', 'p1000']) {
+          // Return to the search field before changing the query, just as a
+          // driver would on the phone after scrolling down to the result row.
+          await Scrollable.ensureVisible(
+            tester.element(find.byType(TextField)),
+            alignment: 0,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
           await tester.enterText(find.byType(TextField), query);
+          await tester.pumpAndSettle();
+
+          // Filtering can move the matching row outside the current lazy-list
+          // viewport. Bring it into view before asserting the rendered result.
+          await tester.scrollUntilVisible(
+            find.text('Pacote 1000'),
+            300,
+            scrollable: scrollable,
+          );
           await tester.pumpAndSettle();
 
           expect(
