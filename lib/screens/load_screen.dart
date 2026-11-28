@@ -329,9 +329,9 @@ class _LoadScreenState extends State<LoadScreen>{
     final viewport=viewportObject.localToGlobal(Offset.zero)&viewportObject.size;
     final pointerY=_lastSelectionPointer!.dy;
     // On a short viewport (for example, landscape or split-screen), two fixed
-    // 64 px edge bands can overlap. The upper branch would then win everywhere
-    // and downward auto-scroll would become impossible. Scale the edge band
-    // to one third of the viewport until the normal 64 px target fits.
+    // 64 px edge bands can overlap. The upper branch would then win in the
+    // overlap, making the center unexpectedly scroll upward. Scale each edge
+    // band to one third of the viewport until the normal 64 px target fits.
     final edgeSize = viewport.height < 192 ? viewport.height / 3 : 64.0;
     if (edgeSize <= 0) {
       _stopSelectionAutoScroll();
