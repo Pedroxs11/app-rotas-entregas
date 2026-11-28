@@ -93,6 +93,17 @@ void main() {
           );
           await tester.pumpAndSettle();
 
+          // The motorcycle rear compartment can start below the viewport.
+          // Bring its visible control on-screen before querying the semantics
+          // tree, which correctly omits clipped actions.
+          final visibleMoreButton = find.text('Ver mais 1');
+          await Scrollable.ensureVisible(
+            tester.element(visibleMoreButton),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
+
           final showMoreLabel =
               'Mostrar o próximo pacote em ${scenario.label}';
           final showMore = find.bySemanticsLabel(showMoreLabel);
@@ -104,15 +115,15 @@ void main() {
             isTrue,
             reason: 'The next-page action must be available to TalkBack.',
           );
+          await tester.tap(visibleMoreButton);
+          await tester.pumpAndSettle();
 
-          final visibleMoreButton = find.text('Ver mais 1');
+          final visibleLessButton = find.text('Mostrar menos');
           await Scrollable.ensureVisible(
-            tester.element(visibleMoreButton),
+            tester.element(visibleLessButton),
             alignment: 0.5,
             duration: Duration.zero,
           );
-          await tester.pumpAndSettle();
-          await tester.tap(visibleMoreButton);
           await tester.pumpAndSettle();
 
           final showLessLabel =
@@ -126,14 +137,6 @@ void main() {
             isTrue,
             reason: 'The collapse action must be available to TalkBack.',
           );
-
-          final visibleLessButton = find.text('Mostrar menos');
-          await Scrollable.ensureVisible(
-            tester.element(visibleLessButton),
-            alignment: 0.5,
-            duration: Duration.zero,
-          );
-          await tester.pumpAndSettle();
           await tester.tap(visibleLessButton);
           await tester.pumpAndSettle();
 
@@ -182,6 +185,14 @@ void main() {
           );
           await tester.pumpAndSettle();
 
+          final showFirstPage = find.text('Ver mais 24');
+          await Scrollable.ensureVisible(
+            tester.element(showFirstPage),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
+
           final firstPageLabel =
               'Mostrar os próximos 24 pacotes em ${scenario.label}';
           final firstPageAction = find.bySemanticsLabel(firstPageLabel);
@@ -192,17 +203,17 @@ void main() {
                 ),
             isTrue,
           );
+          await tester.tap(showFirstPage);
+          await tester.pumpAndSettle();
+          expect(find.byType(InputChip), findsNWidgets(32));
 
-          final showFirstPage = find.text('Ver mais 24');
+          final showSecondPage = find.text('Ver mais 8');
           await Scrollable.ensureVisible(
-            tester.element(showFirstPage),
+            tester.element(showSecondPage),
             alignment: 0.5,
             duration: Duration.zero,
           );
           await tester.pumpAndSettle();
-          await tester.tap(showFirstPage);
-          await tester.pumpAndSettle();
-          expect(find.byType(InputChip), findsNWidgets(32));
 
           final secondPageLabel =
               'Mostrar os próximos 8 pacotes em ${scenario.label}';
@@ -214,18 +225,18 @@ void main() {
                 ),
             isTrue,
           );
-
-          final showSecondPage = find.text('Ver mais 8');
-          await Scrollable.ensureVisible(
-            tester.element(showSecondPage),
-            alignment: 0.5,
-            duration: Duration.zero,
-          );
-          await tester.pumpAndSettle();
           await tester.tap(showSecondPage);
           await tester.pumpAndSettle();
           expect(find.byType(InputChip), findsNWidgets(40));
           expect(find.bySemanticsLabel(secondPageLabel), findsNothing);
+
+          final collapse = find.text('Mostrar menos');
+          await Scrollable.ensureVisible(
+            tester.element(collapse),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
 
           final showLessLabel =
               'Mostrar menos pacotes em ${scenario.label}';
@@ -237,18 +248,17 @@ void main() {
                 ),
             isTrue,
           );
-
-          final collapse = find.text('Mostrar menos');
-          await Scrollable.ensureVisible(
-            tester.element(collapse),
-            alignment: 0.5,
-            duration: Duration.zero,
-          );
-          await tester.pumpAndSettle();
           await tester.tap(collapse);
           await tester.pumpAndSettle();
 
           expect(find.byType(InputChip), findsNWidgets(8));
+          final restoredMore = find.text('Ver mais 24');
+          await Scrollable.ensureVisible(
+            tester.element(restoredMore),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
           expect(find.bySemanticsLabel(firstPageLabel), findsOneWidget);
           expect(tester.takeException(), isNull);
 
