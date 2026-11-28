@@ -1312,8 +1312,7 @@ class _LoadScreenState extends State<LoadScreen>{
           Semantics(
             key: ValueKey('load-zone-assignment-$zone'),
             container: true,
-            label: 'Compartimento $shortName. 
-                '$packageCountLabel. $assignmentActionLabel',
+            label: 'Compartimento $shortName. $packageCountLabel. $assignmentActionLabel',
             button: true,
             onTap: () => _assign(zone),
             child: ExcludeSemantics(
