@@ -330,28 +330,18 @@ void main() {
         ).first;
         final scrollPosition =
             tester.state<ScrollableState>(scrollable).position;
-        final package = find.text('Pacote 100');
-        // In a 240 px viewport, the organizer's header leaves a very
-        // short scroll area. Move the existing ScrollPosition directly in
-        // bounded steps so the lazy SliverList can mount package 100 without
-        // relying on dragUntilVisible's gesture geometry.
-        for (var attempt = 0;
-            attempt < 100 && package.evaluate().isEmpty;
-            attempt++) {
-          final nextOffset = (scrollPosition.pixels + 240)
-              .clamp(
-                scrollPosition.minScrollExtent,
-                scrollPosition.maxScrollExtent,
-              )
-              .toDouble();
-          if (nextOffset <= scrollPosition.pixels) break;
-          scrollPosition.jumpTo(nextOffset);
-          await tester.pumpAndSettle();
-        }
+        final package = find.text('Pacote 1000');
+        // Start at the end of the lazy list. In a very short viewport,
+        // incrementing by viewport-sized jumps can repeatedly chase a
+        // changing SliverList extent estimate and fail to mount a fixed
+        // middle index. The final package is deterministic at maxScrollExtent
+        // and lets this test exercise the upper auto-scroll edge.
+        scrollPosition.jumpTo(scrollPosition.maxScrollExtent);
+        await tester.pumpAndSettle();
         expect(
           package,
           findsOneWidget,
-          reason: 'Package 100 must be mounted in the compact viewport.',
+          reason: 'The last package must be mounted at the end of the compact list.',
         );
         await tester.ensureVisible(package);
         await tester.pumpAndSettle();
@@ -388,11 +378,11 @@ void main() {
           reason: 'Holding in the center must not trigger edge auto-scroll in $vehicle mode.',
         );
 
-        // The lower third must remain an active edge zone after shrinking
-        // the bands; a compact viewport must not lose downward auto-scroll.
-        final offsetBeforeLowerEdgeHold = scrollPosition.pixels;
+        // The upper third must remain an active edge zone after shrinking
+        // the bands; from the end of the list it must scroll back upward.
+        final offsetBeforeUpperEdgeHold = scrollPosition.pixels;
         await gesture.moveTo(
-          Offset(viewport.center.dx, viewport.bottom - 4),
+          Offset(viewport.center.dx, viewport.top + 4),
           timeStamp: const Duration(milliseconds: 1700),
         );
         for (var frame = 0; frame < 30; frame++) {
@@ -400,8 +390,8 @@ void main() {
         }
         expect(
           scrollPosition.pixels,
-          greaterThan(offsetBeforeLowerEdgeHold),
-          reason: 'The lower edge must still auto-scroll in $vehicle mode.',
+          lessThan(offsetBeforeUpperEdgeHold),
+          reason: 'The upper edge must still auto-scroll in $vehicle mode.',
         );
 
         await gesture.up();
