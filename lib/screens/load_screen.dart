@@ -1359,6 +1359,7 @@ class _LoadScreenState extends State<LoadScreen>{
               ),
             ),
           ),
+        ),
           if (packages.isNotEmpty) ...[
             const SizedBox(height: 6),
             Wrap(
