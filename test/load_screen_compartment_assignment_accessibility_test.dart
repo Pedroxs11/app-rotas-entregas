@@ -68,7 +68,7 @@ void main() {
   testWidgets(
     'compartment assignment announces the selected package count for car and motorcycle',
     (tester) async {
-      tester.view.physicalSize = const Size(400, 900);
+      tester.view.physicalSize = const Size(400, 1200);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -92,7 +92,7 @@ void main() {
 
           final emptyLabel =
               'Compartimento ${scenario.label}. 0 pacotes posicionados. '
-              'Toque para selecionar este compartimento.';
+              'Selecione pacotes e toque aqui para posicioná-los.';
           final emptyCompartment = find.bySemanticsLabel(emptyLabel);
           expect(emptyCompartment, findsOneWidget);
           expect(
