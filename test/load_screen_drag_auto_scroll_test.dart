@@ -331,10 +331,27 @@ void main() {
         final scrollPosition =
             tester.state<ScrollableState>(scrollable).position;
         final package = find.text('Pacote 100');
-        await tester.scrollUntilVisible(
+        // In a 240 px viewport, the organizer's header leaves a very
+        // short scroll area. Move the existing ScrollPosition directly in
+        // bounded steps so the lazy SliverList can mount package 100 without
+        // relying on dragUntilVisible's gesture geometry.
+        for (var attempt = 0;
+            attempt < 100 && package.evaluate().isEmpty;
+            attempt++) {
+          final nextOffset = (scrollPosition.pixels + 240)
+              .clamp(
+                scrollPosition.minScrollExtent,
+                scrollPosition.maxScrollExtent,
+              )
+              .toDouble();
+          if (nextOffset <= scrollPosition.pixels) break;
+          scrollPosition.jumpTo(nextOffset);
+          await tester.pumpAndSettle();
+        }
+        expect(
           package,
-          80,
-          scrollable: scrollable,
+          findsOneWidget,
+          reason: 'Package 100 must be mounted in the compact viewport.',
         );
         await tester.ensureVisible(package);
         await tester.pumpAndSettle();
