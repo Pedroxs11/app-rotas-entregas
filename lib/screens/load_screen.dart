@@ -564,8 +564,10 @@ class _LoadScreenState extends State<LoadScreen>{
     final assigned=route.where(_hasActiveZone).length;
     final organized = route.isNotEmpty && route.every(_hasActiveZone);
     final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-    final compactViewport = MediaQuery.sizeOf(context).width < 360 ||
-        MediaQuery.sizeOf(context).height < 600 ||
+    final viewportSize = MediaQuery.sizeOf(context);
+    final veryShortViewport = viewportSize.height < 320;
+    final compactViewport = viewportSize.width < 360 ||
+        viewportSize.height < 600 ||
         textScale >= 1.2;
     return Scaffold(
       appBar:AppBar(title:Text(_isMoto?'Organizar a moto':'Organizar o carro'),actions:[
@@ -582,55 +584,89 @@ class _LoadScreenState extends State<LoadScreen>{
         Padding(
           padding: EdgeInsets.fromLTRB(
             16,
-            compactViewport ? 6 : 12,
+            veryShortViewport ? 2 : compactViewport ? 6 : 12,
             16,
-            compactViewport ? 4 : 8,
+            veryShortViewport ? 2 : compactViewport ? 4 : 8,
           ),
           child: Card(
             child: Padding(
-              padding: EdgeInsets.all(compactViewport ? 10 : 16),
+              padding: EdgeInsets.all(
+                veryShortViewport ? 6 : compactViewport ? 10 : 16,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$assigned de ${route.length} pacotes posicionados',
-                    style: compactViewport
-                        ? Theme.of(context).textTheme.titleMedium
-                        : Theme.of(context).textTheme.titleLarge,
-                  ),
-                  if (multiSelect)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        '${selectedIds.length} pacote(s) selecionado(s)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.primary,
+                children: veryShortViewport
+                    ? [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '$assigned/${route.length} posicionados',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelLarge,
+                              ),
+                            ),
+                            if (multiSelect)
+                              Text(
+                                '${selectedIds.length} selecionados',
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                              ),
+                          ],
                         ),
-                      ),
-                    ),
-                  SizedBox(height: compactViewport ? 4 : 6),
-                  Text(
-                    compactViewport
-                        ? (multiSelect
-                            ? 'Selecione pacotes e toque no compartimento.'
-                            : selected == null
-                                ? 'Escolha um pacote e depois o compartimento.'
-                                : 'Toque no compartimento para guardar o pacote.')
-                        : (multiSelect
-                            ? 'Toque para marcar; mantenha pressionado e arraste para selecionar vários. Depois toque no compartimento para guardar todos.'
-                            : (selected == null
-                                ? (_isMoto
-                                    ? 'Toque em um pacote e depois no baú, bolsa ou mochila.'
-                                    : 'Toque em um pacote e depois na área do carro onde ele ficará.')
-                                : 'Pacote ${selected.scanNumber.toString().padLeft(2, '0')} selecionado. Agora toque no compartimento do veículo.')),
-                    maxLines: compactViewport ? 2 : null,
-                    overflow: compactViewport ? TextOverflow.ellipsis : TextOverflow.visible,
-                  ),
-                  SizedBox(height: compactViewport ? 6 : 10),
-                  LinearProgressIndicator(value: route.isEmpty ? 0 : assigned / route.length),
-                ],
+                        const SizedBox(height: 4),
+                        LinearProgressIndicator(
+                          minHeight: 4,
+                          value: route.isEmpty ? 0 : assigned / route.length,
+                        ),
+                      ]
+                    : [
+                        Text(
+                          '$assigned de ${route.length} pacotes posicionados',
+                          style: compactViewport
+                              ? Theme.of(context).textTheme.titleMedium
+                              : Theme.of(context).textTheme.titleLarge,
+                        ),
+                        if (multiSelect)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              '${selectedIds.length} pacote(s) selecionado(s)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        SizedBox(height: compactViewport ? 4 : 6),
+                        Text(
+                          compactViewport
+                              ? (multiSelect
+                                  ? 'Selecione pacotes e toque no compartimento.'
+                                  : selected == null
+                                      ? 'Escolha um pacote e depois o compartimento.'
+                                      : 'Toque no compartimento para guardar o pacote.')
+                              : (multiSelect
+                                  ? 'Toque para marcar; mantenha pressionado e arraste para selecionar vários. Depois toque no compartimento para guardar todos.'
+                                  : (selected == null
+                                      ? (_isMoto
+                                          ? 'Toque em um pacote e depois no baú, bolsa ou mochila.'
+                                          : 'Toque em um pacote e depois na área do carro onde ele ficará.')
+                                      : 'Pacote ${selected.scanNumber.toString().padLeft(2, '0')} selecionado. Agora toque no compartimento do veículo.')),
+                          maxLines: compactViewport ? 2 : null,
+                          overflow: compactViewport
+                              ? TextOverflow.ellipsis
+                              : TextOverflow.visible,
+                        ),
+                        SizedBox(height: compactViewport ? 6 : 10),
+                        LinearProgressIndicator(
+                          value: route.isEmpty ? 0 : assigned / route.length,
+                        ),
+                      ],
               ),
             ),
           ),
