@@ -1243,6 +1243,15 @@ class _LoadScreenState extends State<LoadScreen>{
         ?allPackages.any((package)=>selectedIds.contains(package.id))
         :selected!=null&&_isPackageInZone(selected, zone);
     final highlighted=selected!=null||selectedIds.isNotEmpty;
+    final selectedCount = multiSelect ? selectedIds.length : selected == null ? 0 : 1;
+    final packageCountLabel = allPackages.length == 1
+        ? '1 pacote posicionado'
+        : '${allPackages.length} pacotes posicionados';
+    final assignmentActionLabel = selectedCount == 0
+        ? 'Toque para selecionar este compartimento.'
+        : selectedCount == 1
+            ? 'Toque para guardar 1 pacote neste compartimento.'
+            : 'Toque para guardar $selectedCount pacotes neste compartimento.';
     final hasSearch=search.trim().isNotEmpty;
     final visibleCount = (_visibleZonePackageCount[zone] ?? _initialZonePackageCount)
         .clamp(0, packages.length)
@@ -1292,49 +1301,57 @@ class _LoadScreenState extends State<LoadScreen>{
           // Keep the assignment tap target separate from package chips.
           // A chip tap must only select that package; it must never bubble
           // into the compartment action and move the current selection.
-          SizedBox(
-            width: double.infinity,
-            child: InkWell(
-              onTap: () => _assign(zone),
-              borderRadius: BorderRadius.circular(10),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+          Semantics(
+            label: 'Compartimento $shortName. '
+                '$packageCountLabel. $assignmentActionLabel',
+            button: true,
+            onTap: () => _assign(zone),
+            child: ExcludeSemantics(
+              child: SizedBox(
+                width: double.infinity,
+                child: InkWell(
+                  onTap: () => _assign(zone),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            shortName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                shortName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            if (allPackages.isNotEmpty)
+                              Text(
+                                hasSearch
+                                    ? '${packages.length}/${allPackages.length}'
+                                    : '${allPackages.length}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                          ],
+                        ),
+                        if (packages.isEmpty) ...[
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            height: allPackages.isEmpty ? 72 : 40,
+                            child: Center(
+                              child: Text(
+                                allPackages.isEmpty ? 'Vazio' : 'Sem resultados',
+                                style: const TextStyle(fontSize: 12),
+                              ),
                             ),
                           ),
-                        ),
-                        if (allPackages.isNotEmpty)
-                          Text(
-                            hasSearch
-                                ? '${packages.length}/${allPackages.length}'
-                                : '${allPackages.length}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                        ],
                       ],
                     ),
-                    if (packages.isEmpty) ...[
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        height: allPackages.isEmpty ? 72 : 40,
-                        child: Center(
-                          child: Text(
-                            allPackages.isEmpty ? 'Vazio' : 'Sem resultados',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
             ),
