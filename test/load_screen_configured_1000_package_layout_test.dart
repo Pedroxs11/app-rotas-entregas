@@ -69,6 +69,13 @@ DeliveryPackage _largeConfiguredPackage(int number, String zone) =>
 
 const _initialVisiblePackageCount = 8;
 
+void _expectMinimumTapTarget(WidgetTester tester, Finder button) {
+  expect(button, findsOneWidget);
+  final size = tester.getSize(button);
+  expect(size.width, greaterThanOrEqualTo(48));
+  expect(size.height, greaterThanOrEqualTo(48));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -168,6 +175,7 @@ void main() {
         );
         await tester.ensureVisible(nextPageButton);
         await tester.pumpAndSettle();
+        _expectMinimumTapTarget(tester, nextPageButton);
         await tester.tap(nextPageButton);
         await tester.pumpAndSettle();
 
@@ -202,6 +210,7 @@ void main() {
         );
         await tester.ensureVisible(collapseButton);
         await tester.pumpAndSettle();
+        _expectMinimumTapTarget(tester, collapseButton);
         await tester.tap(collapseButton);
         await tester.pumpAndSettle();
         expect(
