@@ -137,12 +137,26 @@ void main() {
               'Toque para guardar 2 pacotes neste compartimento.';
           final selectedCompartment = find.bySemanticsLabel(selectedLabel);
           expect(selectedCompartment, findsOneWidget);
+          // Package selection scrolls the lazy list. Reposition the
+          // compartment into the viewport before tapping its semantics node;
+          // otherwise the node can be clipped behind the fixed selection card.
+          await Scrollable.ensureVisible(
+            tester.element(selectedCompartment),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
           expect(
             tester
                 .getSemantics(selectedCompartment)
                 .getSemanticsData()
                 .hasAction(SemanticsAction.tap),
             isTrue,
+          );
+          expect(
+            tester.getSize(selectedCompartment).height,
+            greaterThanOrEqualTo(48),
+            reason: 'The compartment action must have a 48 dp touch target.',
           );
 
           await tester.tap(selectedCompartment);
