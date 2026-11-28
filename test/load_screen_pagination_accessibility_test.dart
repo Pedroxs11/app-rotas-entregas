@@ -274,6 +274,7 @@ void main() {
             duration: Duration.zero,
           );
           await tester.pumpAndSettle();
+          expect(restoredMore, findsOneWidget);
           expect(
             tester.getSemantics(firstPageActionNode).getSemanticsData().label,
             firstPageLabel,
