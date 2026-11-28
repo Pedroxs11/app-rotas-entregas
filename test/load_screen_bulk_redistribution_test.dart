@@ -217,4 +217,87 @@ void main() {
       }
     },
   );
+
+  testWidgets(
+    'removing assigned packages preserves selected unassigned packages for car and motorcycle',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final vehicle in VehicleType.values) {
+        final isMotorcycle = vehicle == VehicleType.motorcycle;
+        final firstZone = isMotorcycle ? 'Baú traseiro' : 'Frente esquerda';
+        final secondZone = isMotorcycle
+            ? 'Bolsa lateral esquerda'
+            : 'Frente direita';
+
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': vehicle.name,
+        });
+        final store = _RedistributionStore([
+          _package(1, zone: firstZone),
+          _package(2),
+          _package(3, zone: secondZone),
+        ]);
+        final state = AppState(store: store);
+        await state.init();
+
+        await tester.pumpWidget(
+          MaterialApp(home: LoadScreen(state: state)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Selecionar vários'));
+        await tester.pumpAndSettle();
+
+        await _selectAssignedChip(tester, 'P01');
+
+        final unassignedPackage = find.text('Pacote 02');
+        expect(unassignedPackage, findsOneWidget);
+        await Scrollable.ensureVisible(
+          tester.element(unassignedPackage),
+          alignment: 0.5,
+          duration: Duration.zero,
+        );
+        await tester.pumpAndSettle();
+        expect(unassignedPackage.hitTestable(), findsOneWidget);
+        await tester.tap(unassignedPackage);
+        await tester.pumpAndSettle();
+
+        expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
+        expect(store.saves, 0);
+
+        final removeButton = find.text('RETIRAR PACOTE SELECIONADO');
+        await Scrollable.ensureVisible(
+          tester.element(removeButton),
+          alignment: 0.5,
+          duration: Duration.zero,
+        );
+        await tester.pumpAndSettle();
+        expect(removeButton.hitTestable(), findsOneWidget);
+        await tester.tap(removeButton);
+        await tester.pumpAndSettle();
+
+        // Only the assigned selection is removed from its compartment.
+        // The unassigned package remains in the route and stays selected.
+        expect(state.packages, hasLength(3));
+        expect(state.packages[0].physicalZone, isNull);
+        expect(state.packages[1].physicalZone, isNull);
+        expect(state.packages[2].physicalZone, secondZone);
+        expect(store.items, hasLength(3));
+        expect(store.items[0].physicalZone, isNull);
+        expect(store.items[1].physicalZone, isNull);
+        expect(store.items[2].physicalZone, secondZone);
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+        expect(store.saves, 1);
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        state.dispose();
+      }
+    },
+  );
 }
