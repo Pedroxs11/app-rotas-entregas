@@ -97,8 +97,11 @@ void main() {
           // Bring its visible control on-screen before querying the semantics
           // tree, which correctly omits clipped actions.
           final visibleMoreButton = find.text('Ver mais 1');
+          final showMoreActionNode = find.byKey(
+            ValueKey('load-zone-show-more-${scenario.zone}'),
+          );
           await Scrollable.ensureVisible(
-            tester.element(visibleMoreButton),
+            tester.element(showMoreActionNode),
             alignment: 0.5,
             duration: Duration.zero,
           );
@@ -106,12 +109,12 @@ void main() {
 
           final showMoreLabel =
               'Mostrar o próximo pacote em ${scenario.label}';
-          final showMore = find.bySemanticsLabel(showMoreLabel);
-          expect(showMore, findsOneWidget);
+          expect(showMoreActionNode, findsOneWidget);
+          final showMoreData =
+              tester.getSemantics(showMoreActionNode).getSemanticsData();
+          expect(showMoreData.label, showMoreLabel);
           expect(
-            tester.getSemantics(showMore).getSemanticsData().hasAction(
-                  SemanticsAction.tap,
-                ),
+            showMoreData.hasAction(SemanticsAction.tap),
             isTrue,
             reason: 'The next-page action must be available to TalkBack.',
           );
@@ -119,8 +122,11 @@ void main() {
           await tester.pumpAndSettle();
 
           final visibleLessButton = find.text('Mostrar menos');
+          final showLessActionNode = find.byKey(
+            ValueKey('load-zone-show-less-${scenario.zone}'),
+          );
           await Scrollable.ensureVisible(
-            tester.element(visibleLessButton),
+            tester.element(showLessActionNode),
             alignment: 0.5,
             duration: Duration.zero,
           );
@@ -128,20 +134,29 @@ void main() {
 
           final showLessLabel =
               'Mostrar menos pacotes em ${scenario.label}';
-          final showLess = find.bySemanticsLabel(showLessLabel);
-          expect(showLess, findsOneWidget);
+          expect(showLessActionNode, findsOneWidget);
+          final showLessData =
+              tester.getSemantics(showLessActionNode).getSemanticsData();
+          expect(showLessData.label, showLessLabel);
           expect(
-            tester.getSemantics(showLess).getSemanticsData().hasAction(
-                  SemanticsAction.tap,
-                ),
+            showLessData.hasAction(SemanticsAction.tap),
             isTrue,
             reason: 'The collapse action must be available to TalkBack.',
           );
           await tester.tap(visibleLessButton);
           await tester.pumpAndSettle();
 
-          expect(find.bySemanticsLabel(showMoreLabel), findsOneWidget);
-          expect(find.bySemanticsLabel(showLessLabel), findsNothing);
+          await Scrollable.ensureVisible(
+            tester.element(showMoreActionNode),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
+          expect(
+            tester.getSemantics(showMoreActionNode).getSemanticsData().label,
+            showMoreLabel,
+          );
+          expect(showLessActionNode, findsNothing);
           expect(tester.takeException(), isNull);
 
           await tester.pumpWidget(const SizedBox.shrink());
@@ -186,8 +201,11 @@ void main() {
           await tester.pumpAndSettle();
 
           final showFirstPage = find.text('Ver mais 24');
+          final firstPageActionNode = find.byKey(
+            ValueKey('load-zone-show-more-${scenario.zone}'),
+          );
           await Scrollable.ensureVisible(
-            tester.element(showFirstPage),
+            tester.element(firstPageActionNode),
             alignment: 0.5,
             duration: Duration.zero,
           );
@@ -195,21 +213,21 @@ void main() {
 
           final firstPageLabel =
               'Mostrar os próximos 24 pacotes em ${scenario.label}';
-          final firstPageAction = find.bySemanticsLabel(firstPageLabel);
-          expect(firstPageAction, findsOneWidget);
-          expect(
-            tester.getSemantics(firstPageAction).getSemanticsData().hasAction(
-                  SemanticsAction.tap,
-                ),
-            isTrue,
-          );
+          expect(firstPageActionNode, findsOneWidget);
+          final firstPageData =
+              tester.getSemantics(firstPageActionNode).getSemanticsData();
+          expect(firstPageData.label, firstPageLabel);
+          expect(firstPageData.hasAction(SemanticsAction.tap), isTrue);
           await tester.tap(showFirstPage);
           await tester.pumpAndSettle();
           expect(find.byType(InputChip), findsNWidgets(32));
 
           final showSecondPage = find.text('Ver mais 8');
+          final secondPageActionNode = find.byKey(
+            ValueKey('load-zone-show-more-${scenario.zone}'),
+          );
           await Scrollable.ensureVisible(
-            tester.element(showSecondPage),
+            tester.element(secondPageActionNode),
             alignment: 0.5,
             duration: Duration.zero,
           );
@@ -217,14 +235,11 @@ void main() {
 
           final secondPageLabel =
               'Mostrar os próximos 8 pacotes em ${scenario.label}';
-          final secondPageAction = find.bySemanticsLabel(secondPageLabel);
-          expect(secondPageAction, findsOneWidget);
-          expect(
-            tester.getSemantics(secondPageAction).getSemanticsData().hasAction(
-                  SemanticsAction.tap,
-                ),
-            isTrue,
-          );
+          expect(secondPageActionNode, findsOneWidget);
+          final secondPageData =
+              tester.getSemantics(secondPageActionNode).getSemanticsData();
+          expect(secondPageData.label, secondPageLabel);
+          expect(secondPageData.hasAction(SemanticsAction.tap), isTrue);
           await tester.tap(showSecondPage);
           await tester.pumpAndSettle();
           expect(find.byType(InputChip), findsNWidgets(40));
