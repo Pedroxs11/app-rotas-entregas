@@ -1308,9 +1308,11 @@ class _LoadScreenState extends State<LoadScreen>{
             button: true,
             onTap: () => _assign(zone),
             child: ExcludeSemantics(
-              child: SizedBox(
-                width: double.infinity,
-                child: InkWell(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: InkWell(
                   onTap: () => _assign(zone),
                   borderRadius: BorderRadius.circular(10),
                   child: Padding(
