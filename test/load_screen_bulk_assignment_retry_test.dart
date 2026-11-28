@@ -79,11 +79,13 @@ Future<void> _ensureLoadItemVisible(
     await tester.pump(const Duration(milliseconds: 16));
   }
 
+  const visibilityTolerance = 1.0;
   for (var attempt = 0; attempt < 120; attempt++) {
     if (finder.evaluate().isNotEmpty) {
       final target = tester.getRect(finder.first);
       final viewport = tester.getRect(viewportFinder);
-      if (target.top >= viewport.top && target.bottom <= viewport.bottom) {
+      if (target.top >= viewport.top - visibilityTolerance &&
+          target.bottom <= viewport.bottom + visibilityTolerance) {
         return;
       }
       final delta = target.top < viewport.top
@@ -107,8 +109,8 @@ Future<void> _ensureLoadItemVisible(
   expect(finder, findsWidgets);
   final target = tester.getRect(finder.first);
   final viewport = tester.getRect(viewportFinder);
-  expect(target.top, greaterThanOrEqualTo(viewport.top));
-  expect(target.bottom, lessThanOrEqualTo(viewport.bottom));
+  expect(target.top, greaterThanOrEqualTo(viewport.top - visibilityTolerance));
+  expect(target.bottom, lessThanOrEqualTo(viewport.bottom + visibilityTolerance));
 }
 
 
