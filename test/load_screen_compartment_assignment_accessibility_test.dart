@@ -93,13 +93,21 @@ void main() {
           final emptyLabel =
               'Compartimento ${scenario.label}. 0 pacotes posicionados. '
               'Selecione pacotes e toque aqui para posicioná-los.';
-          final emptyCompartment = find.bySemanticsLabel(emptyLabel);
-          expect(emptyCompartment, findsOneWidget);
+          final assignmentNode = find.byKey(
+            ValueKey('load-zone-assignment-${scenario.zone}'),
+          );
+          await Scrollable.ensureVisible(
+            tester.element(assignmentNode),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
+          expect(assignmentNode, findsOneWidget);
+          final emptyCompartmentData =
+              tester.getSemantics(assignmentNode).getSemanticsData();
+          expect(emptyCompartmentData.label, emptyLabel);
           expect(
-            tester
-                .getSemantics(emptyCompartment)
-                .getSemanticsData()
-                .hasAction(SemanticsAction.tap),
+            emptyCompartmentData.hasAction(SemanticsAction.tap),
             isTrue,
             reason: 'The compartment must expose an actionable TalkBack target.',
           );
@@ -135,31 +143,29 @@ void main() {
           final selectedLabel =
               'Compartimento ${scenario.label}. 0 pacotes posicionados. '
               'Toque para guardar 2 pacotes neste compartimento.';
-          final selectedCompartment = find.bySemanticsLabel(selectedLabel);
-          expect(selectedCompartment, findsOneWidget);
           // Package selection scrolls the lazy list. Reposition the
-          // compartment into the viewport before tapping its semantics node;
-          // otherwise the node can be clipped behind the fixed selection card.
+          // compartment into the viewport before reading or tapping its
+          // semantics node; the fixed selection card can otherwise clip it.
           await Scrollable.ensureVisible(
-            tester.element(selectedCompartment),
+            tester.element(assignmentNode),
             alignment: 0.5,
             duration: Duration.zero,
           );
           await tester.pumpAndSettle();
+          final selectedCompartmentData =
+              tester.getSemantics(assignmentNode).getSemanticsData();
+          expect(selectedCompartmentData.label, selectedLabel);
           expect(
-            tester
-                .getSemantics(selectedCompartment)
-                .getSemanticsData()
-                .hasAction(SemanticsAction.tap),
+            selectedCompartmentData.hasAction(SemanticsAction.tap),
             isTrue,
           );
           expect(
-            tester.getSize(selectedCompartment).height,
+            tester.getSize(assignmentNode).height,
             greaterThanOrEqualTo(48),
             reason: 'The compartment action must have a 48 dp touch target.',
           );
 
-          await tester.tap(selectedCompartment);
+          await tester.tap(assignmentNode);
           await tester.pumpAndSettle();
 
           expect(
@@ -180,7 +186,20 @@ void main() {
           final assignedLabel =
               'Compartimento ${scenario.label}. 2 pacotes posicionados. '
               'Toque para selecionar este compartimento.';
-          expect(find.bySemanticsLabel(assignedLabel), findsOneWidget);
+          // Assignment changes the diagram's contents and can slightly alter
+          // its scroll extent. Verify the complete action node after it is
+          // brought back into the viewport, not only the previously tapped
+          // position.
+          await Scrollable.ensureVisible(
+            tester.element(assignmentNode),
+            alignment: 0.5,
+            duration: Duration.zero,
+          );
+          await tester.pumpAndSettle();
+          expect(
+            tester.getSemantics(assignmentNode).getSemanticsData().label,
+            assignedLabel,
+          );
           expect(tester.takeException(), isNull);
 
           await tester.pumpWidget(const SizedBox.shrink());
