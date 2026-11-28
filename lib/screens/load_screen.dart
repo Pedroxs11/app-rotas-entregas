@@ -1248,7 +1248,7 @@ class _LoadScreenState extends State<LoadScreen>{
         ? '1 pacote posicionado'
         : '${allPackages.length} pacotes posicionados';
     final assignmentActionLabel = selectedCount == 0
-        ? 'Toque para selecionar este compartimento.'
+        ? 'Selecione pacotes e toque aqui para posicioná-los.'
         : selectedCount == 1
             ? 'Toque para guardar 1 pacote neste compartimento.'
             : 'Toque para guardar $selectedCount pacotes neste compartimento.';
