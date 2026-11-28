@@ -51,7 +51,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'drag selection auto-scrolls through long package lists for car and motorcycle',
+    'drag selection auto-scrolls through a 1000-package route for car and motorcycle',
     (tester) async {
       tester.view.physicalSize = const Size(360, 900);
       tester.view.devicePixelRatio = 1;
@@ -63,7 +63,7 @@ void main() {
           'load_vehicle_type': vehicle.name,
         });
         final store = _AutoScrollStore(
-          List.generate(80, (index) => _package(index + 1)),
+          List.generate(1000, (index) => _package(index + 1)),
         );
         final state = AppState(store: store);
         await state.init();
@@ -177,7 +177,7 @@ void main() {
 
 
   testWidgets(
-    'drag selection auto-scrolls upward through long package lists for car and motorcycle',
+    'drag selection auto-scrolls upward through a 1000-package route for car and motorcycle',
     (tester) async {
       tester.view.physicalSize = const Size(360, 900);
       tester.view.devicePixelRatio = 1;
@@ -189,7 +189,7 @@ void main() {
           'load_vehicle_type': vehicle.name,
         });
         final store = _AutoScrollStore(
-          List.generate(80, (index) => _package(index + 1)),
+          List.generate(1000, (index) => _package(index + 1)),
         );
         final state = AppState(store: store);
         await state.init();
@@ -206,7 +206,7 @@ void main() {
           of: find.byType(CustomScrollView),
           matching: find.byType(Scrollable),
         ).first;
-        final lastPackage = find.text('Pacote 80');
+        final lastPackage = find.text('Pacote 1000');
         final scrollPosition =
             tester.state<ScrollableState>(scrollable).position;
         // scrollUntilVisible cannot discover a lazy child that has not been
@@ -282,7 +282,7 @@ void main() {
         expect(
           assigned.map((package) => package.scanNumber).toSet(),
           containsAll(
-            List.generate(selectedCount, (index) => 80 - index),
+            List.generate(selectedCount, (index) => 1000 - index),
           ),
         );
         expect(tester.takeException(), isNull);
