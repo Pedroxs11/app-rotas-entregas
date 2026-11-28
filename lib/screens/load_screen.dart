@@ -1302,6 +1302,7 @@ class _LoadScreenState extends State<LoadScreen>{
           // A chip tap must only select that package; it must never bubble
           // into the compartment action and move the current selection.
           Semantics(
+            container: true,
             label: 'Compartimento $shortName. '
                 '$packageCountLabel. $assignmentActionLabel',
             button: true,
