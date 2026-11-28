@@ -246,8 +246,11 @@ void main() {
           expect(find.bySemanticsLabel(secondPageLabel), findsNothing);
 
           final collapse = find.text('Mostrar menos');
+          final showLessActionNode = find.byKey(
+            ValueKey('load-zone-show-less-${scenario.zone}'),
+          );
           await Scrollable.ensureVisible(
-            tester.element(collapse),
+            tester.element(showLessActionNode),
             alignment: 0.5,
             duration: Duration.zero,
           );
@@ -255,26 +258,26 @@ void main() {
 
           final showLessLabel =
               'Mostrar menos pacotes em ${scenario.label}';
-          final showLess = find.bySemanticsLabel(showLessLabel);
-          expect(showLess, findsOneWidget);
-          expect(
-            tester.getSemantics(showLess).getSemanticsData().hasAction(
-                  SemanticsAction.tap,
-                ),
-            isTrue,
-          );
+          expect(showLessActionNode, findsOneWidget);
+          final showLessData =
+              tester.getSemantics(showLessActionNode).getSemanticsData();
+          expect(showLessData.label, showLessLabel);
+          expect(showLessData.hasAction(SemanticsAction.tap), isTrue);
           await tester.tap(collapse);
           await tester.pumpAndSettle();
 
           expect(find.byType(InputChip), findsNWidgets(8));
           final restoredMore = find.text('Ver mais 24');
           await Scrollable.ensureVisible(
-            tester.element(restoredMore),
+            tester.element(firstPageActionNode),
             alignment: 0.5,
             duration: Duration.zero,
           );
           await tester.pumpAndSettle();
-          expect(find.bySemanticsLabel(firstPageLabel), findsOneWidget);
+          expect(
+            tester.getSemantics(firstPageActionNode).getSemanticsData().label,
+            firstPageLabel,
+          );
           expect(tester.takeException(), isNull);
 
           await tester.pumpWidget(const SizedBox.shrink());
