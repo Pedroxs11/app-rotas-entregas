@@ -598,26 +598,23 @@ class _LoadScreenState extends State<LoadScreen>{
                 mainAxisSize: MainAxisSize.min,
                 children: veryShortViewport
                     ? [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '$assigned/${route.length} posicionados',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.labelLarge,
-                              ),
-                            ),
-                            if (multiSelect)
-                              Text(
-                                '${selectedIds.length} selecionados',
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                              ),
-                          ],
+                        Text(
+                          '$assigned de ${route.length} posicionados',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelLarge,
                         ),
+                        if (multiSelect)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              '${selectedIds.length} pacote(s) selecionado(s)',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                            ),
+                          ),
                         const SizedBox(height: 4),
                         LinearProgressIndicator(
                           minHeight: 4,
