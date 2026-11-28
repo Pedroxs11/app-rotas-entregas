@@ -1432,6 +1432,7 @@ class _LoadScreenState extends State<LoadScreen>{
                   if (visiblePackages.length > _initialZonePackageCount)
                     Semantics(
                       key: ValueKey('load-zone-show-less-$zone'),
+                      container: true,
                       label: 'Mostrar menos pacotes em $shortName',
                       button: true,
                       onTap: showFewerPackages,
@@ -1454,6 +1455,7 @@ class _LoadScreenState extends State<LoadScreen>{
                   if (remainingPackages > 0)
                     Semantics(
                       key: ValueKey('load-zone-show-more-$zone'),
+                      container: true,
                       label: showMoreSemanticLabel,
                       button: true,
                       onTap: showMorePackages,
