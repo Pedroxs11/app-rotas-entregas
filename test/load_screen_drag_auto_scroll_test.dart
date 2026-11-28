@@ -294,4 +294,84 @@ void main() {
     },
   );
 
+  testWidgets(
+    'short viewport keeps the center drag band neutral for car and motorcycle',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 240);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final vehicle in [VehicleType.car, VehicleType.motorcycle]) {
+        SharedPreferences.setMockInitialValues({
+          'load_vehicle_type': vehicle.name,
+        });
+        final store = _AutoScrollStore(
+          List.generate(1000, (index) => _package(index + 1)),
+        );
+        final state = AppState(store: store);
+        await state.init();
+
+        await tester.pumpWidget(
+          MaterialApp(home: LoadScreen(state: state)),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Selecionar vários'));
+        await tester.pumpAndSettle();
+
+        final scrollable = find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first;
+        final scrollPosition =
+            tester.state<ScrollableState>(scrollable).position;
+        final package = find.text('Pacote 100');
+        await tester.scrollUntilVisible(
+          package,
+          80,
+          scrollable: scrollable,
+        );
+        await tester.ensureVisible(package);
+        await tester.pumpAndSettle();
+
+        final viewport = tester.getRect(find.byType(CustomScrollView));
+        expect(
+          viewport.height,
+          lessThan(128),
+          reason: 'This regression test must exercise overlapping 64 px edge bands.',
+        );
+
+        final gesture = await tester.startGesture(tester.getCenter(package));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('1 pacote(s) selecionado(s)'), findsOneWidget);
+        final offsetBeforeCenterHold = scrollPosition.pixels;
+
+        // A short viewport has a neutral center band. With two fixed 64 px
+        // edge bands, the center would incorrectly be classified as the
+        // upper edge and the list would scroll upward while the finger rests.
+        await gesture.moveTo(
+          viewport.center,
+          timeStamp: const Duration(milliseconds: 700),
+        );
+        for (var frame = 0; frame < 60; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        expect(
+          scrollPosition.pixels,
+          closeTo(offsetBeforeCenterHold, 0.5),
+          reason: 'Holding in the center must not trigger edge auto-scroll in $vehicle mode.',
+        );
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        state.dispose();
+      }
+    },
+  );
+
 }
