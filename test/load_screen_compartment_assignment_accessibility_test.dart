@@ -185,7 +185,7 @@ void main() {
 
           final assignedLabel =
               'Compartimento ${scenario.label}. 2 pacotes posicionados. '
-              'Toque para selecionar este compartimento.';
+              'Selecione pacotes e toque aqui para posicioná-los.';
           // Assignment changes the diagram's contents and can slightly alter
           // its scroll extent. Verify the complete action node after it is
           // brought back into the viewport, not only the previously tapped
