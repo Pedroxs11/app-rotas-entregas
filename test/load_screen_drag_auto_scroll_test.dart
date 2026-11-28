@@ -363,6 +363,22 @@ void main() {
           reason: 'Holding in the center must not trigger edge auto-scroll in $vehicle mode.',
         );
 
+        // The lower third must remain an active edge zone after shrinking
+        // the bands; a compact viewport must not lose downward auto-scroll.
+        final offsetBeforeLowerEdgeHold = scrollPosition.pixels;
+        await gesture.moveTo(
+          Offset(viewport.center.dx, viewport.bottom - 4),
+          timeStamp: const Duration(milliseconds: 1700),
+        );
+        for (var frame = 0; frame < 30; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        expect(
+          scrollPosition.pixels,
+          greaterThan(offsetBeforeLowerEdgeHold),
+          reason: 'The lower edge must still auto-scroll in $vehicle mode.',
+        );
+
         await gesture.up();
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
