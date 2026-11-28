@@ -255,11 +255,14 @@ void main() {
         await _selectAssignedChip(tester, 'P01');
 
         final unassignedPackage = find.text('Pacote 02');
-        expect(unassignedPackage, findsOneWidget);
-        await Scrollable.ensureVisible(
-          tester.element(unassignedPackage),
-          alignment: 0.5,
-          duration: Duration.zero,
+        final packageListScrollable = find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first;
+        await tester.scrollUntilVisible(
+          unassignedPackage,
+          80,
+          scrollable: packageListScrollable,
         );
         await tester.pumpAndSettle();
         expect(unassignedPackage.hitTestable(), findsOneWidget);
