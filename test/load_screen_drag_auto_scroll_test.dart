@@ -348,8 +348,11 @@ void main() {
 
         final viewport = tester.getRect(find.byType(CustomScrollView));
         final packageRect = tester.getRect(package);
-        expect(packageRect.top, greaterThanOrEqualTo(viewport.top));
-        expect(packageRect.bottom, lessThanOrEqualTo(viewport.bottom));
+        // The tile may be clipped by a few pixels at the end of a viewport
+        // shorter than the tile itself. Its center must remain hit-testable
+        // so the drag starts inside the actual scroll viewport.
+        expect(packageRect.overlaps(viewport), isTrue);
+        expect(viewport.contains(tester.getCenter(package)), isTrue);
         expect(
           viewport.height,
           lessThan(128),
