@@ -107,17 +107,29 @@ void main() {
           await tester.tap(find.byTooltip('Selecionar vários'));
           await tester.pumpAndSettle();
 
-          final firstPackage = find.byType(ListTile).at(0);
-          await tester.ensureVisible(firstPackage);
-          await tester.pumpAndSettle();
-          await tester.tap(firstPackage);
-          await tester.pumpAndSettle();
+          // The unassigned packages live in a lazy SliverList. A ListTile
+          // finder cannot use .at(index) before that row has entered the
+          // viewport, so scroll to its stable scan-number label first.
+          Future<void> tapUnassignedPackage(int scanNumber) async {
+            final numberLabel = find.text(
+              scanNumber.toString().padLeft(2, '0'),
+            );
+            await tester.scrollUntilVisible(
+              numberLabel,
+              240,
+              scrollable: find.byType(Scrollable).first,
+            );
+            final tile = find.ancestor(
+              of: numberLabel,
+              matching: find.byType(ListTile),
+            );
+            expect(tile, findsOneWidget);
+            await tester.tap(tile);
+            await tester.pumpAndSettle();
+          }
 
-          final secondPackage = find.byType(ListTile).at(1);
-          await tester.ensureVisible(secondPackage);
-          await tester.pumpAndSettle();
-          await tester.tap(secondPackage);
-          await tester.pumpAndSettle();
+          await tapUnassignedPackage(1);
+          await tapUnassignedPackage(2);
 
           expect(find.text('2 pacote(s) selecionado(s)'), findsOneWidget);
           final selectedLabel =
