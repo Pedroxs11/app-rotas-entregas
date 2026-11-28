@@ -1302,8 +1302,9 @@ class _LoadScreenState extends State<LoadScreen>{
           // A chip tap must only select that package; it must never bubble
           // into the compartment action and move the current selection.
           Semantics(
+            key: ValueKey('load-zone-assignment-$zone'),
             container: true,
-            label: 'Compartimento $shortName. '
+            label: 'Compartimento $shortName. 
                 '$packageCountLabel. $assignmentActionLabel',
             button: true,
             onTap: () => _assign(zone),
@@ -1390,6 +1391,7 @@ class _LoadScreenState extends State<LoadScreen>{
                 children: [
                   if (visiblePackages.length > _initialZonePackageCount)
                     Semantics(
+                      key: ValueKey('load-zone-show-less-$zone'),
                       label: 'Mostrar menos pacotes em $shortName',
                       button: true,
                       onTap: showFewerPackages,
@@ -1411,6 +1413,7 @@ class _LoadScreenState extends State<LoadScreen>{
                     ),
                   if (remainingPackages > 0)
                     Semantics(
+                      key: ValueKey('load-zone-show-more-$zone'),
                       label: showMoreSemanticLabel,
                       button: true,
                       onTap: showMorePackages,
