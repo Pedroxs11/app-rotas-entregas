@@ -316,6 +316,11 @@ void main() {
           MaterialApp(home: LoadScreen(state: state)),
         );
         await tester.pumpAndSettle();
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'The organizer header must not overflow a 240 px viewport in $vehicle mode.',
+        );
         await tester.tap(find.byTooltip('Selecionar vários'));
         await tester.pumpAndSettle();
 
@@ -335,6 +340,9 @@ void main() {
         await tester.pumpAndSettle();
 
         final viewport = tester.getRect(find.byType(CustomScrollView));
+        final packageRect = tester.getRect(package);
+        expect(packageRect.top, greaterThanOrEqualTo(viewport.top));
+        expect(packageRect.bottom, lessThanOrEqualTo(viewport.bottom));
         expect(
           viewport.height,
           lessThan(128),
